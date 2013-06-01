@@ -42,17 +42,9 @@ use URI::Escape;
 #################################################################
 # declare_global_directorys
 #################################################################
-our $dump_directory		    = '/mnt/user-store/dumps/store/';		# toolserver
-our $dump_directory2	    = '/mnt/user-store/dumps/tmp/';
-# our $dump_directory	= '../../dump/';	# home or usb
 
 our $output_directory		= '/mnt/user-store/sk/data/checkwiki/';
-our $output_templatetiger   = '/mnt/user-store/sk/data/templatetiger/';
 our $output_geo				= '/mnt/user-store/sk/data/geo/';
-
-#our $dump_filename  = '/mnt/user-store/dump/dewiki-20080607-pages-articles.xml'; #'Wikipedia-20080502083556.xml';
-our $dump_filename  = '';
-#$dump_filename ='../../dump/dewiki-20071217-pages-articles.xml';
 
 #################################################################
 # Declaration of variables (global)
@@ -438,186 +430,6 @@ sub get_error_description{
 
 }
 
-
-
-
-###################################################################################
-
-sub open_file{
-	# create subdirectory
-	#print $output_directory.$project."\n";
-	if (not (-e $output_directory.$project )) {
-		print 'create directory:'."\t". $output_directory.$project."\n";
-		#mkdir($output_directory.$project ,0777);
-		system ('mkdir -p '.$output_directory.$project);
-	}
-
-	################################
-	# if new dump is available
-	if ($dump_or_live eq 'dump') {
-		$dump_filename = search_for_last_dump();
-		two_column_display ('Dump_filename:', $dump_filename) if (!$silent_modus);
-
-		my $last_dump_filename = $output_directory.$project.'/'.$project.'_last_dump_name.txt';
-		two_column_display ('last_dump_filename:', $output_directory.$project.'/');
-		two_column_display ('', $project.'_last_dump_name.txt');
-
-		if (not (-e $last_dump_filename)) {
-			# create the file if not exist
-			system ('touch '.$last_dump_filename);
-			two_column_display ('create last_dump_file:', $project.'_last_dump_name.txt');
-			open (LAST_DUMP_NAME_FIRST, '+>'.$last_dump_filename);
-			print LAST_DUMP_NAME_FIRST 'x';
-			close(LAST_DUMP_NAME_FIRST);
-		}
-
-		#read the last name
-		#print 'check old dumpname'."\n";
-		open (LAST_DUMP_NAME, '<'.$last_dump_filename);
-		my $last_dump_name_old = '';
-		$last_dump_name_old = <LAST_DUMP_NAME>;
-		$last_dump_name_old = '' if not defined;
-		chomp ($last_dump_name_old);
-
-		close(LAST_DUMP_NAME);
-
-		#get date from dumpfile
-		our $dump_date_for_output = $dump_filename;
-		$dump_date_for_output =~ s/^[^\-]-//g;
-		$dump_date_for_output =~ s/^[^0-9]+//g;
-		$dump_date_for_output =~ s/[^0-9]+$//g;
-		if (length($dump_date_for_output) >=8){
-			$dump_date_for_output = substr($dump_date_for_output,0,4).'-'.substr($dump_date_for_output,4,2).'-'.substr($dump_date_for_output,6,2);
-		}
-		#print $dump_date_for_output."\n";
-
-
-		if ($dump_filename ne $last_dump_name_old ) {
-			# if not the newest dump then start dump scan
-			two_column_display ('Last scanned dump:', $last_dump_name_old);
-			two_column_display ('Current found dump:', $dump_filename);
-			open (LAST_DUMP_NAME, '>'.$last_dump_filename);
-			print LAST_DUMP_NAME $dump_filename;
-			close(LAST_DUMP_NAME);
-			#print 'nice -n 5 perl checkwiki.pl -p '.$project.' -m dump' ."\n";
-	#		if ($dump_or_live eq 'live') {
-	#			print "\n\n";
-	#			system ('nice -n 5 perl checkwiki.pl -p '.$project.' -m dump --silent') ;
-	#			print "\n\n";
-	#		}
-		}
-
-		#update last_dump time for project in database
-		my $sql_text = "update /* SLOW_OK */ cw_project set last_dump ='".$dump_date_for_output."' where project = '". $project ."';";
-		my $sth = $dbh->prepare( $sql_text );
-		$sth->execute;
-
-		#delete old list of articles from last dumpscan in table cw_dumpscan
-		my $sql_text2 = "delete /* SLOW_OK */ from cw_dumpscan where project = '". $project ."';";
-		$sth = $dbh->prepare( $sql_text2 );
-		$sth->execute;
-
-	}
-
-	################################
-
-
-
-
-	if ($dump_or_live eq 'dump') {
-
-
-		#print "last=x".$dump_filename."x\n";
-
-
-		# check for existens dump
-
-		my $full_dump_path_filename = $dump_directory.$project.'/'.$dump_filename;
-		if (not -e $full_dump_path_filename) {
-		   $full_dump_path_filename = $dump_directory2.'/'.$dump_filename;
-		}
-		#print $full_dump_path_filename."\n";
-
-		if ($dump_filename ne '' and -e $full_dump_path_filename ) {
-			#print 'Data:   '."\t\t"."$dump_directory$dump_filename\n";
-			#open dump
-			open(DUMP, "bzip2 -d -q <$full_dump_path_filename |");
-			#read_and_write_metadata_from_url();
-		} else {
-			$quit_program = 'yes';
-			$quit_reason = $quit_reason. "file '$full_dump_path_filename'". " don't exist!\n";
-		}
-
-		#################
-		# Templatetiger
-		#################
-		$templatetiger_filename = $output_templatetiger.$project.'/'.$project.'_templatetiger.txt';
-		if (not (-e $output_templatetiger.$project )) {
-			two_column_display ('create new subdirectory', 'templatetiger');
-			system ('mkdir -p '.$output_templatetiger.$project);
-		}
-		if (-e $templatetiger_filename ) {
-			two_column_display ('delete old TT-file:', $project.'_templatetiger.txt');
-			system ('rm -f '.$templatetiger_filename) ;
-		}
-
-		open (TEMPLATETIGER, '>>'.$templatetiger_filename);
-	}
-
-	# delete old error_list
-	if ($quit_program eq 'no' ) {
-		read_and_write_metadata_from_url();
-		load_metadata_from_file();
-
-	}
-}
-
-
-
-
-sub search_for_last_dump {
-	# search in dump_directory for the last XML-file of a project
-	my $last_file ='';
-	print_line();
-	two_column_display ('search dump in:', $dump_directory);
-	two_column_display ('search dump in:', $dump_directory2);
-	my @xml_files1  = glob($dump_directory .$project.'/*-pages-articles.xml.bz2');		# ../store
-	my @xml_files2  = glob($dump_directory2.$project.'*-pages-articles.xml.bz2');       # ../tmp
-	my @xml_files = (@xml_files1, @xml_files2); # add both file-arrays
-	my $count_xml_files = @xml_files;
-
-	for (my $i = 0; $i < $count_xml_files; $i++) {
-		# List of all xml-files in dump_directory
-		my $byte = -s $xml_files[$i];
-		#print $xml_files[$i].' '.$byte."\n";
-		$xml_files[$i] =~ s/(.)+\///g;
-
-		my $project_test = $project;
-		$project_test =~ s/_test$//;
-
-		if ((   index($xml_files[$i], $project.'-')      == 0	# only this project
-			 or index($xml_files[$i], $project_test.'-') == 0 )	#
-			and $byte > 0 ) {							# only more then 0 bytes files
-			#the last project dump (more then 0 byte)
-			if ($xml_files[$i] =~ /^$project(_test)?-[0-9]/)  {
-				#print "\t".$xml_files[$i]."\n";
-				$last_file = $xml_files[$i];
-			}
-		}
-	}
-
-	if ($last_file eq '' and $dump_or_live ne 'live') {		# stop if dump scan , run if the program will scan live
-		# No file found
-		$quit_program = 'yes';
-		$quit_reason = $quit_reason.$count_xml_files.' XML-files found in folder '.$dump_directory."\n";
-		$quit_reason = $quit_reason.'Found no XML-file for project: '.$project."\n";
-	}
-
-	@xml_files = ();	# free memory
-	return($last_file);
-}
-
-######################################################################
 sub load_article_for_live_scan{
 
 	if ($dump_or_live eq 'live' ) {
@@ -1010,16 +822,6 @@ sub set_variables_for_article {
 
 
 }
-
-
-
-sub close_file {
-	#close all open files
-	close (DUMP);
-	close (TEMPLATETIGER);
-
-}
-
 
 sub update_table_cw_error_from_dump {
 
@@ -7793,24 +7595,26 @@ sub infotext_change_error{
 
 sub usage {
 	print STDERR "To scan a dump:\n" .
-	             "$0 -p dewiki -m dump\n" .
-	             "$0 -p nds_nlwiki -m dump\n" .
-	             "$0 -p nds_nlwiki -m dump --silent\n" .
+	             "$0 -p dewiki --dumpfile DUMPFILE --tt-file TEMPLATETIGERFILE\n" .
+	             "$0 -p nds_nlwiki --dumpfile DUMPFILE --tt-file TEMPLATETIGERFILE\n" .
+	             "$0 -p nds_nlwiki --dumpfile DUMPFILE --tt-file TEMPLATETIGERFILE --silent\n" .
 	             "To scan a list of pages live:\n" .
-	             "$0 -p dewiki -m live\n" .
-	             "$0 -p dewiki -m live --silent\n" .
-	             "$0 -p dewiki -m live --load new/done/dump/last_change/old\n";
+	             "$0 -p dewiki\n" .
+	             "$0 -p dewiki --silent\n" .
+	             "$0 -p dewiki --load new/done/dump/last_change/old\n";
 }
 
 # Main program.
-my $load_mode;
+my ($load_mode, $DumpFilename, $TTFilename);
+
 my @Options = ('load=s'		  => \$load_mode,
-			   'm=s'		  => \$dump_or_live,
 			   'p=s'		  => \$project,
 			   'database|D=s' => \$DbName,
 			   'host|h=s'	  => \$DbServer,
 			   'password=s'	  => \$DbPassword,
 			   'user|u=s'	  => \$DbUsername,
+			   'dumpfile=s'   => \$DumpFilename,
+			   'tt-file=s'    => \$TTFilename,
 			   'silent'		  => \$silent_modus,
 			   'starter'	  => \$starter_modus);
 
@@ -7821,16 +7625,10 @@ if (!GetOptions ('c=s' => sub {
 	$f->close ();
 	my ($Success, $RemainingArgs) = GetOptionsFromString ($s, @Options);
 	die unless ($Success && !@$RemainingArgs); },
-				 @Options)) {
+				 @Options) ||
+	defined ($DumpFilename) != defined ($TTFilename)) {
 	usage ();
 	exit (1);
-}
-
-# Check argument value for scan mode.
-if ($dump_or_live ne 'dump' &&
-	$dump_or_live ne 'live') {
-	usage ();
-	die ("$0: Mode unknown, for example: \"-m dump/live\"");
 }
 
 # Check that a project name is given.
@@ -7840,7 +7638,7 @@ if (!defined ($project)) {
 }
 
 # Split load mode.
-if (defined ($load_mode) && $dump_or_live eq 'live') {
+if (defined ($load_mode) && !defined ($DumpFilename)) {
 	my %LoadOptions = map { $_ => 1; } split (/\//, $load_mode);
 
 	$load_modus_done		= exists ($LoadOptions {'done'});				# done article from db
@@ -7865,8 +7663,37 @@ if (!$silent_modus) {
 	two_column_display ('Modus:', $dump_or_live. ' (' . ($dump_or_live eq 'dump' ? 'scan a dump' : 'scan live') . ')');
 }
 
-open_db();
-open_file() 							if ($quit_program eq 'no');			# dumpfile,  metadata (API, File)
+open_db ();   # Connect to database.
+
+if (defined ($DumpFilename)) {
+	$dump_or_live = 'dump';
+
+	# Get date from dump filename.
+	my $dump_date_for_output = $DumpFilename;
+	$dump_date_for_output =~ s/^(?:.*\/)?\Q$project\E-(\d{4})(\d{2})(\d{2})-pages-articles\.xml\.bz2$/$1-$2-$3/ or
+		die ("Couldn't extract date from dump filename '$DumpFilename'");
+
+	# Update time of last dump for project in database.
+	my $sth = $dbh->prepare ('UPDATE cw_project SET Last_Dump = ? WHERE Project = ?;') or die ($dbh->errstr ());
+	$sth->execute ($dump_date_for_output, $project) or die ($dbh->errstr ());
+
+	# Delete old list of articles from last dump scan in table cw_dumpscan.
+	$sth = $dbh->prepare ('DELETE FROM cw_dumpscan WHERE Project = ?;') or die ($dbh->errstr ());
+	$sth->execute ($project) or die ($dbh->errstr ());
+
+	# Read dump file from pipe.
+	open (DUMP, '-|', 'bzcat', '-q', $DumpFilename) or
+		die ("Couldn't open dump file '$DumpFilename'");
+
+	# Templatetiger.
+	open (TEMPLATETIGER, '>', $TTFilename . '.work') or
+		die ("Couldn't open Templatetiger work file '$TTFilename.work'");
+} else {
+	$dump_or_live = 'live';
+}
+
+read_and_write_metadata_from_url ();
+load_metadata_from_file ();
 
 get_error_description()					if ($quit_program eq 'no');			# all errordescription from this script
 load_text_translation() 				if ($quit_program eq 'no');			# load translation from wikipage
@@ -7875,7 +7702,16 @@ output_text_translation_wiki()  		if ($quit_program eq 'no');			# output the new
 
 load_article_for_live_scan()  			if ($quit_program eq 'no');			# only for live
 scan_pages() 							if ($quit_program eq 'no');			# scan all aricle
-close_file();																# close dump or templatetiger-file
+
+# Close files.
+if (defined ($DumpFilename)) {
+	close (DUMP);
+	close (TEMPLATETIGER);
+
+	if (!rename ($TTFilename . '.work', $TTFilename)) {
+		die ("Couldn't rename Templatetiger work file '$TTFilename.work' to '$TTFilename'");
+	}
+}
 
 update_table_cw_error_from_dump()		if ($quit_program eq 'no');
 delete_deleted_article_from_db()		if ($quit_program eq 'no');
@@ -7889,5 +7725,6 @@ output_duration() 						if ($quit_program eq 'no');			# print time at the end
 
 print $quit_reason 						if ($quit_reason  ne '');
 
-close_db();
+close_db ();   # Disconnect from database.
+
 print "Finish\n";
