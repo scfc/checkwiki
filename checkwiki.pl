@@ -371,45 +371,6 @@ our $end_of_live = 'no';				# when last article from live scan then 'yes', else 
 
 our $statistic_online_page = -1;		# number of pages online from metadata-statistic
 
-
-
-
-check_input_arguments();
-open_db();
-open_file() 							if ($quit_program eq 'no');			# dumpfile,  metadata (API, File)
-
-get_error_description()					if ($quit_program eq 'no');			# all errordescription from this script
-load_text_translation() 				if ($quit_program eq 'no');			# load translation from wikipage
-output_errors_desc_in_db() 				if ($quit_program eq 'no');			# update the database with newest error description
-output_text_translation_wiki()  		if ($quit_program eq 'no');			# output the new wikipage for translation
-
-load_article_for_live_scan()  			if ($quit_program eq 'no');			# only for live
-scan_pages() 							if ($quit_program eq 'no');			# scan all aricle
-close_file();																# close dump or templatetiger-file
-
-update_table_cw_error_from_dump()		if ($quit_program eq 'no');
-delete_deleted_article_from_db()		if ($quit_program eq 'no');
-delete_article_from_table_cw_new()		if ($quit_program eq 'no');
-delete_article_from_table_cw_change()	if ($quit_program eq 'no');
-update_table_cw_starter();
-
-#output_errors() 						if ($quit_program eq 'no');
-output_little_statistic()				if ($quit_program eq 'no');			# print counter of found errors
-output_duration() 						if ($quit_program eq 'no');			# print time at the end
-
-print $quit_reason 						if ($quit_reason  ne '');
-
-close_db();
-print 'finish'."\n";
-
-
-#################################################################
-#################################################################
-#################################################################
-#################################################################
-#################################################################
-
-
 sub get_time_string{
 	my ($aakSekunden, $aakMinuten, $aakStunden, $aakMonatstag, $aakMonat,
 	    $aakJahr, $aakWochentag, $aakJahrestag, $aakSommerzeit) = localtime(time);
@@ -7936,3 +7897,32 @@ sub infotext_change_error{
 	$infotext = $infotext."\n\n".'<span style="color:#e80000;">The script was change for this error. Please fix the translation. If you find a bug then please tell this [[:de:Benutzer:Stefan Kühn/Check Wikipedia|here]].</span>';
 	return($infotext);
 }
+
+# Main program.
+check_input_arguments();
+open_db();
+open_file() 							if ($quit_program eq 'no');			# dumpfile,  metadata (API, File)
+
+get_error_description()					if ($quit_program eq 'no');			# all errordescription from this script
+load_text_translation() 				if ($quit_program eq 'no');			# load translation from wikipage
+output_errors_desc_in_db() 				if ($quit_program eq 'no');			# update the database with newest error description
+output_text_translation_wiki()  		if ($quit_program eq 'no');			# output the new wikipage for translation
+
+load_article_for_live_scan()  			if ($quit_program eq 'no');			# only for live
+scan_pages() 							if ($quit_program eq 'no');			# scan all aricle
+close_file();																# close dump or templatetiger-file
+
+update_table_cw_error_from_dump()		if ($quit_program eq 'no');
+delete_deleted_article_from_db()		if ($quit_program eq 'no');
+delete_article_from_table_cw_new()		if ($quit_program eq 'no');
+delete_article_from_table_cw_change()	if ($quit_program eq 'no');
+update_table_cw_starter();
+
+#output_errors() 						if ($quit_program eq 'no');
+output_little_statistic()				if ($quit_program eq 'no');			# print counter of found errors
+output_duration() 						if ($quit_program eq 'no');			# print time at the end
+
+print $quit_reason 						if ($quit_reason  ne '');
+
+close_db();
+print "Finish\n";
