@@ -60,7 +60,6 @@ our $dump_filename  = '';
 
 our $quit_program			= 'no';		# quit the program (yes,no), for quit the programm in an emergency
 our $quit_reason			= '';		# quit the program reason
-our $test_programm 			= 'true';	# only for program tests
 
 our $dump_or_live			= '';		# scan modus (dump, live)
 our $silent_modus			= 0;		# silent modus (very low output at screen) for batch
