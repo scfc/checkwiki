@@ -63,7 +63,6 @@ our $quit_reason			= '';		# quit the program reason
 
 our $dump_or_live			= '';		# scan modus (dump, live)
 our $silent_modus			= 0;		# silent modus (very low output at screen) for batch
-our $test_modus				= 0;		# silent modus (very low output at screen) for batch
 
 our $starter_modus			= 0;		# to update in the loadmodus the cw_starter table
 our $load_modus_done		= 1;		# done article from db
@@ -395,8 +394,7 @@ sub check_input_arguments {
 				   'password=s'	  => \$DbPassword,
 				   'user|u=s'	  => \$DbUsername,
 				   'silent'		  => \$silent_modus,
-				   'starter'	  => \$starter_modus,
-				   'test'		  => \$test_modus);
+				   'starter'	  => \$starter_modus);
 
 	if (!GetOptions ('c=s' => sub {
 		my $f = IO::File->new ($_ [1], '<:encoding(UTF-8)') or die ("Can't open " . $_ [1]);
@@ -439,11 +437,9 @@ sub check_input_arguments {
 		$quit_reason .= "perl checkwiki.pl -p dewiki -m dump\n";
 		$quit_reason .= "perl checkwiki.pl -p nds_nlwiki -m dump\n";
 		$quit_reason .= "perl checkwiki.pl -p nds_nlwiki -m dump --silent\n";
-		$quit_reason .= "perl checkwiki.pl -p nds_nlwiki -m dump --silent --test\n\n";
 		$quit_reason .= "Use for scan a list of pages live\n";
 		$quit_reason .= "perl checkwiki.pl -p dewiki -m live\n";
 		$quit_reason .= "perl checkwiki.pl -p dewiki -m live --silent\n";
-		$quit_reason .= "perl checkwiki.pl -p dewiki -m live --silent --test\n";
 		$quit_reason .= "perl checkwiki.pl -p dewiki -m live --load new/done/dump/last_change/old\n";
 		$quit_reason .= "\n";
 	} else {
@@ -465,11 +461,6 @@ sub check_input_arguments {
 			$modus_output = 'scan a dump' 					if ($dump_or_live eq 'dump');
 			$modus_output = 'scan live'   					if ($dump_or_live eq 'live');
 			two_column_display ('Modus:', $dump_or_live. ' ('.$modus_output.')');
-		}
-
-		if ($test_modus) {			#modus only for test
-			$project .= '_test';
-			two_column_display ('Test-Modus:', $project.'!!!');
 		}
 	}
 }
