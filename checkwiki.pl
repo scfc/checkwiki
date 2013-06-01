@@ -61,7 +61,7 @@ our $quit_program			= 'no';		# quit the program (yes,no), for quit the programm 
 our $quit_reason			= '';		# quit the program reason
 our $test_programm 			= 'true';	# only for program tests
 
-our $dump_or_live			= '';		# scan modus (dump, live, only)
+our $dump_or_live			= '';		# scan modus (dump, live)
 our $silent_modus			= 0;		# silent modus (very low output at screen) for batch
 our $test_modus				= 0;		# silent modus (very low output at screen) for batch
 
@@ -466,9 +466,8 @@ sub check_input_arguments {
 
 	# Check argument value for scan mode.
 	if ($dump_or_live ne 'dump' &&
-		$dump_or_live ne 'only' &&
 		$dump_or_live ne 'live') {
-		$quit_reason .= "Mode unknown, for example: \"-m dump/live/only\".\n\n";
+		$quit_reason .= "Mode unknown, for example: \"-m dump/live\".\n\n";
 		$quit_program = 'yes';
 	}
 
@@ -520,7 +519,6 @@ sub check_input_arguments {
 			my $modus_output = '';
 			$modus_output = 'scan a dump' 					if ($dump_or_live eq 'dump');
 			$modus_output = 'scan live'   					if ($dump_or_live eq 'live');
-			$modus_output = 'scan a dump only some errors'	if ($dump_or_live eq 'only');
 			two_column_display ('Modus:', $dump_or_live. ' ('.$modus_output.')');
 		}
 
@@ -671,7 +669,7 @@ sub open_file{
 
 
 
-	if ($dump_or_live eq 'dump' or $dump_or_live eq 'only') {
+	if ($dump_or_live eq 'dump') {
 
 
 		#print "last=x".$dump_filename."x\n";
@@ -1068,7 +1066,7 @@ sub scan_pages{
 	do {
 		set_variables_for_article();
 
-		if ($dump_or_live eq 'dump' or $dump_or_live eq 'only') {
+		if ($dump_or_live eq 'dump') {
 			get_next_page_from_dump();
 		} else {
 			get_next_page_from_live();
@@ -4252,14 +4250,7 @@ sub error_check {
 
 	print 'Start check error'."\n" if ($details_for_page eq 'yes');
 
-	if ( $dump_or_live eq 'dump'
-		or $dump_or_live eq 'live') {
-		error_list('check');
-	}
-	if ( $dump_or_live eq 'only'){
-
-		error_030_image_without_description('check','');
-	}
+	error_list ('check');
 
 	#############
 	# next feature
