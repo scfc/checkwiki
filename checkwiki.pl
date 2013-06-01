@@ -36,6 +36,7 @@ our $VERSION = '2013-02-15';
 use DBI;
 use Getopt::Long qw(GetOptionsFromString :config bundling no_auto_abbrev no_ignore_case);
 use LWP::UserAgent;
+use POSIX qw(strftime);
 use URI::Escape;
 
 #################################################################
@@ -7815,45 +7816,25 @@ sub error_register {
 
 }
 
-sub insert_into_db{
-	#print 'insert_into_db'."\n";
-	my $error_counter =shift;
-	my $article       =shift;
-	my $code          =shift;
-	my $notice        =shift;
+# Insert error into database.
+sub insert_into_db {
+	my ($error_counter, $article, $code, $notice) = @_;
+	my ($TableName, $Found);
 
+	$notice = substr ($notice, 0, 100);   # Truncate notice.
 
-
-	$article = text_for_mysql($article);
-	$notice  = substr($notice, 0, 3999) if (length($notice) > 3999);    # column is only varchar(4000)
-	$notice  = substr($notice, 0, 100) if (length($notice) > 100);    # column is only varchar(4000)
-	$notice  = text_for_mysql($notice);
-
-
-
-	#insert error in database
-	my $sql_text = "insert into ";
-	my $date_of_found = 'now()';
-	if ($dump_or_live eq 'live'){
-		$sql_text = $sql_text. 'cw_error ';
+	if ($dump_or_live eq 'live') {
+		$TableName = 'cw_error';
+		$Found = strftime ('%F %T', gmtime ());
 	} else {
-		$sql_text = $sql_text. 'cw_dumpscan ';
-		$date_of_found = "'".$revision_time."'";
-		$date_of_found =~ s/Z//;
-		$date_of_found =~ s/T/ /;
+		$TableName = 'cw_dumpscan';
+		$Found = $revision_time;
+		$Found =~ s/Z//;
+		$Found =~ s/T/ /;
 	}
-	$sql_text = $sql_text. "values ( '". $project."', ".$page_id.", '".$article."', ".$code.", '".$notice."', 0, ".$date_of_found." );";
-	#print $sql_text."\n\n";
-	my $sth = $dbh->prepare( $sql_text );
-	#print $sql_text ."\n";
-	#print $page_id."\t".$article."\t".$notice. "\n";# if ($page_id > 1960);
-	$sth->execute;
-
-
+	my $sth = $dbh->prepare ('INSERT INTO ' . $TableName . ' (Project, Error_ID, Title, Error, Notice, Ok, Found) VALUES (?, ?, ?, ?, ?, ?, ?);') or die ($dbh->errstr ());
+	$sth->execute ($project, $page_id, $article, $code, $notice, 0, $Found) or die ($dbh->errstr ());
 }
-
-
-
 
 sub set_article_as_scan_live_in_db{
 	# if an article was scan live, than set this in the table cw_dumpscan as true
@@ -7863,74 +7844,27 @@ sub set_article_as_scan_live_in_db{
 	my $sql_text;
 	my $sth;
 
-	$article  = text_for_mysql($article);
+	# Update the table cw_dumpscan.
+	# $sth = $dbh->prepare ('UPDATE /* SLOW_OK */ cw_dumpscan SET Scan_Live = TRUE WHERE Project = ? AND (Title = ? OR ID = ?);') or die ($dbh->errstr ());
+	# $sth->execute ($project, $article, $id) or die ('article:' . $article . "\n" . $dbh->errstr ());
 
-	#update in the table cw_dumpscan
-	#my $sql_text = "update cw_dumpscan set scan_live = true where project = '".$project."' and (title = '".$article."' or id = ".$id.");";
-	#my $sth = $dbh->prepare( $sql_text );
-	#$sth->execute;
+	# Update the tables cw_new and cw_change.
+	$sth = $dbh->prepare ('UPDATE /* SLOW_OK */ cw_new SET Scan_Live = TRUE WHERE Project = ? AND Title = ?;') or die ($dbh->errstr ());
+	$sth->execute ($project, $article) or die ('article:' . $article . "\n" . $dbh->errstr ());
 
-	#update in the table cw_new and cw_change
-	$sql_text  = "update /* SLOW_OK */ cw_new    set scan_live = true where project = '".$project."' and title = '".$article."';";
-	$sth = $dbh->prepare( $sql_text );
-	$sth->execute or die ('article:'.$article."\n".$dbh->errstr);;
-
-	$sql_text = "update /* SLOW_OK */ cw_change set scan_live = true where project = '".$project."' and title = '".$article."';";
-	#print $sql_text."\n";
-	$sth = $dbh->prepare( $sql_text );
-	$sth->execute or die ('article:'.$article."\n".$dbh->errstr);;
-
+	$sth = $dbh->prepare ('UPDATE /* SLOW_OK */ cw_change SET Scan_Live = TRUE WHERE Project = ? AND Title = ?;') or die ($dbh->errstr ());
+	$sth->execute ($project, $article) or die ('article:' . $article . "\n" . $dbh->errstr ());
 }
 
+# If a new error was found in the dump, then write this into the
+# database table cw_dumpscan.
+sub insert_into_db_table_tt {
+	my ($article, $page_id, $template, $name, $number, $parameter, $value) = @_;
 
-sub insert_into_db_table_tt{
-	# if a new error where found in the dump, then write this into the database table cw_dumpscan
-	my $article   = shift;
-	my $page_id   = shift;
-	my $template  = shift;
-	my $name      = shift;
-	my $number    = shift;
-	my $parameter = shift;
-	my $value     = shift;
-
-	# problem: title of an article is "  Ali's Bar   "
-	$article   = text_for_mysql($article);
-	$name      = text_for_mysql($name);
-	$parameter = text_for_mysql($parameter);
-	$value     = text_for_mysql($value);
-	#insert error in database
-	my $sql_text = "insert into tt (project, id, title, template, name, number, parameter, value) values ( '". $project."', '".$page_id."', '".$article."', ".$template.",
-	'".$name."', ".$number." , '".$parameter."', '".$value."' );";
-	#print $page_id."\n";
-	#print $sql_text."\n\n";
-
-#	my $sth = $dbh->prepare( $sql_text );			# deactivate for a moment
-#	$sth->execute;
+	# Insert error into database (disabled for the moment).
+    # my $sth = $dbh->prepare ('INSERT INTO tt (Project, ID, Title, Template, Name, Number, Parameter, Value) VALUES (?, ?, ?, ?, ?, ?, ?, ?);') or die ($dbh->errstr ());
+	# $sth->execute ($project, $page_id, $article, $template, $name, $number, $parameter, $value) or die ($dbh->errstr ());
 }
-
-
-
-sub text_for_mysql{
-	my $text_input = shift;
-	my $text_output = $text_input;
-
-	# problem: sql-command insert, apostrophe ' or backslash \ in text
-	# problem: "Ali's Bar"
-	# problem: "\"   (enwiktionary)
-	$text_output =~ s/\\/\\\\/g;
-	$text_output =~ s/'/\\'/g;
-	# old	$text =~ s/'/\\'/g;
-	# old	$text =~ s/[^\\]\\\\'/\\\\\\'/g;
-
-	#if ($text_output ne $text_input) {
-	#	print 'input ='.$text_input."\n";
-	#	print 'output='.$text_output."\n";
-	#}
-
-	return $text_output;
-}
-
-
 
 sub text_reduce{
 	# this procedure reduce the input text to number of letters, but only with full words
@@ -7976,15 +7910,6 @@ sub text_reduce_to_end{
 	#print $output."\n\n";
 
 	return($output);
-}
-
-sub special_test {
-	if ($title eq 'ALTER') {
-		my $file_output= 'test.txt';
-		open (FILE_TEST, '>test.txt');
-		print FILE_TEST $title."\n".$text."\n";
-		close (FILE_TEST);
-	}
 }
 
 sub print_line {
