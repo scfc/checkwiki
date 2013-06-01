@@ -562,23 +562,6 @@ sub open_file{
 		}
 
 		open (TEMPLATETIGER, '>>'.$templatetiger_filename);
-
-
-
-		#################
-		# GEO Export
-        #################
-
-		our $geo_export_filename = $output_geo.$project.'/'.$project.'_coordinates.txt';
-		if (not (-e $output_geo.$project )) {
-			two_column_display ('create new subdirectory', 'geo');
-			#mkdir($output_geo.$project ,0777);
-			system ('mkdir -p '.$output_geo.$project);
-		}
-		if (-e $geo_export_filename ) {
-			two_column_display ('Delete old Geo-file', $geo_export_filename);
-			system ('rm -f '.$geo_export_filename) ;
-		}
 	}
 
 	# delete old error_list
