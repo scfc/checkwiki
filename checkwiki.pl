@@ -384,87 +384,6 @@ sub get_time_string{
 	return($result);
 }
 
-sub check_input_arguments {
-	my $load_mode;
-	my @Options = ('load=s'		  => \$load_mode,
-				   'm=s'		  => \$dump_or_live,
-				   'p=s'		  => \$project,
-				   'database|D=s' => \$DbName,
-				   'host|h=s'	  => \$DbServer,
-				   'password=s'	  => \$DbPassword,
-				   'user|u=s'	  => \$DbUsername,
-				   'silent'		  => \$silent_modus,
-				   'starter'	  => \$starter_modus);
-
-	if (!GetOptions ('c=s' => sub {
-		my $f = IO::File->new ($_ [1], '<:encoding(UTF-8)') or die ("Can't open " . $_ [1]);
-		local ($/);
-		my $s = <$f>;
-		$f->close ();
-		my ($Success, $RemainingArgs) = GetOptionsFromString ($s, @Options);
-		die unless ($Success && !@$RemainingArgs); },
-					 @Options)) {
-		return;
-	}
-
-	# Check argument value for scan mode.
-	if ($dump_or_live ne 'dump' &&
-		$dump_or_live ne 'live') {
-		$quit_reason .= "Mode unknown, for example: \"-m dump/live\".\n\n";
-		$quit_program = 'yes';
-	}
-
-	# Check that a project name is given.
-	if (!defined ($project)) {
-		$quit_reason .= "No project name, for example: \"-p dewiki\".\n\n";
-		$quit_program = 'yes';
-	}
-
-	# Split load mode.
-	if (defined ($load_mode) && $dump_or_live eq 'live') {
-		my %LoadOptions = map { $_ => 1; } split (/\//, $load_mode);
-
-		$load_modus_done		= exists ($LoadOptions {'done'});				# done article from db
-		$load_modus_new			= exists ($LoadOptions {'new'});				# new article from db
-		$load_modus_dump		= exists ($LoadOptions {'dump'});				# new article from db
-		$load_modus_last_change = exists ($LoadOptions {'last_change'});		# last_change article from db
-		$load_modus_old			= exists ($LoadOptions {'old'});				# old article from db
-	}
-
-	if ($quit_program eq 'yes') {
-		# End of script, because no correct parameter
-		$quit_reason .= "Use for scan a dump\n";
-		$quit_reason .= "perl checkwiki.pl -p dewiki -m dump\n";
-		$quit_reason .= "perl checkwiki.pl -p nds_nlwiki -m dump\n";
-		$quit_reason .= "perl checkwiki.pl -p nds_nlwiki -m dump --silent\n";
-		$quit_reason .= "Use for scan a list of pages live\n";
-		$quit_reason .= "perl checkwiki.pl -p dewiki -m live\n";
-		$quit_reason .= "perl checkwiki.pl -p dewiki -m live --silent\n";
-		$quit_reason .= "perl checkwiki.pl -p dewiki -m live --load new/done/dump/last_change/old\n";
-		$quit_reason .= "\n";
-	} else {
-		$language = $project;
-		$language =~ s/source$//;
-		$language =~ s/wiki$//;
-
-		print "\n";
-		if (!$silent_modus) {
-			print "#########################################################\n";
-			print '########    checkwiki.pl - Version '.$VERSION.'    ########'."\n";
-			print "#########################################################\n";
-		}
-		two_column_display('start:', $akJahr.'-'.$akMonat.'-'.$akMonatstag.' '.$akStunden.':'.$akMinuten);
-		two_column_display('project:', $project);
-
-		if (!$silent_modus) {
-			my $modus_output = '';
-			$modus_output = 'scan a dump' 					if ($dump_or_live eq 'dump');
-			$modus_output = 'scan live'   					if ($dump_or_live eq 'live');
-			two_column_display ('Modus:', $dump_or_live. ' ('.$modus_output.')');
-		}
-	}
-}
-
 sub open_db{
 	# Connect to database.
 	$dbh = DBI->connect ('DBI:mysql:' . $DbName . (defined ($DbServer) ? ':host=' . $DbServer : ''),
@@ -7889,8 +7808,80 @@ sub infotext_change_error{
 	return($infotext);
 }
 
+sub usage {
+	print STDERR "To scan a dump:\n" .
+	             "$0 -p dewiki -m dump\n" .
+	             "$0 -p nds_nlwiki -m dump\n" .
+	             "$0 -p nds_nlwiki -m dump --silent\n" .
+	             "To scan a list of pages live:\n" .
+	             "$0 -p dewiki -m live\n" .
+	             "$0 -p dewiki -m live --silent\n" .
+	             "$0 -p dewiki -m live --load new/done/dump/last_change/old\n";
+}
+
 # Main program.
-check_input_arguments();
+my $load_mode;
+my @Options = ('load=s'		  => \$load_mode,
+			   'm=s'		  => \$dump_or_live,
+			   'p=s'		  => \$project,
+			   'database|D=s' => \$DbName,
+			   'host|h=s'	  => \$DbServer,
+			   'password=s'	  => \$DbPassword,
+			   'user|u=s'	  => \$DbUsername,
+			   'silent'		  => \$silent_modus,
+			   'starter'	  => \$starter_modus);
+
+if (!GetOptions ('c=s' => sub {
+	my $f = IO::File->new ($_ [1], '<:encoding(UTF-8)') or die ("Can't open " . $_ [1]);
+	local ($/);
+	my $s = <$f>;
+	$f->close ();
+	my ($Success, $RemainingArgs) = GetOptionsFromString ($s, @Options);
+	die unless ($Success && !@$RemainingArgs); },
+				 @Options)) {
+	usage ();
+	exit (1);
+}
+
+# Check argument value for scan mode.
+if ($dump_or_live ne 'dump' &&
+	$dump_or_live ne 'live') {
+	usage ();
+	die ("$0: Mode unknown, for example: \"-m dump/live\"");
+}
+
+# Check that a project name is given.
+if (!defined ($project)) {
+	usage ();
+	die ("$0: No project name, for example: \"-p dewiki\"");
+}
+
+# Split load mode.
+if (defined ($load_mode) && $dump_or_live eq 'live') {
+	my %LoadOptions = map { $_ => 1; } split (/\//, $load_mode);
+
+	$load_modus_done		= exists ($LoadOptions {'done'});				# done article from db
+	$load_modus_new			= exists ($LoadOptions {'new'});				# new article from db
+	$load_modus_dump		= exists ($LoadOptions {'dump'});				# new article from db
+	$load_modus_last_change = exists ($LoadOptions {'last_change'});		# last_change article from db
+	$load_modus_old			= exists ($LoadOptions {'old'});				# old article from db
+}
+
+$language = $project;
+$language =~ s/source$//;
+$language =~ s/wiki$//;
+
+if (!$silent_modus) {
+	print "$0, version $VERSION.\n";
+}
+
+two_column_display ('start:', $akJahr . '-' . $akMonat . '-' . $akMonatstag . ' ' . $akStunden . ':' . $akMinuten);
+two_column_display ('project:', $project);
+
+if (!$silent_modus) {
+	two_column_display ('Modus:', $dump_or_live. ' (' . ($dump_or_live eq 'dump' ? 'scan a dump' : 'scan live') . ')');
+}
+
 open_db();
 open_file() 							if ($quit_program eq 'no');			# dumpfile,  metadata (API, File)
 
