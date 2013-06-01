@@ -17,9 +17,6 @@
 
 #################################################################
 
-# Error exception
-$SIG{__DIE__} = \&die_error;
-$SIG{__WARN__} = \&warn_error;
 use strict;
 use warnings;
 
@@ -201,7 +198,6 @@ our $error_geo_list_filename_only 	= 'error_geo_list_only.txt';
 our $error_geo_list_filename_html	= 'error_geo_list.htm';
 our $error_geo_list_filename_only_html	= 'error_geo_list_only.htm';
 
-our $log_file						= 'log.txt';
 our $templatetiger_filename			= '';
 
 our @inter_list = ( 'af', 'als', 'an', 'ar',
@@ -396,7 +392,7 @@ our $statistic_online_page = -1;		# number of pages online from metadata-statist
 
 check_input_arguments();
 open_db();
-open_file() 							if ($quit_program eq 'no');			# logfile, dumpfile,  metadata (API, File)
+open_file() 							if ($quit_program eq 'no');			# dumpfile,  metadata (API, File)
 
 get_error_description()					if ($quit_program eq 'no');			# all errordescription from this script
 load_text_translation() 				if ($quit_program eq 'no');			# load translation from wikipage
@@ -420,7 +416,6 @@ output_duration() 						if ($quit_program eq 'no');			# print time at the end
 print $quit_reason 						if ($quit_reason  ne '');
 
 close_db();
-close_logfile();
 print 'finish'."\n";
 
 
@@ -554,11 +549,6 @@ sub close_db{
 	$dbh->disconnect();
 }
 
-sub close_logfile{
-	# close logfile
-	close (LOGFILE) if (!$starter_modus);
-}
-
 ###################################################################################
 sub get_error_description{
 	# this subroutine check out the error description of all possible errors
@@ -608,13 +598,6 @@ sub open_file{
 		#mkdir($output_directory.$project ,0777);
 		system ('mkdir -p '.$output_directory.$project);
 	}
-
-	################################
-	# open logfile
-	my $log_filename = $output_directory.$project.'/'.$project.'_'.$log_file;
-	open (LOGFILE, '+>'.$log_filename) if (!$starter_modus);
-
-
 
 	################################
 	# if new dump is available
@@ -896,13 +879,8 @@ sub load_article_for_live_scan{
 				$number_of_live_tests = @live_article;
 			}
 			two_column_display('all articles without double:', $number_of_live_tests);
-			print LOGFILE 'articles without double'."\t".$number_of_live_tests."\n" if (!$starter_modus);
 			@new_live_article = ();	# free memory
 			@split_line = ();	# free memory
-			#foreach (@live_article) {
-			#	print LOGFILE $_."\n";
-			#}
-			#print LOGFILE 'END LIST'."\n\n";
 
 			if ($number_of_live_tests == 0) {
 				# if after this load in live_modus no article found, then end the scan
@@ -925,7 +903,6 @@ sub article_last_live_scan{
 	close (LIVE);
 	$number_of_live_tests = @live_article;
 	two_column_display('from file articles last scan:', $number_of_live_tests);
-	print LOGFILE 'articles last scan:'."\t".$number_of_live_tests."\n" if (!$starter_modus);
 }
 
 
@@ -951,7 +928,6 @@ sub new_article{
 		$new_counter ++;
 	}
 	two_column_display('from db articles new:', $new_counter);
-	print LOGFILE 'articles new:'."\t\t".$new_counter. "\n" if (!$starter_modus);
 	$for_statistic_new_article = $new_counter;
 }
 
@@ -977,7 +953,6 @@ sub last_change_article{
 		$change_counter ++;
 	}
 	two_column_display('from db articles changed:', $change_counter);
-	print LOGFILE 'articles change:'."\t".$change_counter."\n" if (!$starter_modus);
 	our $for_statistic_last_change_article = $change_counter;
 }
 
@@ -1011,7 +986,6 @@ sub geo_error_article{
 	two_column_display('from file articles geo:', $geo_counter);
 	print ' (no file: '.$file_geo.' )' if not (-e $file_input_geo);
 	print "\n";
-	print LOGFILE 'articles geo:'."\t\t".$geo_counter."\n" if (!$starter_modus);
 	$for_statistic_geo_article = $geo_counter;
 }
 
@@ -1038,7 +1012,6 @@ sub article_with_error_from_dump_scan{
 
 	two_column_display('from db articles (not scan live):', $database_dump_scan_counter);
 	#print "\t".$database_dump_scan_counter."\t".'articles from dump (not scan live) from db'."\n";
-	print LOGFILE 'articles from dump (not scan live) from db:'."\t\t".$database_dump_scan_counter."\n" if (!$starter_modus);
 }
 
 
@@ -1060,7 +1033,6 @@ sub get_done_article_from_database{
 		$database_ok_counter ++;
 	}
 	two_column_display('from db done articles:', $database_ok_counter);
-	print LOGFILE 'done articles from db:'."\t\t".$database_ok_counter."\n" if (!$starter_modus);
 }
 
 sub get_oldest_article_from_database{
@@ -1080,7 +1052,6 @@ sub get_oldest_article_from_database{
 		$database_ok_counter ++;
 	}
 	two_column_display('from db old articles:', $database_ok_counter);
-	print LOGFILE 'old articles from db:'."\t\t".$database_ok_counter."\n" if (!$starter_modus);
 }
 
 
@@ -1850,7 +1821,7 @@ sub get_next_page_from_live {
 				my $line = $live_to_scan[$i];
 				my @line_split = split( /\t/, $line);
 				my $next_title 		= $line_split[0];
-				print LOGFILE $next_title."\n" if (!$starter_modus);
+				printf ("\$next_title = %s\n", $next_title);
 				$next_title = replace_special_letters($next_title);
 				$many_titles = $many_titles.'|'.uri_escape($next_title);
 				$many_titles =~ s/^\|//;
@@ -1894,7 +1865,6 @@ sub get_next_page_from_live {
 				if ($pos_end == -1){
 					#BIG PROBLEM
 					print 'WARNING: Big problem with API'."\n";
-					print LOGFILE 'WARNING: Big problem with API'."\n" if (!$starter_modus);
 					$text		       = '';
 					$xml_text_from_api = '';
 				}
@@ -2127,7 +2097,7 @@ sub raw_text_more_articles {
 	$url2 =~ s/\/wiki\//\/w\//;
 	$url2 = $url2.'api.php?action=query&prop=revisions&titles='.$title.'&rvprop=timestamp|content&format=xml';
 
-	print LOGFILE $url2."\n" if (!$starter_modus);
+	printf ("\$url2 = %s\n", $url2);
 	my $response2 ;
 	my $ua2 = LWP::UserAgent->new;
 	$response2 = $ua2->get( $url2 );
@@ -2709,9 +2679,7 @@ sub print_article_title_every_x{
 		}
 		printf "%-3s %-8s %-5s %-8s %-40s\n", $project_output, 'p='.$page_number, $percent, 'id='.$page_id, $title;
 	}
-	print LOGFILE $counter_output if (!$starter_modus);
-
-
+	printf ("\$counter_output = %s\n", $counter_output);
 }
 
 sub delete_old_errors_in_db{
@@ -7461,18 +7429,11 @@ sub error_084_section_without_text{
 
 				if ($level_one == $level_two or $level_one > $level_two) {
 					# check section if level identical or lower
-					#print LOGFILE $i   ."=".$level_one." ".$headlines[$i]."\n";
-					#print LOGFILE $i+1 ."=".$level_two." ".$headlines[$i+1]."\n";
-					#print LOGFILE 'Section i+1:BEGIN'."\n". $section[$i+1]."END\n";
 					if ($section[$i]) {
-						#print LOGFILE 'Section is ok'."\n";
 						my $test_section   = $section[$i+1];
 						my $test_section_2 = $section[$i+1];
 						my $test_headline  = $headlines[$i];
 						$test_headline =~ s/\n//g;
-						#print LOGFILE 'X'.$test_headline.'X'."\n";
-						#print LOGFILE length($test_section).' - '.length($test_section_2).' - '.length($test_headline)."\n";
-						#print LOGFILE $section[$i+1]."\n";
 
 						$test_section = substr ($test_section, length($test_headline)) if ($test_section);
 						if ($test_section) {
@@ -7482,8 +7443,6 @@ sub error_084_section_without_text{
 							$test_section =~ s/\t//g;
 
 							if ($test_section eq '' ) {
-								#print LOGFILE "\t test ".$test_headline."\n";
-								#print LOGFILE index( $text_without_comments, $test_section_2 )."\n";
 								#print "\t x".$test_section_2."x\n";
 								if (index( $text_without_comments, $test_section_2 )>-1 ) {
 									#print $text_without_comments."\n";
@@ -7492,14 +7451,11 @@ sub error_084_section_without_text{
 							}
 						}
 					}
-					#print LOGFILE "\n\n";
 				}
 			}
 
 			if ($found_text ne '') {
 				error_register($error_code, '<nowiki>'.$found_text.'</nowiki>');
-				#print LOGFILE "\t". $error_code."\t".$title."\t".'<nowiki>'.$found_text.'</nowiki>'."\n";
-
 			}
 		}
 	}
@@ -7973,7 +7929,6 @@ sub insert_into_db_table_tt{
 	#print $page_id."\n";
 	#print $sql_text."\n\n";
 
-	#print LOGFILE $sql_text."\n\n";
 #	my $sth = $dbh->prepare( $sql_text );			# deactivate for a moment
 #	$sth->execute;
 }
@@ -8082,17 +8037,3 @@ sub infotext_change_error{
 	$infotext = $infotext."\n\n".'<span style="color:#e80000;">The script was change for this error. Please fix the translation. If you find a bug then please tell this [[:de:Benutzer:Stefan Kühn/Check Wikipedia|here]].</span>';
 	return($infotext);
 }
-
-sub warn_error{
-	my $msg = shift;
-	print 'WARNING: '.$msg;
-	print LOGFILE 'WARNING: '.$msg if (!$starter_modus);
-}
-
-sub die_error{
-	my $msg = shift;
-	print 'DIE ERROR: '.$msg;
-	print LOGFILE 'DIE ERROR: '.$msg if (!$starter_modus);
-}
-
-
