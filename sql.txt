@@ -32,73 +32,7 @@
 		6. live scan
 		perl checkwiki.pl -p svwikisource -m live
 
-
 ########################################
-
-create table cw_project
-(id bigint,
-project varchar(100),
-lang  varchar(100),
-last_dump  varchar(100),
-wikipage  varchar(400),
-translation_page  varchar(400)
-);
-
-
-drop table cw_dumpscan ;
-
-create table cw_dumpscan
-(project varchar(100),
-error_id int(12),
-title varchar(4000),
-error int (8),
-notice varchar(4000),
-ok int(1),
-found datetime);
-
-
-
-
-
-###########################################################################################
--- Tabele cw_error
-
-create table cw_error(
-project varchar(100),
-error_id int(12),
-title  varchar(4000),
-error int(8),
-notice varchar(4000),
-ok int(1),
-found datetime
-);
-
-create table cw_error_desc(
-project varchar(100),
-id int(8),
-prio int(4),
-name varchar(255),
-text varchar(4000) ,
-name_trans varchar(255),
-text_trans varchar(4000)
-);
-
-
-
-###########################################################################################
-
--- Table for overview, update by Cronjob with merge
-create table cw_overview
-(id int(8),
-project varchar(100),
-lang varchar(100),
-errors bigint,
-done bigint,
-last_dump varchar(4000),
-last_update varchar(4000),
-project_page varchar(4000),
-translation_page varchar(4000)
-);
 
 select id,project, lang, errors, done, last_dump, last_update from cw_overview;
 
@@ -140,29 +74,16 @@ set cw_overview.last_update = basis.found
 where cw_overview.project = basis.project;
 
 ###########################################################################################
-# Tabelle cw_overview_errors
-drop table cw_overview_errors;
-create table cw_overview_errors
-(project varchar(100),
-id int(8),
-errors bigint,
-done bigint,
-name varchar(4000),
-name_trans varchar(4000),
-prio int(8)
-);
 
 select project, id, errors, done, name, name_trans, prio from cw_overview_errors;
 select project, id, errors, done from cw_overview_errors where project = 'dewiki';
 select project, id, errors, done from cw_overview_errors where errors > 0 or done > 0;
-
 
 select project, 0, sum(errors), sum(done) from cw_overview_errors where project = 'pdcwiki'
 union all
 select project, prio, sum(errors), sum(done) from cw_overview_errors where project = 'pdcwiki'  group by prio order by prio;
 
 select  IFNULL(sum(errors),0) ,prio , IFNULL(sum(done),0) from cw_overview_errors where project = 'jawiki' group by prio having prio > 0 order by prio;
-
 
 -- insert all errors
 truncate table cw_overview_errors ;
@@ -207,97 +128,17 @@ and b.id is null)
 ;
 
 #############################################################
-Statistic for longtime
-
-drop table cw_statistic_all;
-create table cw_statistic_all
-(project varchar(100),
-daytime datetime,
-errors bigint);
 
 insert into cw_statistic_all (select project, now(),  ifnull(errors,0) + ifnull(done, 0) errors from cw_overview order by project);
-
-
-
-
---Statistiv for 100 days every error
-	drop table cw_statistic;
-	create table cw_statistic
-	(project varchar(100),
-	id int(8),
-	nr int(8),
-	daytime datetime,
-	errors bigint);
 
 update cw_statistic set nr=nr+1;
 insert into cw_statistic (select project, id, 1 nr, now(),  ifnull(errors,0) + ifnull(done, 0) errors from cw_overview_errors order by project, id);
 delete from cw_statistic where nr > 100;
 
-
-#############################################################
-Starter
-
--- table
-drop table cw_starter;
-create table cw_starter
-(project varchar(100),
-errors_done bigint,
-errors_new bigint,
-errors_dump bigint,
-errors_change bigint,
-errors_old bigint,
-last_run_change varchar(100)
-);
-
-
-#############################################################
-new
-
-drop table cw_new;
-create table cw_new(
-project  varchar(100),
-title varchar(4000),
-daytime datetime,
-scan_live boolean default false )
-;
-
-change
-
-drop table cw_change;
-create table cw_change(
-project  varchar(100),
-title varchar(4000),
-daytime datetime,
-scan_live boolean default false )
-;
-
-
-
-
-
-#############################################################
-Templatetiger
-drop table tt ;
-
-create table tt
-    (
-	project varchar(100),
-	id	int,
-	title varchar(4000) ,
-	template int,
-	name varchar(4000),
-	number int,
-	parameter varchar(4000),
-	value text
-	)
-;
-
-
 ##############################################################
 -- Löschen eines Projectes
 delete from cw_project where project = 'pdcwiki';
 insert into cw_dumpscan values ( 'pdcwiki', 'test3', 123, false);
-
 
 -- Anzahl gefunder Fehler aller Projecte
 select project, count(*)
@@ -306,13 +147,11 @@ where scan_live = false
 group by project
 order by project;
 
-
 -- Abfrage nach Anzahl der Fehler für ein Project
 select project, error_id, count(*)
 from cw_dumpscan
 where project = 'dewiki'
 group by error_id;
-
 
 -- Liste aller Error_ID mit ungescannten Artikeln
 select error_id, count(*) from
@@ -329,9 +168,6 @@ select *
 from cw_dumpscan
 where project = 'pdcwiki'
 and scan_live = false ;
-
-
-
 
 -- jeweils die ersten 5 Artikel ( Beispiel mit Union)
 select * from
@@ -350,7 +186,6 @@ select * from
 	and error_id = 40
 	limit 5) b
 ;
-
 
 - Wie viele dump Artikel noch nicht live gescannt?
 select project,count(*) from cw_dumpscan where scan_live = 0 group by project;
@@ -379,7 +214,6 @@ join
 )c
 on (a.project = c.project);
 ;
-
 
 -- Statistik letzte Tage
 select a.project , c.errors last, b.errors one, a.errors, a.errors-b.errors diff1, a.errors-c.errors diff7 from (
