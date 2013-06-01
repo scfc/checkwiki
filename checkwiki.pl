@@ -37,7 +37,7 @@ our $VERSION = '2013-02-15';
 #################################################################
 
 use DBI;
-use Getopt::Long qw(:config bundling no_auto_abbrev no_ignore_case);
+use Getopt::Long qw(GetOptionsFromString :config bundling no_auto_abbrev no_ignore_case);
 use LWP::UserAgent;
 use URI::Escape;
 
@@ -45,7 +45,7 @@ use URI::Escape;
 # declare_global_directorys
 #################################################################
 our $dump_directory		    = '/mnt/user-store/dumps/store/';		# toolserver
-our $dump_directory2	    = '/mnt/user-store/dumps/tmp/';	
+our $dump_directory2	    = '/mnt/user-store/dumps/tmp/';
 # our $dump_directory	= '../../dump/';	# home or usb
 
 our $output_directory		= '/mnt/user-store/sk/data/checkwiki/';
@@ -132,6 +132,11 @@ our @magicword_img_middle;
 our @magicword_img_bottom;
 our @magicword_img_text_bottom;
 
+# Database configuration.
+our $DbName = 'u_sk_yarrow';
+our $DbServer;
+our $DbUsername;
+our $DbPassword;
 
 # Wiki-special variables
 
@@ -444,13 +449,25 @@ sub get_time_string{
 
 sub check_input_arguments {
 	my $load_mode;
+	my @Options = ('load=s'		  => \$load_mode,
+				   'm=s'		  => \$dump_or_live,
+				   'p=s'		  => \$project,
+				   'database|D=s' => \$DbName,
+				   'host|h=s'	  => \$DbServer,
+				   'password=s'	  => \$DbPassword,
+				   'user|u=s'	  => \$DbUsername,
+				   'silent'		  => \$silent_modus,
+				   'starter'	  => \$starter_modus,
+				   'test'		  => \$test_modus);
 
-	if (!GetOptions ('load=s'  => \$load_mode,
-					 'm=s'	   => \$dump_or_live,
-					 'p=s'	   => \$project,
-					 'silent'  => \$silent_modus,
-					 'starter' => \$starter_modus,
-					 'test'	   => \$test_modus)) {
+	if (!GetOptions ('c=s' => sub {
+		my $f = IO::File->new ($_ [1], '<:encoding(UTF-8)') or die ("Can't open " . $_ [1]);
+		local ($/);
+		my $s = <$f>;
+		$f->close ();
+		my ($Success, $RemainingArgs) = GetOptionsFromString ($s, @Options);
+		die unless ($Success && !@$RemainingArgs); },
+					 @Options)) {
 		return;
 	}
 
@@ -503,8 +520,8 @@ sub check_input_arguments {
 			print '########    checkwiki.pl - Version '.$VERSION.'    ########'."\n";
 			print "#########################################################\n";
 		}
-		two_column_display('start:', $akJahr.'-'.$akMonat.'-'.$akMonatstag.' '.$akStunden.':'.$akMinuten);		
-		two_column_display('project:', $project);		
+		two_column_display('start:', $akJahr.'-'.$akMonat.'-'.$akMonatstag.' '.$akStunden.':'.$akMinuten);
+		two_column_display('project:', $project);
 
 		if (!$silent_modus) {
 			my $modus_output = '';
@@ -522,51 +539,15 @@ sub check_input_arguments {
 }
 
 sub open_db{
-	#################################################################
-	# DB
-	#################################################################
-
-	#load password from local file
-	open(PWD, "</home/sk/.mytop");
-	my $password = '';
-	do {
-		my $test = <PWD>;
-		if ($test =~ /^pass=/ ) {
-			$password = $test;
-			$password =~ s/^pass=//g;
-			$password =~ s/\n//g;
-		}
-	}
-	while (eof(PWD) != 1);
-	close(PWD);
-	
-	
-	my $hostname = `hostname`;			# get name of host (PC-Name)
-	chomp($hostname);
-	two_column_display ('host:', $hostname);
-
-	#Connect to database u_sk_yarrow
-	if ( $hostname =~ 'kunopc'){
-		$dbh = DBI->connect( 'DBI:mysql:u_sk_yarrow',							# local
-							'sk',
-							$password ,
-							{
-							  RaiseError => 1,
-							  AutoCommit => 1
-							}
-						  ) or die "Database connection not made: $DBI::errstr" . DBI->errstr;
-	} else {
-		$dbh = DBI->connect( 'DBI:mysql:u_sk_yarrow:host=sql',				# Toolserver
-							'sk',
-							$password ,
-							{
-							  RaiseError => 1,
-							  AutoCommit => 1
-							}
-						  ) or die "Database connection not made: $DBI::errstr" . DBI->errstr;
-	}
-
-	$password = '';
+	# Connect to database.
+	$dbh = DBI->connect ('DBI:mysql:' . $DbName . (defined ($DbServer) ? ':host=' . $DbServer : ''),
+						 $DbUsername,
+						 $DbPassword,
+						 {
+							 RaiseError => 1,
+							 AutoCommit => 1
+						 })
+		or die ("Could not connect to database: " . DBI::errstr ());
 }
 
 
@@ -673,7 +654,7 @@ sub open_file{
 		$dump_date_for_output =~ s/[^0-9]+$//g;
 		if (length($dump_date_for_output) >=8){
 			$dump_date_for_output = substr($dump_date_for_output,0,4).'-'.substr($dump_date_for_output,4,2).'-'.substr($dump_date_for_output,6,2);
-		}	
+		}
 		#print $dump_date_for_output."\n";
 
 
@@ -780,10 +761,10 @@ sub open_file{
 sub search_for_last_dump {
 	# search in dump_directory for the last XML-file of a project
 	my $last_file ='';
-	print_line();	
+	print_line();
 	two_column_display ('search dump in:', $dump_directory);
 	two_column_display ('search dump in:', $dump_directory2);
-	my @xml_files1  = glob($dump_directory .$project.'/*-pages-articles.xml.bz2');		# ../store	
+	my @xml_files1  = glob($dump_directory .$project.'/*-pages-articles.xml.bz2');		# ../store
 	my @xml_files2  = glob($dump_directory2.$project.'*-pages-articles.xml.bz2');       # ../tmp
 	my @xml_files = (@xml_files1, @xml_files2); # add both file-arrays
 	my $count_xml_files = @xml_files;
@@ -1370,19 +1351,19 @@ sub read_and_write_metadata_from_url {
 
 
     ###########################
-    # generate URL of project 
+    # generate URL of project
     ###########################
 
 	my $url = 'http://'.$language.'.wikipedia.org/w/api.php';
-	
+
 	if ($project eq 'commonswiki') {
 		$url = 'http://commons.wikimedia.org/w/api.php';
 	}
-	
+
 	if ($project =~ /source$/) {
 		$url = 'http://'.$language.'.wikisource.org/w/api.php';
 	}
-	
+
 	if ($project =~ /wiktionary$/) {
 		# http://en.wiktionary.org/wiki/Main_page
 		my $first_url_part = $project;
@@ -1626,7 +1607,7 @@ sub load_metadata_from_file {
     #########################
 	# for example pdcwiki (2013-02-15)
 	# <statistics pages="4847" articles="1818" edits="97339" images="159" users="12001" activeusers="16" admins="3" jobs="0" />
-	my $statistic_text = 	
+	my $statistic_text =
 	$pos1 = index($metatext,'<statistics ') + length('<statistics ');
 	$pos2 = index($metatext,'/>', $pos1);
 	$statistic_text = substr($metatext, $pos1, $pos2 -$pos1);
@@ -2163,7 +2144,7 @@ sub raw_text_more_articles {
 ####################################
 
 sub load_text_translation{
-		
+
 	# Input of translation page
 
 	$translation_page = 'Wikipedia:WikiProject Check Wikipedia/Translation'  			if ($project eq 'afwiki') ;
@@ -2341,7 +2322,7 @@ sub get_translation_text_XHTML{
 
 sub output_errors_desc_in_db{
 	if ($load_modus_done and $dump_or_live eq 'live') {
-		two_column_display('Update descripton in DB:', 'insert new and update old error description') if (!$silent_modus);	
+		two_column_display('Update descripton in DB:', 'insert new and update old error description') if (!$silent_modus);
 
 	# mysql> desc cw_error_desc;
 	# +-----------------+---------------+------+-----+---------+-------+
@@ -2411,7 +2392,7 @@ sub output_errors_desc_in_db{
 sub output_text_translation_wiki{
 	# Output of translation-file
 	my $filename = $output_directory.$project.'/'.$project.'_'.$translation_file;
-	two_column_display('Output translation text to:', $project.'_'.$translation_file) if (!$silent_modus);	
+	two_column_display('Output translation text to:', $project.'_'.$translation_file) if (!$silent_modus);
 	open(TRANSLATION, ">$filename");
 
 	#######################################
@@ -2463,8 +2444,8 @@ sub output_text_translation_wiki{
 	#until ($error_description[$number_of_error_description][1] ne '');		# english Headline existed
 
     my $number_of_error_description_output = $number_of_error_description -1;
-    two_column_display('error description:', $number_of_error_description_output. ' error description total' ) if (!$silent_modus);	
-	
+    two_column_display('error description:', $number_of_error_description_output. ' error description total' ) if (!$silent_modus);
+
 
 	print TRANSLATION '#########################'."\n";
 	print TRANSLATION '# error description'."\n";
@@ -2727,7 +2708,7 @@ sub print_article_title_every_x{
 		if ($dump_or_live eq 'live') {
 			my $output_current_live_article = $current_live_article + 1;
 			$percent = $output_current_live_article.'/'.$number_article_live_to_scan;
-		}		
+		}
 		printf "%-3s %-8s %-5s %-8s %-40s\n", $project_output, 'p='.$page_number, $percent, 'id='.$page_id, $title;
 	}
 	print LOGFILE $counter_output if (!$starter_modus);
@@ -6149,7 +6130,7 @@ sub error_047_template_no_correct_begin{
 						$link_text_2 = ' '.$link_text_2.' ';
 						#print $link_text_2."\n";
 
-						# test the number of [[and  ]] 
+						# test the number of [[and  ]]
 						my $link_text_2_a = $link_text_2;
 						$beginn_square_brackets = ($link_text_2_a =~ s/\{\{//g);
 						my $link_text_2_b = $link_text_2;
@@ -7906,7 +7887,7 @@ sub error_register {
 }
 
 sub insert_into_db{
-	#print 'insert_into_db'."\n";	
+	#print 'insert_into_db'."\n";
 	my $error_counter =shift;
 	my $article       =shift;
 	my $code          =shift;
@@ -7914,11 +7895,11 @@ sub insert_into_db{
 
 
 
-	$article = text_for_mysql($article);	
+	$article = text_for_mysql($article);
 	$notice  = substr($notice, 0, 3999) if (length($notice) > 3999);    # column is only varchar(4000)
 	$notice  = substr($notice, 0, 100) if (length($notice) > 100);    # column is only varchar(4000)
-	$notice  = text_for_mysql($notice);	
-	
+	$notice  = text_for_mysql($notice);
+
 
 
 	#insert error in database
@@ -7947,7 +7928,7 @@ sub insert_into_db{
 
 sub set_article_as_scan_live_in_db{
 	# if an article was scan live, than set this in the table cw_dumpscan as true
-	#print 'set_article_as_scan_live_in_db'."\n";	
+	#print 'set_article_as_scan_live_in_db'."\n";
 	my $article = shift;
 	my $id      = shift;
 	my $sql_text;
@@ -8003,16 +7984,16 @@ sub insert_into_db_table_tt{
 
 sub text_for_mysql{
 	my $text_input = shift;
-	my $text_output = $text_input;	
-	
-	# problem: sql-command insert, apostrophe ' or backslash \ in text 
+	my $text_output = $text_input;
+
+	# problem: sql-command insert, apostrophe ' or backslash \ in text
 	# problem: "Ali's Bar"
 	# problem: "\"   (enwiktionary)
 	$text_output =~ s/\\/\\\\/g;
 	$text_output =~ s/'/\\'/g;
 	# old	$text =~ s/'/\\'/g;
 	# old	$text =~ s/[^\\]\\\\'/\\\\\\'/g;
-	
+
 	#if ($text_output ne $text_input) {
 	#	print 'input ='.$text_input."\n";
 	#	print 'output='.$text_output."\n";
