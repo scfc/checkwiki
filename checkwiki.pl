@@ -179,25 +179,9 @@ our $for_statistic_number_of_articles_with_error = 0;
 ###########################
 # files
 ###########################
-our $live_filename  				= 'input_for_live.txt';
-our $output_live_wiki   			= 'output_for_wikipedia.txt';
-our $output_dump_wiki   			= 'output_for_wikipedia_dump.txt';
 our $error_list_filename 			= 'error_list.txt';
-our $error_list_filename_only 		= 'error_list_only.txt';
-our $error_list_filename_dump		= 'error_list_dump.txt';				#all errors from the last dump scan
-our $error_list_filename_backup		= 'error_list_dump_backup.txt';
-our $error_statistic_filename 		= 'error_statistic.txt';
-our $error_statistic_filename_only 	= 'error_statistic_only.txt';
-our $error_statistic_filename_list 	= 'error_statistic_list.txt';
 our $translation_file   			= 'translation.txt';
-our $error_list_filename_30 		= 'error_list_error_030.txt';
-our $error_list_filename_every 		= 'error_list_error';			# for all errors
-
 our $error_geo_list_filename 		= 'error_geo_list.txt';
-our $error_geo_list_filename_only 	= 'error_geo_list_only.txt';
-our $error_geo_list_filename_html	= 'error_geo_list.htm';
-our $error_geo_list_filename_only_html	= 'error_geo_list_only.htm';
-
 our $templatetiger_filename			= '';
 
 our @inter_list = ( 'af', 'als', 'an', 'ar',
