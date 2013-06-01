@@ -49,8 +49,6 @@ our $dump_directory2	    = '/mnt/user-store/dumps/tmp/';
 # our $dump_directory	= '../../dump/';	# home or usb
 
 our $output_directory		= '/mnt/user-store/sk/data/checkwiki/';
-our $input_directory_new 	= '/mnt/user-store/sk/data/new_article/';
-our $input_directory_change = '/mnt/user-store/sk/data/last_changes/';
 our $output_templatetiger   = '/mnt/user-store/sk/data/templatetiger/';
 our $output_geo				= '/mnt/user-store/sk/data/geo/';
 
