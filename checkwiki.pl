@@ -420,130 +420,56 @@ sub get_error_description{
 
 }
 
-sub load_article_for_live_scan{
+sub load_article_for_live_scan {
+	print_line();
+	two_column_display('Load article for:', 'live scan') if (!$silent_modus);
 
-	if ($dump_or_live eq 'live' ) {
-		# open list for live
-		print_line();
-		two_column_display('Load article for:', 'live scan') if (!$silent_modus);
-		#print 'Data:   '."\t\t".$output_directory.$project.'/'.$project.'_'.$error_list_filename ."\n";
-		if (not (-e $output_directory.$project.'/'.$project.'_'.$error_list_filename )){
-			#$quit_program = 'yes';
-			#$quit_reason = $quit_reason. "file:" .$output_directory.$project.'/'.$project.'_'.$error_list_filename. " don't exist!\n";
-			#print 'file:' .$output_directory.$project.'/'.$project.'_'.$error_list_filename. " don't exist!\n";
-			print 'create '.$output_directory.$project.'/'.$project.'_'.$error_list_filename. "\n";
-			system ('touch '.$output_directory.$project.'/'.$project.'_'.$error_list_filename);
+	# Get 250 new articles last days.
+	new_article (250) if ($load_modus_new);
 
+	# Get 50 change articles last days.
+	last_change_article (50) if ($load_modus_last_change);
 
+	# Get 250 articles which are set as done in the database
+	# which are not Scan_Live.
+	get_done_article_from_database (250) if ($load_modus_done);
+
+	# Get 250 articles which are the date of last_scan is very old.
+	get_oldest_article_from_database (250) if ($load_modus_old);
+
+	# Sort all articles.
+	@live_article = sort (@live_article);
+
+	# Delete all double/multi input article
+	my ($all_errors_of_this_article, @new_live_article, $old_title);
+	foreach my $Line (@live_article) {
+		$Line =~ /^([^\t]+)\t(\d+)\n?$/ || die ("Couldn't parse '$Line'");
+
+		my ($current_title, $current_errors) = ($1, $2);
+
+		if (defined ($old_title) && $old_title ne $current_title) {
+			# Save old line.
+			push (@new_live_article, $old_title . "\t" . $all_errors_of_this_article);
+			$all_errors_of_this_article = $current_errors;
+			$old_title = $current_title;
 		} else {
-			#read articles(live)
-
-			new_article(250)						if ($load_modus_new);					# get 250 new article last days
-			last_change_article(50)					if ($load_modus_last_change);			# get 10 change article last days
-			get_done_article_from_database(250)		if ($load_modus_done);					# get 250 article which are set as done in the database
-																								# which are not scan_live - NEW: with table cw_dumpscan
-			get_oldest_article_from_database(250)	if ($load_modus_old);					# get 250 article which are the date of last_scan is very old (dump_scan)
-
-
-			#old
-			#article_last_live_scan();				# get all article from last live scan, where the script found errors
-													# very long in many languages (maybe later)
-													# replace with done articles
-			#article_with_error_from_dump_scan(); 	# get all articles error from the last dump scan
-													# replace with article_with_error_from_dump_scan2
-			#article_with_error_from_dump_scan2()	if ($load_modus_dump);			# get 250 articles of each error from the last dump scan,
-
-			#geo_error_article();					# get all articles with geo errors last days
-
-
-
-			# sort all articles (new + live)
-			@live_article = sort(@live_article);
-
-			# delet all double/multi input article
-			$number_of_live_tests = @live_article;
-			#print $number_of_live_tests."\n";
-
-			my @new_live_article;
-			my @split_line;
-			my @split_line_old;
-
-			if ($number_of_live_tests > 0) {
-				my $old_title = '';
-				my $all_errors_of_this_article = '';
-				my $i = -1;
-
-
-				foreach (@live_article) {
-					@split_line_old = @split_line;
-					@split_line = split(/\t/, $_);
-					my $current_title = $split_line[0];
-					$split_line[1] =~ s/\n//;
-					#print $current_title."\n";
-
-					my $number_of_split_line = @split_line;
-					if ($number_of_split_line != 2) {
-						print 'Problem with input line:'."\n";
-						print $_."\n";
-						die;
-					};
-
-					if ($old_title ne $current_title
-						and $old_title ne ''){
-						#save old
-						$i = $i+1;
-						$new_live_article[$i] = $old_title."\t".$all_errors_of_this_article;
-						$all_errors_of_this_article = '';
-						#print "result:".$new_live_article[$i]."\n";
-					}
-
-					# check new
-					if ($old_title eq $current_title) {
-						#double
-						$all_errors_of_this_article = $all_errors_of_this_article.', '.$split_line[1];
-						#print 'double: '.$current_title."\t".$all_errors_of_this_article."\n";
-					} else {
-						$all_errors_of_this_article = $split_line[1];
-						#print 'normal: '.$current_title."\t".$all_errors_of_this_article."\n";
-					}
-					$old_title = $current_title;
-				}
-				#save last
-				$i = $i+1;
-				$new_live_article[$i] = $old_title."\t".$all_errors_of_this_article;
-
-
-				@live_article = @new_live_article;
-				$number_of_live_tests = @live_article;
-			}
-			two_column_display('all articles without double:', $number_of_live_tests);
-			@new_live_article = ();	# free memory
-			@split_line = ();	# free memory
-
-			if ($number_of_live_tests == 0) {
-				# if after this load in live_modus no article found, then end the scan
-				$quit_program = 'yes';
-				$quit_reason = $quit_reason. 'no article in scan list for live'."\n";
-			}
-
-
-
+			$all_errors_of_this_article .= ', ' . $current_errors;
 		}
 	}
+
+	# Save last line.
+	if (defined ($old_title)) {
+		push (@new_live_article, $old_title . "\t" . $all_errors_of_this_article);
+	}
+
+	@live_article = @new_live_article;
+	two_column_display('all articles without double:', scalar (@live_article));
+
+	if (!@live_article) {
+		# If no articles were found, end the scan.
+		die ('No articles in scan list for live');
+	}
 }
-
-
-sub article_last_live_scan{
-	my $file_input_live = $output_directory.$project.'/'.$project.'_'.$error_list_filename;
-	#print $file_input_live."\n";
-	open(LIVE, "<$file_input_live");
-	@live_article = <LIVE>;
-	close (LIVE);
-	$number_of_live_tests = @live_article;
-	two_column_display('from file articles last scan:', $number_of_live_tests);
-}
-
-
 
 sub new_article{
 	my $new_counter = 0;
@@ -7450,6 +7376,7 @@ if (defined ($DumpFilename)) {
 		die ("Couldn't open Templatetiger work file '$TTFilename.work'");
 } else {
 	$dump_or_live = 'live';
+	load_article_for_live_scan ();
 }
 
 ReadMetadata ();
@@ -7461,8 +7388,7 @@ output_errors_desc_in_db() 				if ($quit_program eq 'no');			# update the databa
 # FIXME: Disabled for now.  --tl, 2013-06-01
 # output_text_translation_wiki ();   # Output the new wikipage for translation.
 
-load_article_for_live_scan()  			if ($quit_program eq 'no');			# only for live
-scan_pages() 							if ($quit_program eq 'no');			# scan all aricle
+scan_pages ();   # Scan articles.
 
 # Close files.
 if (defined ($DumpFilename)) {
