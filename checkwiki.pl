@@ -819,7 +819,7 @@ sub update_table_cw_error_from_dump {
 		my $sql_text;
 		my $sth;
 
-		$sql_text = "delete /* SLOW_OK */ from cw_error where project = '".$project."';";
+		$sql_text = "delete from cw_error where project = '".$project."';";
 		$sth = $dbh->prepare( $sql_text );
 		$sth->execute;
 
@@ -828,12 +828,12 @@ sub update_table_cw_error_from_dump {
 		#insert into cw_error (select * from cw_dumpscan where project = 'nlwiki' and title like @test);
 		#delete from cw_dumpscan where project = 'nlwiki' and title like @test;
 
-		$sql_text = "insert /* SLOW_OK */ into cw_error (select * from cw_dumpscan where project = '".$project."');";
+		$sql_text = "insert into cw_error (select * from cw_dumpscan where project = '".$project."');";
 		$sth = $dbh->prepare( $sql_text );
 		$sth->execute;
 
 		print 'delete all article from this project in cw_dumpscan'."\n";
-		$sql_text = "delete /* SLOW_OK */ from cw_dumpscan where project = '".$project."';";
+		$sql_text = "delete from cw_dumpscan where project = '".$project."';";
 		$sth = $dbh->prepare( $sql_text );
 		$sth->execute;
 	}
@@ -843,7 +843,7 @@ sub update_table_cw_error_from_dump {
 
 sub delete_deleted_article_from_db 	{
 	#delete all deleted article from database
-	my $sql_text2 = "delete /* SLOW_OK */ from cw_error where ok = 1 and project = '".$project."' and found not like '%".substr(get_time_string(), 0, 7)."%';";
+	my $sql_text2 = "delete from cw_error where ok = 1 and project = '".$project."' and found not like '%".substr(get_time_string(), 0, 7)."%';";
 	#print $sql_text2."\n";
 	my $sth = $dbh->prepare( $sql_text2 );
 	$sth->execute;
@@ -851,13 +851,13 @@ sub delete_deleted_article_from_db 	{
 
 sub delete_article_from_table_cw_new 	{
 	#delete all scanned or older then 7 days from this project
-	my $sql_text2 = "delete /* SLOW_OK */ from cw_new where project = '".$project."' and (scan_live = 1 or DATEDIFF(now(),daytime) > 7);";
+	my $sql_text2 = "delete from cw_new where project = '".$project."' and (scan_live = 1 or DATEDIFF(now(),daytime) > 7);";
 	#print $sql_text2."\n";
 	my $sth = $dbh->prepare( $sql_text2 );
 	$sth->execute;
 
 	#delete all articles from don't scan projects
-	my $sql_text3 = "delete /* SLOW_OK */ from cw_new where DATEDIFF(now(),daytime) > 8;";
+	my $sql_text3 = "delete from cw_new where DATEDIFF(now(),daytime) > 8;";
 	#print $sql_text2."\n";
 	$sth = $dbh->prepare( $sql_text3 );
 	$sth->execute;
@@ -865,13 +865,13 @@ sub delete_article_from_table_cw_new 	{
 
 sub delete_article_from_table_cw_change 	{
 	#delete all scanned or older then 3 days from this project
-	my $sql_text2 = "delete /* SLOW_OK */ from cw_change where project = '".$project."' and (scan_live = 1 or DATEDIFF(now(),daytime) > 3);";
+	my $sql_text2 = "delete from cw_change where project = '".$project."' and (scan_live = 1 or DATEDIFF(now(),daytime) > 3);";
 	#print $sql_text2."\n";
 	my $sth = $dbh->prepare( $sql_text2 );
 	$sth->execute;
 
 	#delete all articles from don't scan projects
-	my $sql_text3 = "delete /* SLOW_OK */ from cw_change where DATEDIFF(now(),daytime) > 8;";
+	my $sql_text3 = "delete from cw_change where DATEDIFF(now(),daytime) > 8;";
 	$sth = $dbh->prepare( $sql_text3 );
 	$sth->execute;
 }
@@ -2091,7 +2091,7 @@ sub delete_old_errors_in_db{
 	if ( $dump_or_live eq 'live'
 		 and $page_id
 		 and $title ne '' ) {
-		my $sql_text = "delete /* SLOW_OK */ from cw_error where error_id = ". $page_id." and  project = '". $project."';";
+		my $sql_text = "delete from cw_error where error_id = ". $page_id." and  project = '". $project."';";
 		#print $sql_text."\n\n";
 		my $sth = $dbh->prepare( $sql_text );
 		$sth->execute;
@@ -7254,23 +7254,20 @@ sub insert_into_db {
 	$sth->execute ($project, $page_id, $article, $code, $notice, 0, $Found) or die ($dbh->errstr ());
 }
 
-sub set_article_as_scan_live_in_db{
-	# if an article was scan live, than set this in the table cw_dumpscan as true
-	#print 'set_article_as_scan_live_in_db'."\n";
-	my $article = shift;
-	my $id      = shift;
-	my $sql_text;
-	my $sth;
+# If an article was scanned live, then set this in the table
+# cw_dumpscan as true.
+sub set_article_as_scan_live_in_db {
+	my ($article, $id) = @_;
 
 	# Update the table cw_dumpscan.
-	# $sth = $dbh->prepare ('UPDATE /* SLOW_OK */ cw_dumpscan SET Scan_Live = TRUE WHERE Project = ? AND (Title = ? OR ID = ?);') or die ($dbh->errstr ());
+	# $sth = $dbh->prepare ('UPDATE cw_dumpscan SET Scan_Live = TRUE WHERE Project = ? AND (Title = ? OR ID = ?);') or die ($dbh->errstr ());
 	# $sth->execute ($project, $article, $id) or die ('article:' . $article . "\n" . $dbh->errstr ());
 
 	# Update the tables cw_new and cw_change.
-	$sth = $dbh->prepare ('UPDATE /* SLOW_OK */ cw_new SET Scan_Live = TRUE WHERE Project = ? AND Title = ?;') or die ($dbh->errstr ());
+	my $sth = $dbh->prepare ('UPDATE cw_new SET Scan_Live = TRUE WHERE Project = ? AND Title = ?;') or die ($dbh->errstr ());
 	$sth->execute ($project, $article) or die ('article:' . $article . "\n" . $dbh->errstr ());
 
-	$sth = $dbh->prepare ('UPDATE /* SLOW_OK */ cw_change SET Scan_Live = TRUE WHERE Project = ? AND Title = ?;') or die ($dbh->errstr ());
+	$sth = $dbh->prepare ('UPDATE cw_change SET Scan_Live = TRUE WHERE Project = ? AND Title = ?;') or die ($dbh->errstr ());
 	$sth->execute ($project, $article) or die ('article:' . $article . "\n" . $dbh->errstr ());
 }
 
