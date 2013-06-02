@@ -7698,7 +7698,9 @@ load_metadata_from_file ();
 get_error_description()					if ($quit_program eq 'no');			# all errordescription from this script
 load_text_translation() 				if ($quit_program eq 'no');			# load translation from wikipage
 output_errors_desc_in_db() 				if ($quit_program eq 'no');			# update the database with newest error description
-output_text_translation_wiki()  		if ($quit_program eq 'no');			# output the new wikipage for translation
+
+# FIXME: Disabled for now.  --tl, 2013-06-01
+# output_text_translation_wiki ();   # Output the new wikipage for translation.
 
 load_article_for_live_scan()  			if ($quit_program eq 'no');			# only for live
 scan_pages() 							if ($quit_program eq 'no');			# scan all aricle
