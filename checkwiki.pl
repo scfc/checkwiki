@@ -7340,7 +7340,6 @@ delete_article_from_table_cw_new()		if ($quit_program eq 'no');
 delete_article_from_table_cw_change()	if ($quit_program eq 'no');
 update_table_cw_starter();
 
-#output_errors() 						if ($quit_program eq 'no');
 output_little_statistic()				if ($quit_program eq 'no');			# print counter of found errors
 output_duration() 						if ($quit_program eq 'no');			# print time at the end
 
