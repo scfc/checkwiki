@@ -7,11 +7,6 @@
 # Licence:      GPL
 #################################################################
 
-#################################################################
-# Syntax
-# perl checkwiki.pl -p enwiki -m live
-#################################################################
-
 # New features, last changes and discussion
 # http://de.wikipedia.org/wiki/Benutzer:Stefan_Kühn/Check_Wikipedia
 
@@ -1498,11 +1493,7 @@ sub load_text_translation {
 	$input_text = get_translation_text($translation_input,  'lowest_priority_'.$project.'=',  'END' );
 	$lowest_priority_project = $input_text if ($input_text ne '');
 
-
-
-
-
-	# find error description
+    # find error description
 	for (my $i = 1; $i < $number_of_error_description; $i++) {
 		my $current_error_number = 'error_';
 		$current_error_number = $current_error_number.'0'    if ($i < 10);
@@ -1626,9 +1617,6 @@ sub output_errors_desc_in_db{
 	# | text_html_trans | varchar(4000) | YES  |     | NULL    |       |
 	# +-----------------+---------------+------+-----+---------+-------+
 
-
-
-
 		for (my $i = 1; $i < $number_of_error_description; $i++) {
 			my $sql_headline = $error_description[$i][1];
 			$sql_headline =~ s/'/\\'/g;
@@ -1640,8 +1628,6 @@ sub output_errors_desc_in_db{
 			my $sql_desc_trans     = $error_description[$i][6];
 			$sql_desc_trans =~ s/'/\\'/g;
 			$sql_desc = substr( $sql_desc_trans, 0, 3999);			# max 4000
-
-
 
 			# insert or update error
 			my $sql_text2 = "update cw_error_desc
@@ -1764,7 +1750,7 @@ sub output_text_translation_wiki{
 
 }
 
-sub output_little_statistic{
+sub output_little_statistic {
 	print 'errors found:'."\t\t".$error_counter." (+1)\n";
 }
 
@@ -1779,14 +1765,9 @@ sub output_duration {
 	print $project.' '.$dump_or_live."\n" 		if (!$silent_modus);
 }
 
-#############################################################################
-
-sub check_article{
-
+sub check_article {
 	my $steps = 1;
-	$steps = 1 if ($dump_or_live eq 'live');
     $steps = 5000 if ($silent_modus eq 'silent');
-
 
 	if (   $title eq 'At-Tabarī'
 		or $title eq 'Rumänien'
@@ -1976,19 +1957,13 @@ sub print_article_title_every_x{
 	my $steps =$_[0];
 	#print "$page_number \t$title\n";
 	my $x = int( $page_number / $steps ) * $steps ;
-	my $counter_output = '';
 	my $project_output = $project;
 	$project_output =~ s/wiki$//;
-	#$counter_output .= $project_output.' ';
-	#$counter_output .= 'p='.$page_number.' ';
 
 	#$statistic_online_page
 
 
-	#$counter_output .= ' id='.$page_id.' ';
-	#$counter_output .= $title."\n";
 	if (   $page_number == 1 or $page_number == $x ) {
-		#print $counter_output;
 		my $percent = int($page_number/$statistic_online_page*100).'%';
 		if ($dump_or_live eq 'live') {
 			my $output_current_live_article = $current_live_article + 1;
@@ -1996,7 +1971,6 @@ sub print_article_title_every_x{
 		}
 		printf "%-3s %-8s %-5s %-8s %-40s\n", $project_output, 'p='.$page_number, $percent, 'id='.$page_id, $title;
 	}
-	printf ("\$counter_output = %s\n", $counter_output);
 }
 
 sub delete_old_errors_in_db{
@@ -2035,8 +2009,6 @@ sub get_namespace {
     # If no namespace prefix or not found.
 	$page_namespace = 0;
 }
-
-
 
 sub get_comments_nowiki_pre{
 	my $last_pos = -1;
