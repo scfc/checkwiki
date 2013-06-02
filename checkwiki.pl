@@ -28,16 +28,14 @@ our $VERSION = '2013-02-15';
 # delete_old_errors_in_db  --> Problem with deleting of errors in loadmodus
 # delete_deleted_article_from_db --> Problem old articles
 
-
-#################################################################
-# Load Modules
-#################################################################
+# Load modules.
 
 use DBI;
 use Getopt::Long qw(GetOptionsFromString :config bundling no_auto_abbrev no_ignore_case);
 use LWP::UserAgent;
 use POSIX qw(strftime);
 use URI::Escape;
+use XML::LibXML;
 
 #################################################################
 # declare_global_directorys
@@ -63,9 +61,7 @@ our $load_modus_dump		= 1;		# new article from db
 our $load_modus_last_change = 1;		# last_change article from db
 our $load_modus_old			= 1;		# old article from db
 
-
 our $details_for_page		= 'no';		# yes/no 	durring the scan you can get more details for a article scan
-
 
 our $time_start				= time();	# start timer in secound
 our $time_end				= time();	# end time in secound
@@ -82,12 +78,10 @@ our @namespace;							# namespace values
 										# 0 number
 										# 1 namespace in project language
 										# 2 namespace in english language
-our	$namespaces_count		= -1;		# number of namespaces
 
 our @namespacealiases;					# namespacealiases values
 										# 0 number
 										# 1 namespacealias
-our	$namespacealiases_count= -1;		# number of namespacealiases
 
 our @namespace_cat;						#all namespaces for categorys
 our @namespace_image;					#all namespaces for images
@@ -165,11 +159,7 @@ our $for_statistic_last_change_article = 0;
 our $for_statistic_geo_article = 0;
 our $for_statistic_number_of_articles_with_error = 0;
 
-
-
-###########################
 # files
-###########################
 our $error_list_filename 			= 'error_list.txt';
 our $translation_file   			= 'translation.txt';
 our $error_geo_list_filename 		= 'error_geo_list.txt';
@@ -300,7 +290,7 @@ our $text_origin			= '';		# text of the current article origin (for save)
 our $text_without_comments  = '';		# text of the current article without_comments (for save)
 
 
-our	$page_namespace			= -100;		# namespace of page
+our	$page_namespace;					# namespace of page
 our $page_is_redirect   	= 'no';
 our $page_is_disambiguation = 'no';
 
@@ -761,8 +751,6 @@ sub set_variables_for_article {
 	$text_origin			= '';		# text of the current article origin (for save)
 	$text_without_comments  = '';		# text of the current article without_comments (for save)
 
-
-	$page_namespace			= -100;		# namespace of page
 	$page_is_redirect   	= 'no';
 	$page_is_disambiguation = 'no';
 
@@ -925,337 +913,131 @@ sub update_table_cw_starter {
 	}
 }
 
-
-
-
-sub read_and_write_metadata_from_url {
-	# read the metadata from url (<xml … <siteinfo>…</siteinfo>)
-	# write this metadata in file for dump and live-scan
-	#print 'Read metadata from dump and write in file'."\n";
-
-	#old from dump
-	#				my $line ='';
-	#				my $end = 'no';
-					my $metadata = '';
-	#				do {
-	#					$line_number = $line_number + 1;
-	#					$line = <DUMP>;
-	#					#print $line_number.' '.$line;
-	#					$line =~ s/\n//;
-	#					$metadata = $metadata.$line."\n";
-	#					if (index ($line, '</siteinfo>') > -1) {
-	#						$end = 'yes';
-	#					}
-    #
-	#				}
-	#				until ( $end eq 'yes');
-
-	#new from web
-	# raw_text2
-
-	#print 'get Metadaten from :'.$project.' '.$language."\n";
-	$language = 'nds-nl' if ($project eq 'nds_nlwiki');
-
-
-    ###########################
-    # generate URL of project
-    ###########################
-
-	my $url = 'http://'.$language.'.wikipedia.org/w/api.php';
-
-	if ($project eq 'commonswiki') {
-		$url = 'http://commons.wikimedia.org/w/api.php';
+# Read metadata from API.
+sub ReadMetadata {
+	# Calculate server name.
+	my $ServerName = $project;
+	if (!($ServerName =~ s/^nds_nlwiki$/nds-nl.wikipedia.org/		 ||
+		  $ServerName =~ s/^commonswiki$/commons.wikimedia.org/		 ||
+		  $ServerName =~ s/^([a-z]+)wiki$/$1.wikipedia.org/			 ||
+		  $ServerName =~ s/^([a-z]+)wikisource$/$1.wikisource.org/	 ||
+		  $ServerName =~ s/^([a-z]+)wikiversity$/$1.wikiversity.org/ ||
+		  $ServerName =~ s/^([a-z]+)wiktionary$/$1.wiktionary.org/)) {
+		die ("Couldn't calculate server name for project '$project'");
 	}
 
-	if ($project =~ /source$/) {
-		$url = 'http://'.$language.'.wikisource.org/w/api.php';
+	my $url = 'http://' . $ServerName . '/w/api.php';
+	print_line ();
+	two_column_display ('load metadata from:', $url);
+	$url .= '?action=query&meta=siteinfo&siprop=general|namespaces|namespacealiases|statistics|magicwords&format=xml';
+
+	my $UA = LWP::UserAgent->new ();
+	my $Response = $UA->get ($url);
+
+	if (!$Response->is_success ()) {
+		die ("Could not retrieve metadata");
 	}
 
-	if ($project =~ /wiktionary$/) {
-		# http://en.wiktionary.org/wiki/Main_page
-		my $first_url_part = $project;
-		$first_url_part =~ s/wiktionary$//;
-		$url = 'http://'.$first_url_part.'.wiktionary.org/w/api.php';
+	my $Content = $Response->decoded_content (raise_error => 1);
+	if (!defined ($Content)) {
+		die ("Could not decode content");
 	}
+	my $metatext = $Content;
 
-	if ($project =~ /wikiversity$/) {
-		# http://fr.wikiversity.org/wiki/Accueil
-		my $first_url_part = $project;
-		$first_url_part =~ s/wikiversity$//;
-		$url = 'http://'.$first_url_part.'.wikiversity.org/w/api.php';
-	}
+	# Parse siteinfo to DOM.
+	my $XMLParser = new XML::LibXML () or die ($!);
+	my $SiteInfo = $XMLParser->parse_string ($Content) or die ($!);
 
-
-	print_line();
-	two_column_display('load metadata from:', $url) ;
-	$url = $url.'?action=query&meta=siteinfo&siprop=general|namespaces|namespacealiases|statistics|magicwords&format=xml';
-
-	$metadata = raw_text2($url);
-	$language = 'nds_nl' if ($project eq 'nds_nlwiki');
-
-
-
-	my $file_metadata = $output_directory.$project.'/'.$project.'_metadata.txt';
-	two_column_display('save metadata into:', $output_directory) ;
-	two_column_display('', $project.'_metadata.txt') ;
-	open(METADATA, ">$file_metadata");
-	print METADATA $metadata;
-	close(METADATA);
-	$metadata = '';
-
-
-}
-
-sub load_metadata_from_file {
-	# load metadata from file for dump and live
-	# this file is from the last dump (if live) or current dump (if dump)
-	#print 'Read metadata from file'."\n";
-	my $file_metadata = $output_directory.$project.'/'.$project.'_metadata.txt';
-	open(METADATA, "<$file_metadata");
-	my @metadata = <METADATA>;
-	close(METADATA);
-
-	my $metatext = '';
-	foreach (@metadata) {
-		$metatext = $metatext.$_;
-	}
-	#print $metatext."\n";
-
-	#Extract metadata
-
-	#sitename
-	my $sitename = '';
-	my $pos1 = index($metatext,'sitename="') + length('sitename="');
-	my $pos2 = index($metatext,'"', $pos1);
-	$sitename = substr($metatext, $pos1, $pos2 - $pos1);
+	# Extract sitename.
+	my $sitename = ($SiteInfo->findnodes (q!//api/query/general/@sitename!)) [0]->getData ();
 	two_column_display('Sitename:', $sitename) if (!$silent_modus);
 
-
-	#get base
-	$base = '';
-	$pos1 = index($metatext,'base="') + length('base="');
-	$pos2 = index($metatext,'"', $pos1 );
-	$base = substr($metatext, $pos1, $pos2 -$pos1);
+	# Extract base.
+	my $base = ($SiteInfo->findnodes (q!//api/query/general/@base!)) [0]->getData ();
 	two_column_display('Base:', $base) if (!$silent_modus);
 	$home = $base;
 	$home =~ s/[^\/]+$//;
-	#print 'Home:     '."\t\t".$home."\n";
 
+	# Get namespaces numbers and names (e. g., "6, Tabulator image").
+	foreach my $Node ($SiteInfo->findnodes (q!//api/query/namespaces/ns!)) {
+		my $id = $Node->getAttribute ('id');
+		my $canonical = $Node->getAttribute ('canonical');
+		my $name = $Node->textContent ();
 
+		$canonical = '' if (!defined ($canonical));
 
-	#get namespaces number and name
-	# for example: 6 Tabulator image
-	my $namespaces = '';
-	$pos1 = index($metatext,'<namespaces>') + length('<namespaces>');
-	$pos2 = index($metatext,'</namespaces>', $pos1);
-	$namespaces = substr($metatext, $pos1, $pos2 -$pos1);
-	#print "x".$namespaces."x\n";
-	#$namespaces =~ s/^\n//g;
-	$namespaces =~ s/<\/ns>/\n/g;
-	$namespaces =~ s/\/>/>\n/g;			# only namespace 0 - articles
+		# Store namespace.
+		push (@namespace, [$id, $name, $canonical]);
 
-	# now every namespase in one line
-	#print "x".$namespaces."x\n";
-
-	$namespaces =~ s/ case="first-letter"//g;
-	$namespaces =~ s/ xml:space="preserve"//g;
-	$namespaces =~ s/ subpages=""//g;
-
-	#$namespaces =~ s/<ns id="//g;
-	#$namespaces =~ s/" canonical="/\t/g;
-	#$namespaces =~ s/ canonical="/\t/g;
-	#$namespaces =~ s/">/\t/g;
-	#$namespaces =~ s/" \/>/\t\n/g;
-	#$namespaces =~ s/  //g;
-	#print "x".$namespaces."x\n";
-
-
-	my @namespaces_split = split( /\n/, $namespaces);
-	$namespaces_count = @namespaces_split;
-	#print $namespaces_count;
-	for (my $i = 0; $i < $namespaces_count; $i++) {
-
-		#print $i."\t".$namespaces_split[$i]."\n\n";
-		$namespaces_split[$i] =~ s/[ ]+$//g;
-
-		#<ns id="-1" canonical="Special">Spezial
-
-		#get id
-		my $pos1 = index($namespaces_split[$i],'id="') + length('id="');
-		my $pos2 = index($namespaces_split[$i],'"', $pos1);
-		my $id = substr($namespaces_split[$i], $pos1, $pos2 -$pos1);
-
-
-		#get canonical namspace name
-		$pos1 = index($namespaces_split[$i],'canonical="') + length('canonical="');
-		$pos2 = index($namespaces_split[$i],'"', $pos1);
-		my $canonical = substr($namespaces_split[$i], $pos1, $pos2 -$pos1);
-
-		#get namespace name
-		$pos1 = index($namespaces_split[$i],'>') + length('>');
-		my $name = substr($namespaces_split[$i], $pos1);
-
-
-		$namespaces_split[$i] = $id."\t".$canonical."\t".$name;
-		#print $namespaces_split[$i]."\n";
-
-		my @splitter = split( /\t/, $namespaces_split[$i]);
-		if ( $namespaces_split[$i] =~ /^0/) {
-			$namespace[$i][0] = 0;
-		} else {
-			$namespace[$i][0] = int($splitter[0]);
-		}
-		$namespace[$i][1] = $splitter[2];
-		$namespace[$i][1] = '' if ($namespace[$i][0] == 0);
-		$namespace[$i][2] = $splitter[1];
-		$namespace[$i][2] = '' if ($namespace[$i][0] == 0);
-
-
-		if ($namespace[$i][0] == 6) {
-			# image
-			$namespace_image[0]	= $namespace[$i][1];
-			$namespace_image[1] = $namespace[$i][2];
-		}
-		if ($namespace[$i][0] == 10) {
-			# templates
-			$namespace_templates[0] = $namespace[$i][1];
-			$namespace_templates[1] = $namespace[$i][2] if ($namespace[$i][1] ne $namespace[$i][2]);
-		}
-		if ($namespace[$i][0] == 14) {
-			#category
-			$namespace_cat[0]	= $namespace[$i][1];
-			$namespace_cat[1] 	= $namespace[$i][2] if ($namespace[$i][1] ne $namespace[$i][2]);
-		}
-		#print $i."\t".$namespace[$i][0]."\t".$namespace[$i][1]."\t".$namespace[$i][1]."\n\n"
-	}
-
-
-
-	# namespacealiases
-
-	my $namespacealiases_text = '';
-	$pos1 = index($metatext,'<namespacealiases>') + length('<namespacealiases>');
-	$pos2 = index($metatext,'</namespacealiases>', $pos1);
-	$namespacealiases_text = substr($metatext, $pos1, $pos2 -$pos1);
-	#print $namespacealiases_text. "\n";
-	$namespacealiases_text =~ s/<\/ns>/\n/g;
-	$namespacealiases_text =~ s/<ns id="//g;
-	$namespacealiases_text =~ s/ xml:space="preserve"//g;
-	$namespacealiases_text =~ s/">/\t/g;
-	#print $namespacealiases_text. "\n";
-
-	my @namespacealiases_split = split( /\n/, $namespacealiases_text);
-	$namespacealiases_count = @namespacealiases_split;
-
-	#print $namespaces_count;
-	for (my $i = 0; $i < $namespacealiases_count; $i++) {
-		my @splitter = split( /\t/, $namespacealiases_split[$i]);
-		if ($splitter[0] eq '6') {
-			#aliasname for image
-			push(@namespace_image, $splitter[1]);
-		}
-		if ($splitter[0] eq '10') {
-			#aliasname for templates
-			push(@namespace_templates, $splitter[1]);
-		}
-		if ($splitter[0] eq '14') {
-			#aliasname for category
-			push(@namespace_cat, $splitter[1]);
-		}
-
-		#save all aliases
-		$namespacealiases[$i][0] = $splitter[0];
-		$namespacealiases[$i][1] = $splitter[1];
-		#print 'Namespacealiases: '.$namespacealiases[$i][0].','.$namespacealiases[$i][1]."\n";
-	}
-
-	#foreach (@namespace_image) {
-	#	print $_."\n";
-	#}
-	#print "\n";
-	#foreach (@namespace_cat) {
-	#	print $_."\n";
-	#}
-
-	#magicwords
-
-	@magicword_defaultsort          = get_magicword($metatext, 'defaultsort');
-	@magicword_img_thumbnail	= get_magicword($metatext, 'img_thumbnail');
-	@magicword_img_manualthumb	= get_magicword($metatext, 'img_manualthumb');
-	@magicword_img_right	 	= get_magicword($metatext, 'img_right');
-	@magicword_img_left		= get_magicword($metatext, 'img_left');
-	@magicword_img_none	 	= get_magicword($metatext, 'img_none');
-	@magicword_img_center		= get_magicword($metatext, 'img_center');
-	@magicword_img_framed		= get_magicword($metatext, 'img_framed');
-	@magicword_img_frameless	= get_magicword($metatext, 'img_frameless');
-	@magicword_img_page		= get_magicword($metatext, 'img_page');
-	@magicword_img_upright		= get_magicword($metatext, 'img_upright');
-	@magicword_img_border		= get_magicword($metatext, 'img_border');
-	@magicword_img_sub		= get_magicword($metatext, 'img_sub');
-	@magicword_img_super		= get_magicword($metatext, 'img_super');
-	@magicword_img_link		= get_magicword($metatext, 'img_link');
-	@magicword_img_alt		= get_magicword($metatext, 'img_alt');
-	@magicword_img_width		= get_magicword($metatext, 'img_width');
-	@magicword_img_baseline		= get_magicword($metatext, 'img_baseline');
-	@magicword_img_top		= get_magicword($metatext, 'img_top');
-	@magicword_img_text_top		= get_magicword($metatext, 'img_text_top');
-	@magicword_img_middle		= get_magicword($metatext, 'img_middle');
-	@magicword_img_bottom		= get_magicword($metatext, 'img_bottom');
-	@magicword_img_text_bottom	= get_magicword($metatext, 'img_text_bottom');
-
-	#foreach (@magicword_defaultsort) {
-	#	print $_."\n";
-	#}
-
-
-
-    #########################
-	# read statistic data
-    #########################
-	# for example pdcwiki (2013-02-15)
-	# <statistics pages="4847" articles="1818" edits="97339" images="159" users="12001" activeusers="16" admins="3" jobs="0" />
-	my $statistic_text =
-	$pos1 = index($metatext,'<statistics ') + length('<statistics ');
-	$pos2 = index($metatext,'/>', $pos1);
-	$statistic_text = substr($metatext, $pos1, $pos2 -$pos1);
-	my @statistic = split(/ /,$statistic_text);
-	foreach (@statistic) {
-		if ($_ =~ /^pages/) {
-			$statistic_online_page = $_;
-			$statistic_online_page =~ s/pages=//g;
-			$statistic_online_page =~ s/"//g;
-			$statistic_online_page =~ s/ //g;
-			two_column_display('pages online:', $statistic_online_page);
+		# Store special namespaces in convenient variables.
+		if ($id == 6) {
+			@namespace_image = ($name, $canonical);
+		} elsif ($id == 10) {
+			@namespace_templates = ($name);
+			push (@namespace_templates, $canonical) if ($name ne $canonical);
+		} elsif ($id == 14) {
+			@namespace_cat = ($name);
+			push (@namespace_cat, $canonical) if ($name ne $canonical);
 		}
 	}
 
+	# Namespace aliases.
+	foreach my $Node ($SiteInfo->findnodes (q!//api/query/namespacealiases/ns!)) {
+		my $id = $Node->getAttribute ('id');
+		my $name = $Node->textContent ();
+
+		if ($id == 6) {	  # Alias for image?
+			push (@namespace_image, $name);
+		} elsif ($id == 10) {	# Alias for template?
+			push (@namespace_templates, $name);
+		} elsif ($id == 14) {	# Alias for category?
+			push (@namespace_cat, $name);
+		}
+
+		# Store all aliases.
+		push (@namespacealiases, [$id, $name]);
+	}
+
+	# Magicwords.
+	@magicword_defaultsort	   = get_magicword ($SiteInfo, 'defaultsort');
+	@magicword_img_thumbnail   = get_magicword ($SiteInfo, 'img_thumbnail');
+	@magicword_img_manualthumb = get_magicword ($SiteInfo, 'img_manualthumb');
+	@magicword_img_right	   = get_magicword ($SiteInfo, 'img_right');
+	@magicword_img_left		   = get_magicword ($SiteInfo, 'img_left');
+	@magicword_img_none		   = get_magicword ($SiteInfo, 'img_none');
+	@magicword_img_center	   = get_magicword ($SiteInfo, 'img_center');
+	@magicword_img_framed	   = get_magicword ($SiteInfo, 'img_framed');
+	@magicword_img_frameless   = get_magicword ($SiteInfo, 'img_frameless');
+	@magicword_img_page		   = get_magicword ($SiteInfo, 'img_page');
+	@magicword_img_upright	   = get_magicword ($SiteInfo, 'img_upright');
+	@magicword_img_border	   = get_magicword ($SiteInfo, 'img_border');
+	@magicword_img_sub		   = get_magicword ($SiteInfo, 'img_sub');
+	@magicword_img_super	   = get_magicword ($SiteInfo, 'img_super');
+	@magicword_img_link		   = get_magicword ($SiteInfo, 'img_link');
+	@magicword_img_alt		   = get_magicword ($SiteInfo, 'img_alt');
+	@magicword_img_width	   = get_magicword ($SiteInfo, 'img_width');
+	@magicword_img_baseline	   = get_magicword ($SiteInfo, 'img_baseline');
+	@magicword_img_top		   = get_magicword ($SiteInfo, 'img_top');
+	@magicword_img_text_top	   = get_magicword ($SiteInfo, 'img_text_top');
+	@magicword_img_middle	   = get_magicword ($SiteInfo, 'img_middle');
+	@magicword_img_bottom	   = get_magicword ($SiteInfo, 'img_bottom');
+	@magicword_img_text_bottom = get_magicword ($SiteInfo, 'img_text_bottom');
+
+	# Read statistics.
+	$statistic_online_page = ($SiteInfo->findnodes (q!//api/query/statistics/@pages!)) [0]->getData ();
+	two_column_display('pages online:', $statistic_online_page);
 }
 
 sub get_magicword {
-	my $metatext = $_[0];
-	my $key = $_[1];
+	my ($SiteInfo, $key) = @_;
 	my @result;
 
-	my $pos1 = index( $metatext, '<magicword name="'.$key );
-	if ($pos1 > -1) {
-		my $pos2 = index( $metatext, '</magicword>', $pos1 );
-		my $part = substr ($metatext, $pos1, $pos2 + length('</magicword>') - $pos1);
-		#print $part."\n";
-		my @part_split = split ( '<alias>', $part );
-		shift (@part_split);
-		foreach (@part_split) {
-			#print $_."\n"
-			my $pos3 = index ($_, '</alias>');
-			my $alias = substr ($_, 0, $pos3);
-			#print $alias ."\n";
-			push (@result, $alias );
-		}
-		return(@result);
+	foreach my $Node ($SiteInfo->findnodes (q!//api/query/magicwords/magicword[@name = '! . $key . q!']/aliases/alias!)) {
+		push (@result, $Node->textContent ());
 	}
+
+	return @result;
 }
-
-
-
 
 sub get_next_page_from_dump{
 	#this function scan line after line from dump,
@@ -1700,23 +1482,6 @@ sub raw_text {
 	my  $result2  = '';
 	$result2 = $content2 if ($content2) ;
 
-	return($result2);
-}
-
-sub raw_text2 {
-	my $url = $_[0];
-
-	$url =~ s/&amp;/%26/g;			# Problem with & in title
-	$url =~ s/&#039;/'/g;			# Problem with apostroph in title
-
-	my $response2 ;
-	uri_escape($url);
-	my $ua2 = LWP::UserAgent->new;
-	$response2 = $ua2->get( $url );
-
-	my $content2 = $response2->content;
-	my  $result2  = '';
-	$result2 = $content2 if ($content2) ;
 	return($result2);
 }
 
@@ -2333,30 +2098,28 @@ sub delete_old_errors_in_db{
 	}
 }
 
-sub get_namespace{
-	# check the namespace of an article
-	# if here is an error then maybe it is a new namespace in this project; show sub load_metadata_from_file
-	if ( index( $title, ':' ) > -1) {
-		#print 'Get namespace for: '.$title."\n";
-		for (my $i = 0; $i < $namespaces_count; $i++) {
-			#print $i." ".$namespace[$i][0]." ".$namespace[$i][1]." ".$namespace[$i][2] ."\n" ;#if ($title eq 'Sjabloon:Gemeente');
-			$page_namespace = $namespace[$i][0] if ( index ($title, $namespace[$i][1].':') == 0);
-			$page_namespace = $namespace[$i][0] if ( index ($title, $namespace[$i][2].':') == 0);
+# Set the namespace ID of an article.
+sub get_namespace {
+	if ($title =~ '^([^:]+):') {
+		foreach my $Namespace (@namespace) {
+			if ($1 eq $Namespace->[1] || $1 eq $Namespace->[2]) {
+				$page_namespace = $Namespace->[0];
+
+				return;
+			}
 		}
 
-		#print $page_namespace."\n" ;#if ($title eq 'Sjabloon:Gemeente');
-		#print $namespacealiases_count."\n";
-		for (my $i = 0; $i < $namespacealiases_count; $i++) {
-			#print $i." ".$namespacealiases[$i][0]." ".$namespacealiases[$i][1] ."\n" ;#if ($title eq 'Sjabloon:Gemeente');
-			$page_namespace = $namespacealiases[$i][0] if ( index ($title, $namespacealiases[$i][1].':') == 0);
-		}
-		#print $page_namespace."\n" ;#if ($title eq 'Sjabloon:Gemeente');
-		$page_namespace = 0 if ($page_namespace == -100);
+		foreach my $NamespaceAlias (@namespacealiases) {
+			if ($1 eq $NamespaceAlias->[1]) {
+				$page_namespace = $NamespaceAlias->[0];
 
-	} else {
-		$page_namespace = 0;
+				return;
+			}
+		}
 	}
 
+    # If no namespace prefix or not found.
+	$page_namespace = 0;
 }
 
 
@@ -7692,8 +7455,7 @@ if (defined ($DumpFilename)) {
 	$dump_or_live = 'live';
 }
 
-read_and_write_metadata_from_url ();
-load_metadata_from_file ();
+ReadMetadata ();
 
 get_error_description()					if ($quit_program eq 'no');			# all errordescription from this script
 load_text_translation() 				if ($quit_program eq 'no');			# load translation from wikipage
