@@ -219,9 +219,6 @@ $akMonatstag = "0".$akMonatstag if ($akMonatstag<10);
 $akStunden 	= "0".$akStunden if ($akStunden<10);
 $akMinuten 	= "0".$akMinuten if ($akMinuten<10);
 
-
-our $translation_page = '';		# name of the page with translation for example in de:  "Wikipedia:WikiProject Check Wikipedia/Übersetzung"
-
 our $start_text = '';
 $start_text = $start_text ."The WikiProject '''Check Wikipedia''' will help to clean up the syntax of Wikipedia and to find some other errors.\n";
 $start_text = $start_text ."\n";
@@ -1436,58 +1433,49 @@ sub raw_text_more_articles {
 	return($result2);
 }
 
-
-
-####################################
-
-sub load_text_translation{
-
-	# Input of translation page
-
-	$translation_page = 'Wikipedia:WikiProject Check Wikipedia/Translation'  			if ($project eq 'afwiki') ;
-	$translation_page = 'ويكيبيديا:فحص_ويكيبيديا/ترجمة'  								if ($project eq 'arwiki') ;
-	$translation_page = 'Viquipèdia:WikiProject Check Wikipedia/Translation'  			if ($project eq 'cawiki') ;
-	$translation_page = 'Wikipedie:WikiProjekt Check Wikipedia/Translation'  			if ($project eq 'cswiki') ;
-	$translation_page = 'Commons:WikiProject Check Wikipedia/Translation'  				if ($project eq 'commonswiki') ;
-	$translation_page = 'Wicipedia:WikiProject Check Wikipedia/Translation'  			if ($project eq 'cywiki') ;
-	$translation_page = 'Wikipedia:WikiProjekt Check Wikipedia/Oversættelse'			if ($project eq 'dawiki') ;
-	$translation_page = 'Wikipedia:WikiProjekt Syntaxkorrektur/Übersetzung'				if ($project eq 'dewiki') ;
-	$translation_page = 'Wikipedia:WikiProjekt Syntaxkorrektur/Übersetzung'				if ($project eq 'dewiki_test') ;
-	$translation_page = 'Wikipedia:WikiProject Check Wikipedia/Translation'  			if ($project eq 'enwiki') ;
-	$translation_page = 'Projekto:Kontrolu Vikipedion/Tradukado'  						if ($project eq 'eowiki') ;
-	$translation_page = 'Wikiproyecto:Check Wikipedia/Translation'						if ($project eq 'eswiki') ;
-	$translation_page = 'Wikipedia:Wikiprojekti Check Wikipedia/Translation'  			if ($project eq 'fiwiki') ;
-	$translation_page = 'Projet:Correction syntaxique/Traduction'						if ($project eq 'frwiki') ;
-	$translation_page = 'Meidogger:Stefan Kühn/WikiProject Check Wikipedia/Translation' if ($project eq 'fywiki') ;
-	$translation_page = 'Wikipedia:WikiProject Check Wikipedia/Translation'  			if ($project eq 'hewiki') ;
-	$translation_page = 'Wikipédia:Ellenőrzőműhely/Fordítás'  							if ($project eq 'huwiki') ;
-	$translation_page = 'Wikipedia:ProyekWiki Cek Wikipedia/Terjemahan'  				if ($project eq 'idwiki') ;
-	$translation_page = 'Wikipedia:WikiProject Check Wikipedia/Translation'				if ($project eq 'iswiki') ;
-	$translation_page = 'Wikipedia:WikiProjekt Check Wikipedia/Translation'				if ($project eq 'itwiki') ;
-	$translation_page = 'プロジェクト:ウィキ文法のチェック/Translation'					if ($project eq 'jawiki') ;
-	$translation_page = 'Vicipaedia:WikiProject Check Wikipedia/Translation'  			if ($project eq 'lawiki') ;
-	$translation_page = 'Wikipedia:Wikiproject Check Wikipedia/Translation'				if ($project eq 'ndswiki') ;
-	$translation_page = 'Wikipedie:WikiProject Check Wikipedia/Translation'				if ($project eq 'nds_nlwiki') ;
-	$translation_page = 'Wikipedia:Wikiproject/Check Wikipedia/Vertaling'				if ($project eq 'nlwiki') ;
-	$translation_page = 'Wikipedia:WikiProject Check Wikipedia/Translation'				if ($project eq 'nowiki') ;
-	$translation_page = 'Wikipedia:WikiProject Check Wikipedia/Translation'				if ($project eq 'pdcwiki') ;
-	$translation_page = 'Wikiprojekt:Check Wikipedia/Tłumaczenie'						if ($project eq 'plwiki') ;
-	$translation_page = 'Wikipedia:Projetos/Check Wikipedia/Tradução'					if ($project eq 'ptwiki') ;
-	$translation_page = 'Википедия:Страницы с ошибками в викитексте/Перевод'			if ($project eq 'ruwiki') ;
-	$translation_page = 'Wikipedia:WikiProject Check Wikipedia/Translation'				if ($project eq 'rowiki') ;
-	$translation_page = 'Wikipédia:WikiProjekt Check Wikipedia/Translation'				if ($project eq 'skwiki') ;
-	$translation_page = 'Wikipedia:Projekt wikifiering/Syntaxfel/Translation'			if ($project eq 'svwiki') ;
-	$translation_page = 'Vikipedi:Vikipedi proje kontrolü/Çeviri'  						if ($project eq 'trwiki') ;
-	$translation_page = 'Вікіпедія:Проект:Check Wikipedia/Translation'  				if ($project eq 'ukwiki') ;
-	$translation_page = 'װיקיפּעדיע:קאנטראלירן_בלעטער/Translation'  					if ($project eq 'yiwiki') ;
-	$translation_page = '维基百科:错误检查专题/翻译'  											if ($project eq 'zhwiki') ;
-
+sub load_text_translation {
+	# Get title of translation page.
+	my %TranslationPages = ('afwiki'	  => 'Wikipedia:WikiProject Check Wikipedia/Translation',
+							'arwiki'	  => 'ويكيبيديا:فحص_ويكيبيديا/ترجمة',
+							'cawiki'	  => 'Viquipèdia:WikiProject Check Wikipedia/Translation',
+							'cswiki'	  => 'Wikipedie:WikiProjekt Check Wikipedia/Translation',
+							'commonswiki' => 'Commons:WikiProject Check Wikipedia/Translation',
+							'cywiki'	  => 'Wicipedia:WikiProject Check Wikipedia/Translation',
+							'dawiki'	  => 'Wikipedia:WikiProjekt Check Wikipedia/Oversættelse',
+							'dewiki'	  => 'Wikipedia:WikiProjekt Syntaxkorrektur/Übersetzung',
+							'enwiki'	  => 'Wikipedia:WikiProject Check Wikipedia/Translation',
+							'eowiki'	  => 'Projekto:Kontrolu Vikipedion/Tradukado',
+							'eswiki'	  => 'Wikiproyecto:Check Wikipedia/Translation',
+							'fiwiki'	  => 'Wikipedia:Wikiprojekti Check Wikipedia/Translation',
+							'frwiki'	  => 'Projet:Correction syntaxique/Traduction',
+							'fywiki'	  => 'Meidogger:Stefan Kühn/WikiProject Check Wikipedia/Translation',
+							'hewiki'	  => 'Wikipedia:WikiProject Check Wikipedia/Translation',
+							'huwiki'	  => 'Wikipédia:Ellenőrzőműhely/Fordítás',
+							'idwiki'	  => 'Wikipedia:ProyekWiki Cek Wikipedia/Terjemahan',
+							'iswiki'	  => 'Wikipedia:WikiProject Check Wikipedia/Translation',
+							'itwiki'	  => 'Wikipedia:WikiProjekt Check Wikipedia/Translation',
+							'jawiki'	  => 'プロジェクト:ウィキ文法のチェック/Translation',
+							'lawiki'	  => 'Vicipaedia:WikiProject Check Wikipedia/Translation',
+							'ndswiki'	  => 'Wikipedia:Wikiproject Check Wikipedia/Translation',
+							'nds_nlwiki'  => 'Wikipedie:WikiProject Check Wikipedia/Translation',
+							'nlwiki'	  => 'Wikipedia:Wikiproject/Check Wikipedia/Vertaling',
+							'nowiki'	  => 'Wikipedia:WikiProject Check Wikipedia/Translation',
+							'pdcwiki'	  => 'Wikipedia:WikiProject Check Wikipedia/Translation',
+							'plwiki'	  => 'Wikiprojekt:Check Wikipedia/Tłumaczenie',
+							'ptwiki'	  => 'Wikipedia:Projetos/Check Wikipedia/Tradução',
+							'ruwiki'	  => 'Википедия:Страницы с ошибками в викитексте/Перевод',
+							'rowiki'	  => 'Wikipedia:WikiProject Check Wikipedia/Translation',
+							'skwiki'	  => 'Wikipédia:WikiProjekt Check Wikipedia/Translation',
+							'svwiki'	  => 'Wikipedia:Projekt wikifiering/Syntaxfel/Translation',
+							'trwiki'	  => 'Vikipedi:Vikipedi proje kontrolü/Çeviri',
+							'ukwiki'	  => 'Вікіпедія:Проект:Check Wikipedia/Translation',
+							'yiwiki'	  => 'װיקיפּעדיע:קאנטראלירן_בלעטער/Translation',
+							'zhwiki'	  => '维基百科:错误检查专题/翻译');
+	my $translation_page = $TranslationPages {$project};
 	two_column_display('load translation of:', $translation_page) if (!$silent_modus);
 
-	my $translation_input = raw_text($translation_page);
-	$translation_input = replace_special_letters($translation_input);
-	#print $translation_input."\n";
-	#die;
+	my $translation_input = raw_text ($translation_page);
+	$translation_input = replace_special_letters ($translation_input);
 
 	my $input_text ='';
 	# start_text
@@ -1543,24 +1531,24 @@ sub load_text_translation{
 		#$error_description[$i][9]  = get_translation_text_XHTML($error_description[$i][5]);	# don't work
 		#$error_description[$i][10] = get_translation_text_XHTML($error_description[$i][6]);	# don't work
 	}
-
 }
 
 sub get_translation_text {
-	my $translation_text = $_[0];
-	my $start_tag = $_[1];
-	my $end_tag =$_[2];
-	my $pos_1 = index($translation_text, $start_tag);
-	my $pos_2 = index($translation_text, $end_tag, $pos_1);
-	my $result = '';
-	if ($pos_1 > -1 and $pos_2 > 0) {
-		$result = substr($translation_text, $pos_1, $pos_2 -$pos_1);
-		#print $result."\n";
-		$result = substr($result, index ($result, '=')+1);
+	my ($translation_text, $start_tag, $end_tag) = @_;
+
+	my $pos_1 = index ($translation_text, $start_tag);
+	my $pos_2 = index ($translation_text, $end_tag, $pos_1);
+
+	if ($pos_1 > - 1 && $pos_2 > 0) {
+		my $result = substr ($translation_text, $pos_1 + length ($start_tag), $pos_2 - $pos_1 - length ($start_tag));
+
 		$result =~ s/^ //g;
 		$result =~ s/ $//g;
+
+		return $result;
+	} else {
+		return '';
 	}
-	return ($result);
 }
 
 sub get_translation_text_XHTML{
