@@ -7167,50 +7167,34 @@ sub insert_into_db_table_tt {
 	# $sth->execute ($project, $page_id, $article, $template, $name, $number, $parameter, $value) or die ($dbh->errstr ());
 }
 
-sub text_reduce{
-	# this procedure reduce the input text to number of letters, but only with full words
-	my $input = $_[0];
-	my $number = $_[1];
-	my $output = '';
-	#print $input."\n";
-	if ( length($input) > $number) {
-		# text verkürzen
-		my $pos = index($input, ' ', $number);
-		$output = substr($input, 0, $pos);
-		#print $input."\n";
-		#print $output."\n";
+# Right trim string, but only to full words (result may be longer than
+# $Length characters).
+sub text_reduce {
+	my ($s, $Length) = @_;
 
+	if (length ($s) > $Length) {
+		return substr ($s, 0, index ($s, ' ', $Length));
 	} else {
-		$output = $input;
+		return $s;
 	}
-	#print $output."\n";
-	return($output);
 }
 
-sub text_reduce_to_end{
-	# this procedure reduce the input text to number of letters, but only with full words
-	my $input = $_[0];
-	my $number = $_[1];
-	my $output = '';
-	#print 'Input:'."\t".$input."\n\n";
-	#print 'Number:'."\t".$number."\n\n";
-	#print 'length:'."\t".length($input)."\n\n";
-	if ( length($input) > $number) {
-		# text verkürzen
-		my $pos = index($input, ' ', length($input)-$number);
-		#print 'Length:'."\t".length($input)."\n\n";
-		#print 'Pos:'."\t".$pos."\n\n";
-		$pos = length($input)-$number  if ($pos == -1);
-		$output = substr($input, $pos+1);
-		#print 'Input:'."\t".$input."\n\n";
-		#print 'Output:'."\t".$output."\n\n";
+# Left trim string merciless, but only to full words (result will
+# never be longer than $Length characters).
+sub text_reduce_to_end {
+	my ($s, $Length) = @_;
 
+	if (length ($s) > $Length) {
+		# Find first space in the last $Length characters of $s.
+		my $pos = index ($s, ' ', length ($s) - $Length);
+
+		# If there is no space, just take the last $Length characters.
+		$pos = length ($s) - $Length if ($pos == - 1);
+
+		return substr ($s, $pos + 1);
 	} else {
-		$output = $input;
+		return $s;
 	}
-	#print $output."\n\n";
-
-	return($output);
 }
 
 sub print_line {
