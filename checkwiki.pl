@@ -453,53 +453,38 @@ sub load_article_for_live_scan {
 	}
 }
 
-sub new_article{
-	my $new_counter = 0;
-	my $limit = $_[0];
+sub new_article {
+	my ($limit) = @_;
+
 	# oldest not scanned article
 	# select distinct title from cw_new where scan_live = 0 and project = 'dewiki' and daytime >= (select daytime from cw_new where scan_live = 0 and project = 'dewiki' order by daytime limit 1) order by daytime limit 250;
 
+	$for_statistic_new_article = 0;
 
-	my $sql_text = "select distinct title from cw_new where scan_live = 0 and project = '".$project."'  and daytime >= (select daytime from cw_new where scan_live = 0 and project = '".$project."' order by daytime limit 1) order by daytime limit ".$limit.";";
-	my $result = '';
-	my $sth = $dbh->prepare( $sql_text );
-	#print '<p class="smalltext"/>'.$sql_text."</p>\n";
-	$sth->execute;
-	while (my $arrayref = $sth->fetchrow_arrayref()) {
-		foreach(@$arrayref) {
-			$result = $_;
-		}
-		#print $result."\n";
-		push(@live_article, $result."\t".'0' );
-		$new_counter ++;
+	my $sth = $dbh->prepare ('SELECT DISTINCT Title FROM cw_new WHERE Scan_Live = 0 AND Project = ? AND Daytime >= (SELECT Daytime FROM cw_new WHERE Scan_Live = 0 AND Project = ? ORDER BY Daytime LIMIT 1) ORDER BY Daytime LIMIT ?;') or die ($dbh->errstr ());
+	$sth->execute ($project, $project, $limit) or die ($dbh->errstr ());
+	while (my $r = $sth->fetchrow_arrayref ()) {
+		push (@live_article, $r->[0] . "\t0");
+		$for_statistic_new_article++;
 	}
-	two_column_display('from db articles new:', $new_counter);
-	$for_statistic_new_article = $new_counter;
+	two_column_display ('from db articles new:', $for_statistic_new_article);
 }
 
+sub last_change_article {
+	my ($limit) = @_;
 
-sub last_change_article{
-	my $change_counter = 0;
-	my $limit = $_[0];
 	# oldest not scanned article
 	# select distinct title from cw_new where scan_live = 0 and project = 'dewiki' and daytime >= (select daytime from cw_new where scan_live = 0 and project = 'dewiki' order by daytime limit 1) order by daytime limit 250;
 
+	$for_statistic_last_change_article = 0;
 
-	my $sql_text = "select distinct title from cw_change where scan_live = 0 and project = '".$project."'  and daytime >= (select daytime from cw_change where scan_live = 0 and project = '".$project."' order by daytime limit 1) order by daytime limit ".$limit.";";
-	my $result = '';
-	my $sth = $dbh->prepare( $sql_text );
-	#print '<p class="smalltext"/>'.$sql_text."</p>\n";
-	$sth->execute;
-	while (my $arrayref = $sth->fetchrow_arrayref()) {
-		foreach(@$arrayref) {
-			$result = $_;
-		}
-		#print $result."\n";
-		push(@live_article, $result."\t".'0' );
-		$change_counter ++;
+	my $sth = $dbh->prepare ('SELECT DISTINCT Title FROM cw_change WHERE Scan_Live = 0 AND Project = ? AND Daytime >= (SELECT Daytime FROM cw_change WHERE Scan_Live = 0 AND Project = ? ORDER BY Daytime LIMIT 1) ORDER BY Daytime LIMIT ?;') or die ($dbh->errstr ());
+	$sth->execute ($project, $project, $limit) or die ($dbh->errstr ());
+	while (my $r = $sth->fetchrow_arrayref ()) {
+		push (@live_article, $r->[0] . "\t0");
+		$for_statistic_last_change_article++;
 	}
-	two_column_display('from db articles changed:', $change_counter);
-	our $for_statistic_last_change_article = $change_counter;
+	two_column_display ('from db articles changed:', $for_statistic_last_change_article);
 }
 
 
@@ -535,73 +520,50 @@ sub geo_error_article{
 	$for_statistic_geo_article = $geo_counter;
 }
 
-sub article_with_error_from_dump_scan{
+sub article_with_error_from_dump_scan {
 	my $database_dump_scan_counter = 0;
 	my $limit = 250;
 	# oldest not scanned article
 	# select distinct title from cw_new where scan_live = 0 and project = 'dewiki' and daytime >= (select daytime from cw_new where scan_live = 0 and project = 'dewiki' order by daytime limit 1) order by daytime limit 250;
 
-
-	my $sql_text = "select distinct title from cw_dumpscan where scan_live = 0 and project = '".$project."' limit ".$limit.";";
-	my $result = '';
-	my $sth = $dbh->prepare( $sql_text );
-	#print '<p class="smalltext"/>'.$sql_text."</p>\n";
-	$sth->execute;
-	while (my $arrayref = $sth->fetchrow_arrayref()) {
-		foreach(@$arrayref) {
-			$result = $_;
-		}
-		#print $result."\n";
-		push(@live_article, $result."\t".'0' );
-		$database_dump_scan_counter ++;
+	my $sth = $dbh->prepare ('SELECT DISTINCT Title FROM cw_dumpscan WHERE Scan_Live = 0 AND Project = ? LIMIT ?;') or die ($dbh->errstr ());
+	$sth->execute ($project, $limit) or die ($dbh->errstr ());
+	while (my $r = $sth->fetchrow_arrayref ()) {
+		push (@live_article, $r->[0] . "\t0");
+		$database_dump_scan_counter++;
 	}
 
-	two_column_display('from db articles (not scan live):', $database_dump_scan_counter);
+	two_column_display ('from db articles (not scan live):', $database_dump_scan_counter);
 	#print "\t".$database_dump_scan_counter."\t".'articles from dump (not scan live) from db'."\n";
 }
 
-
-
 sub get_done_article_from_database{
+	my ($limit) = @_;
+
 	my $database_ok_counter = 0;
-	my $limit = $_[0];
-	my $sql_text = " select title from cw_error where ok = 1 and project = '".$project."' limit ".$limit.";";
-	my $result = '';
-	my $sth = $dbh->prepare( $sql_text );
-	#print '<p class="smalltext"/>'.$sql_text."</p>\n";
-	$sth->execute;
-	while (my $arrayref = $sth->fetchrow_arrayref()) {
-		foreach(@$arrayref) {
-			$result = $_;
-		}
-		#print $result."\n";
-		push(@live_article, $result."\t".'0' );
-		$database_ok_counter ++;
+
+	my $sth = $dbh->prepare ('SELECT Title FROM cw_error WHERE Ok = 1 AND Project = ? LIMIT ?;') or die ($dbh->errstr ());
+	$sth->execute ($project, $limit) or die ($dbh->errstr ());
+	while (my $r = $sth->fetchrow_arrayref ()) {
+		push (@live_article, $r->[0] . "\t0");
+		$database_ok_counter++;
 	}
-	two_column_display('from db done articles:', $database_ok_counter);
+	two_column_display ('from db done articles:', $database_ok_counter);
 }
 
 sub get_oldest_article_from_database{
+	my ($limit) = @_;
+
 	my $database_ok_counter = 0;
-	my $limit = $_[0];
-	my $sql_text = " select title from cw_error where project = '".$project."' and DATEDIFF(now(),found) > 31 order by DATEDIFF(now(),found) desc limit ".$limit.";";
-	my $result = '';
-	my $sth = $dbh->prepare( $sql_text );
-	#print '<p class="smalltext"/>'.$sql_text."</p>\n";
-	$sth->execute;
-	while (my $arrayref = $sth->fetchrow_arrayref()) {
-		foreach(@$arrayref) {
-			$result = $_;
-		}
-		#print $result."\n";
-		push(@live_article, $result."\t".'0' );
-		$database_ok_counter ++;
+
+	my $sth = $dbh->prepare ('SELECT Title FROM cw_error WHERE Project = ? AND DATEDIFF(NOW(), Found) > 31 ORDER BY DATEDIFF(NOW(), Found) DESC LIMIT ?;') or die ($dbh->errstr ());
+	$sth->execute ($project, $limit) or die ($dbh->errstr ());
+	while (my $r = $sth->fetchrow_arrayref ()) {
+		push (@live_article, $r->[0] . "\t0");
+		$database_ok_counter++;
 	}
-	two_column_display('from db old articles:', $database_ok_counter);
+	two_column_display ('from db old articles:', $database_ok_counter);
 }
-
-
-############################################################################
 
 sub scan_pages{
 	# get the text of the next page
@@ -720,104 +682,77 @@ sub set_variables_for_article {
 }
 
 sub update_table_cw_error_from_dump {
-
 	if ($dump_or_live eq 'dump') {
 		print 'move all article from cw_dumpscan into cw_error'."\n";
 
-		my $sql_text;
-		my $sth;
-
-		$sql_text = "delete from cw_error where project = '".$project."';";
-		$sth = $dbh->prepare( $sql_text );
-		$sth->execute;
-
+		my $sth = $dbh->prepare ('DELETE FROM cw_error WHERE Project = ?;') or die ($dbh->errstr ());
+		$sth->execute ($project) or die ($dbh->errstr ());
 
 		#set @test = 'T%';
 		#insert into cw_error (select * from cw_dumpscan where project = 'nlwiki' and title like @test);
 		#delete from cw_dumpscan where project = 'nlwiki' and title like @test;
 
-		$sql_text = "insert into cw_error (select * from cw_dumpscan where project = '".$project."');";
-		$sth = $dbh->prepare( $sql_text );
-		$sth->execute;
+		$sth = $dbh->prepare ("INSERT INTO cw_error (SELECT * FROM cw_dumpscan WHERE Project = ?);") or die ($dbh->errstr ());
+		$sth->execute ($project) or die ($dbh->errstr ());
 
 		print 'delete all article from this project in cw_dumpscan'."\n";
-		$sql_text = "delete from cw_dumpscan where project = '".$project."';";
-		$sth = $dbh->prepare( $sql_text );
-		$sth->execute;
+		$sth = $dbh->prepare ("DELETE FROM cw_dumpscan WHERE Project = ?;") or die ($dbh->errstr ());
+		$sth->execute ($project) or die ($dbh->errstr ());
 	}
 }
 
-
-
 sub delete_deleted_article_from_db 	{
-	#delete all deleted article from database
-	my $sql_text2 = "delete from cw_error where ok = 1 and project = '".$project."' and found not like '%".substr(get_time_string(), 0, 7)."%';";
-	#print $sql_text2."\n";
-	my $sth = $dbh->prepare( $sql_text2 );
-	$sth->execute;
+	# Delete all deleted articles from database.
+
+	# FIXME: This doesn't look right.  This deletes all rows where
+	# Found is not in the same 10-day group as the current date.
+	# --tl, 2013-06-01
+	my $sth = $dbh->prepare ("DELETE FROM cw_error WHERE Ok = 1 AND Project = ? AND Found NOT LIKE CONCAT('%', ?, '%');") or die ($dbh->errstr ());
+	$sth->execute ($project, substr (get_time_string (), 0, 7)) or die ($dbh->errstr ());
 }
 
-sub delete_article_from_table_cw_new 	{
-	#delete all scanned or older then 7 days from this project
-	my $sql_text2 = "delete from cw_new where project = '".$project."' and (scan_live = 1 or DATEDIFF(now(),daytime) > 7);";
-	#print $sql_text2."\n";
-	my $sth = $dbh->prepare( $sql_text2 );
-	$sth->execute;
+sub delete_article_from_table_cw_new {
+	# Delete all scanned or older than 7 days from this project.
+	my $sth = $dbh->prepare ('DELETE FROM cw_new WHERE Project = ? AND (Scan_Live = 1 OR DATEDIFF(NOW(), Daytime) > 7);') or die ($dbh->errstr ());
+	$sth->execute ($project) or die ($dbh->errstr ());
 
-	#delete all articles from don't scan projects
-	my $sql_text3 = "delete from cw_new where DATEDIFF(now(),daytime) > 8;";
-	#print $sql_text2."\n";
-	$sth = $dbh->prepare( $sql_text3 );
-	$sth->execute;
+	# Delete all articles from don't scan projects.
+	$sth = $dbh->prepare ('DELETE FROM cw_new WHERE DATEDIFF(NOW(), Daytime) > 8;') or die ($dbh->errstr ());
+	$sth->execute () or die ($dbh->errstr ());
 }
 
-sub delete_article_from_table_cw_change 	{
-	#delete all scanned or older then 3 days from this project
-	my $sql_text2 = "delete from cw_change where project = '".$project."' and (scan_live = 1 or DATEDIFF(now(),daytime) > 3);";
-	#print $sql_text2."\n";
-	my $sth = $dbh->prepare( $sql_text2 );
-	$sth->execute;
+sub delete_article_from_table_cw_change {
+	# Delete all scanned or older than three days from this project.
+	my $sth = $dbh->prepare ('DELETE FROM cw_change WHERE Project = ? AND (Scan_Live = 1 OR DATEDIFF(NOW(), Daytime) > 3);') or die ($dbh->errstr ());
+	$sth->execute ($project) or die ($dbh->errstr ());
 
-	#delete all articles from don't scan projects
-	my $sql_text3 = "delete from cw_change where DATEDIFF(now(),daytime) > 8;";
-	$sth = $dbh->prepare( $sql_text3 );
-	$sth->execute;
+	# Delete all articles from don't scan projects.
+	$sth = $dbh->prepare ('DELETE FROM cw_change WHERE DATEDIFF(NOW(), Daytime) > 8;');
+	$sth->execute () or die ($dbh->errstr ());
 }
-
 
 sub update_table_cw_starter {
 	if ($starter_modus) {
-		print 'update_table_cw_starter'."\n"  if (!$silent_modus);
-		#print "\t".$error_counter."\t".'errors found'."\n";
+		print "update_table_cw_starter\n" if (!$silent_modus);
 		if ($error_counter > 0) {
-			#print '$page_number= '.$page_number."\n";
-			my $sql_text = '';
-			# how much was found
-			$sql_text = "update cw_starter set errors_done =errors_done +".$error_counter." where project ='".$project."';" if ($load_modus_done) ;
-			$sql_text = "update cw_starter set errors_new  =errors_new  +".$error_counter." where project ='".$project."';" if ($load_modus_new) ;
-			$sql_text = "update cw_starter set errors_dump =errors_dump +".$error_counter." where project ='".$project."';" if ($load_modus_dump) ;
-			$sql_text = "update cw_starter set errors_change =errors_change +".$error_counter." where project ='".$project."';" if ($load_modus_last_change) ;
-			$sql_text = "update cw_starter set errors_old =errors_old +".$error_counter." where project ='".$project."';" if ($load_modus_old) ;
-			#print $sql_text."\n";
-			my $sth = $dbh->prepare( $sql_text);
-			$sth->execute;
-
-			# for count of current run
-			$sql_text = "update cw_starter set current_run =".$error_counter." where project ='".$project."';";
-			#print $sql_text."\n";
-			$sth = $dbh->prepare( $sql_text);
-			$sth->execute;
-
-
-			if (!$load_modus_new && $load_modus_last_change) {
-				# was something change?
-				$sql_text = "update cw_starter set last_run_change = 'true' where project ='".$project."';";
-				#print $sql_text."\n";
-				$sth = $dbh->prepare( $sql_text );
-				$sth->execute;
-			}
+			my $sth = $dbh->prepare ('UPDATE cw_starter SET ' .
+									 'Errors_Done = Errors_Done + ?, ' .
+									 'Errors_New = Errors_New + ?, ' .
+									 'Errors_Dump = Errors_Dump + ?, ' .
+									 'Errors_Change = Errors_Change + ?, ' .
+									 'Errors_Old = Errors_Old + ?, ' .
+									 'Current_Run = ?, ' .
+									 'Last_Run_Change = IF(?, TRUE, Last_Run_Change) ' .
+									 'WHERE Project = ?);') or die ($dbh->errstr ());
+			$sth->execute ($load_modus_done ? $error_counter : 0,
+						   $load_modus_new ? $error_counter : 0,
+						   $load_modus_dump ? $error_counter : 0,
+						   $load_modus_last_change ? $error_counter : 0,
+						   $load_modus_old ? $error_counter : 0,
+						   $error_counter,
+						   !$load_modus_new && $load_modus_last_change,
+						   $project);
 		}
-
 	}
 }
 
@@ -1963,16 +1898,11 @@ sub print_article_title_every_x{
 	}
 }
 
-sub delete_old_errors_in_db{
-	# delete article in database
-	#print $page_id."\t".$title."\n";
-	if ( $dump_or_live eq 'live'
-		 and $page_id
-		 and $title ne '' ) {
-		my $sql_text = "delete from cw_error where error_id = ". $page_id." and  project = '". $project."';";
-		#print $sql_text."\n\n";
-		my $sth = $dbh->prepare( $sql_text );
-		$sth->execute;
+# Delete article in database.
+sub delete_old_errors_in_db {
+	if ($dump_or_live eq 'live' && $page_id && $title ne '') {
+		my $sth = $dbh->prepare ('DELETE FROM cw_error WHERE Error_ID = ? AND Project = ?;') or die ($dbh->errstr ());
+		$sth->execute ($page_id, $project) or die ($dbh->errstr ());
 	}
 }
 
