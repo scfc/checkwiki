@@ -344,18 +344,8 @@ our $end_of_live = 'no';				# when last article from live scan then 'yes', else 
 
 our $statistic_online_page = -1;		# number of pages online from metadata-statistic
 
-sub get_time_string{
-	my ($aakSekunden, $aakMinuten, $aakStunden, $aakMonatstag, $aakMonat,
-	    $aakJahr, $aakWochentag, $aakJahrestag, $aakSommerzeit) = localtime(time);
-	$aakMonat 	= $aakMonat + 1;
-	$aakJahr 	= $aakJahr + 1900;
-	$aakMonat   	= "0".$aakMonat if ($aakMonat<10);
-	$aakMonatstag = "0".$aakMonatstag if ($aakMonatstag<10);
-	$aakStunden 	= "0".$aakStunden if ($aakStunden<10);
-	$aakMinuten 	= "0".$aakMinuten if ($aakMinuten<10);
-	$aakSekunden    = "0".$aakSekunden if ($aakSekunden<10);
-	my $result = $aakJahr.$aakMonat.$aakMonatstag.' '.$aakStunden.$aakMinuten.$aakSekunden;
-	return($result);
+sub get_time_string {
+	return strftime ('%Y%m%d %H%M%S', localtime ());
 }
 
 sub open_db{
