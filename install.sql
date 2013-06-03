@@ -2,14 +2,14 @@
 
 -- $ mysql -htools-db < install.sql
 
--- To use it in other environments, p50380g50450__checkwiki needs to
+-- To use it in other environments, p50380g50450__checkwiki_p needs to
 -- be replaced with the name of the user database.
 
 -- Create Checkwiki database.
-CREATE DATABASE IF NOT EXISTS p50380g50450__checkwiki;
+CREATE DATABASE IF NOT EXISTS p50380g50450__checkwiki_p;
 
 -- Connect to database.
-USE p50380g50450__checkwiki;
+USE p50380g50450__checkwiki_p;
 
 -- Table cw_project.
 CREATE TABLE IF NOT EXISTS cw_project
