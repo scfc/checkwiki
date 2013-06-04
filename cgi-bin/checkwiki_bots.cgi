@@ -143,43 +143,10 @@ sub show_usage{
 
 
 # Connect to database
-sub connect_database{
+sub connect_database {
 	my $dbh;
-	# load password for database
-	open(PWD, "</home/sk/.mytop");
-	my $password = '';
-	do {
-		my $test = <PWD>;
-		if ($test =~ /^pass=/ ) {
-			$password = $test;
-			$password =~ s/^pass=//g;
-			$password =~ s/\n//g;
-		}
-	}
-	while (eof(PWD) != 1);
-	close(PWD);
 
-	my $hostname = `hostname`;		# check PC-name
-	if ( $hostname =~ 'kunopc') {
-		$dbh = DBI->connect('DBI:mysql:u_sk_yarrow',							# local 
-							'sk',
-							$password ,
-							{
-							  RaiseError => 1,
-							  AutoCommit => 1
-							} 
-						  ) or die "Database connection not made: $DBI::errstr" . DBI->errstr;
-	} else {					  
-		$dbh = DBI->connect('DBI:mysql:u_sk_yarrow:host=sql',				    # Toolserver
-							'sk',
-							$password ,
-							{
-							  RaiseError => 1,
-							  AutoCommit => 1
-							} 
-						  ) or die "Database connection not made: $DBI::errstr" . DBI->errstr;
-	}	
+	$dbh = DBI->connect ('DBI:mysql:database=p50380g50450__checkwiki_p;host=tools-db;mysql_read_default_group=client;mysql_read_default_file=' . (getpwuid ($<)) [7] . '/.my.cnf', undef, undef, { RaiseError => 1, AutoCommit => 1 }) or die ("Database connection not made: " . DBI::errstr ());
 
-	$password = '';
-	return ($dbh);
+	return $dbh;
 }

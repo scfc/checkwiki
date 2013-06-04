@@ -38,65 +38,14 @@ giving this error message and the time and date of the error.');
 # sudo cat /var/log/apache2/access.log
 # sudo cat /var/log/apache2/error.log
 
+# Connect to database.
+sub connect_database {
+	my $dbh;
 
+	$dbh = DBI->connect ('DBI:mysql:database=p50380g50450__checkwiki_p;host=tools-db;mysql_read_default_group=client;mysql_read_default_file=' . (getpwuid ($<)) [7] . '/.my.cnf', undef, undef, { RaiseError => 1, AutoCommit => 1 }) or die ("Database connection not made: " . DBI::errstr ());
 
-
-###################################
-# Connect to database u_sk
-###################################
-
-sub connect_database{
-	my $dbh ;
-	# load password for database
-	open(PWD, "</home/sk/.mytop");
-	my $password = '';
-	do {
-		my $test = <PWD>;
-		if ($test =~ /^pass=/ ) {
-			$password = $test;
-			$password =~ s/^pass=//g;
-			$password =~ s/\n//g;
-		}
-	}
-	while (eof(PWD) != 1);
-	close(PWD);
-
-	my $hostname = `hostname`;		# check PC-name
-	#print $hostname ."\n";
-	if ( $hostname =~ 'kunopc'){
-		$dbh = DBI->connect( 'DBI:mysql:u_sk_yarrow',							# local 
-							'sk',
-							$password ,
-							{
-							  RaiseError => 1,
-							  AutoCommit => 1
-							} 
-						  ) or die "Database connection not made: $DBI::errstr" . DBI->errstr;
-	} else {					  
-		$dbh = DBI->connect( 'DBI:mysql:u_sk_yarrow:host=sql',				    # Toolserver
-							'sk',
-							$password ,
-							{
-							  RaiseError => 1,
-							  AutoCommit => 1
-							} 
-						  ) or die "Database connection not made: $DBI::errstr" . DBI->errstr;
-	}	
-
-	$password = '';
-	return ($dbh);
-
-	# to-do: no disconnect 
-	# not necessary http://stackoverflow.com/questions/5325036/dbi-disconnect-question?rq=1
-	#END {
- 	#   $dbh->disconnect or die $DBI::errstr if $dbh;
-	#	}
-
+	return $dbh;
 }
-
-
-
-
 
 ########################################################
 # get environment-variables
@@ -629,7 +578,7 @@ sub get_number_of_ok_over_all{
 sub get_projects{
 	# List all projects at homepage
 	my $dbh = connect_database();
-	my $sql_text = " select id, project, errors, done, lang, project_page, translation_page, last_update, date(last_dump) , diff_1, diff_7 from cw_overview order by project; ";
+	my $sql_text = " select id, project, errors, done, lang, project_page, translation_page, last_update, date(last_dump) , Project_Page, Translation_Page from cw_overview order by project; ";
 	my $sth = $dbh->prepare( $sql_text )  ||  die "Problem with statement: $DBI::errstr\n";
 	#print '<p class="smalltext"/>'.$sql_text."</p>\n";					  
 	$sth->execute or die $sth->errstr; # here the SQL will execute at the database
