@@ -5,7 +5,7 @@ AC_CONFIG_MACRO_DIR([m4])
 AM_INIT_AUTOMAKE([foreign no-dist color-tests parallel-tests silent-rules -Wall])
 AC_PROG_INSTALL
 
-AX_PROG_PERL_MODULES([CGI DBI Encode Getopt::Long LWP::UserAgent Text::ParseWords::shellwords URI::Escape],
+AX_PROG_PERL_MODULES([CGI DBI Encode Getopt::Long LWP::UserAgent URI::Escape],
                      [],
                      [AC_MSG_ERROR(Perl module requirements unfulfilled)])
 
