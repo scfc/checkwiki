@@ -26,6 +26,7 @@ our $VERSION = '2013-02-15';
 # Load modules.
 
 use DBI;
+use File::Temp;
 use Getopt::Long qw(GetOptionsFromString :config bundling no_auto_abbrev no_ignore_case);
 use LWP::UserAgent;
 use POSIX qw(strftime);
@@ -158,7 +159,7 @@ our $for_statistic_number_of_articles_with_error = 0;
 our $error_list_filename 			= 'error_list.txt';
 our $translation_file   			= 'translation.txt';
 our $error_geo_list_filename 		= 'error_geo_list.txt';
-our $templatetiger_filename			= '';
+my $TTFile;
 
 our @inter_list = ( 'af', 'als', 'an', 'ar',
 					'bg', 'bs',
@@ -2820,7 +2821,7 @@ sub get_templates{
 		) {
 
 		print $output if ($details_for_page eq 'yes');
-		print TEMPLATETIGER $output;
+		$TTFile->print ($output);
 
 		# new in tt-table of database
 		# for (my $i = 0; $i <=$number_of_template_parts; $i++) {
@@ -7231,9 +7232,13 @@ if (defined ($DumpFilename)) {
 	open (DUMP, '-|', 'bzcat', '-q', $DumpFilename) or
 		die ("Couldn't open dump file '$DumpFilename'");
 
-	# Templatetiger.
-	open (TEMPLATETIGER, '>', $TTFilename . '.work') or
-		die ("Couldn't open Templatetiger work file '$TTFilename.work'");
+	# Open Templatetiger file.
+	if (!($TTFile = File::Temp->new (DIR	  => $ENV {'HOME'} . '/var/tmp',
+									 TEMPLATE => $project . '-' . $dump_date_for_output . '-XXXX',
+									 SUFFIX	  => '.txt',
+									 UNLINK	  => 0))) {
+		die ("Couldn't open temporary file for Templatetiger");
+	}
 } else {
 	$dump_or_live = 'live';
 	load_article_for_live_scan ();
@@ -7256,11 +7261,13 @@ $dbh->do ('UPDATE cw_project SET Last_Dump = ? WHERE Project = ?;', undef, $dump
 # Close files.
 if (defined ($DumpFilename)) {
 	close (DUMP);
-	close (TEMPLATETIGER);
 
-	if (!rename ($TTFilename . '.work', $TTFilename)) {
-		die ("Couldn't rename Templatetiger work file '$TTFilename.work' to '$TTFilename'");
+	# Move Templatetiger file to spool.
+	$TTFile->close () or die ($!);
+	if (!rename ($TTFile->filename (), $TTFilename)) {
+		die ("Couldn't rename temporary Templatetiger file from " . $TTFile->filename () . ' to ' . $TTFilename);
 	}
+	undef ($TTFile);
 }
 
 update_table_cw_error_from_dump()		if ($quit_program eq 'no');
