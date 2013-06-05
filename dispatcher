@@ -1,0 +1,67 @@
+#!/usr/bin/perl -w
+
+# This file is part of Check Wikipedia.
+
+# Check Wikipedia is free software: you can redistribute it and/or
+# modify it under the terms of the GNU General Public License as
+# published by the Free Software Foundation, either version 3 of the
+# License, or (at your option) any later version.
+
+# Check Wikipedia is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+
+use strict;
+use warnings;
+
+use DBI;
+
+# Find the latest dump for a given project or undef if there is none.
+sub FindLatestDump {
+	my ($Project) = @_;
+
+	my @Filenames = </public/datasets/public/$Project/*/$Project-*-pages-articles.xml.bz2>;
+	if (!@Filenames) {
+		return undef;
+	}
+
+	if ($Filenames [- 1] !~ m!/public/datasets/public/\Q$Project\E/((\d{4})(\d{2})(\d{2}))*/\Q$Project\E-\1-pages-articles.xml.bz2!) {
+		die ("Couldn't parse filename '" . $Filenames [- 1] . "'");
+	}
+
+	return ($2 . '-' . $3 . '-' . $4, $Filenames [- 1]);
+}
+
+# We don't take arguments.
+die ("Usage: $0\n") unless (!@ARGV);
+
+# Connect to database.
+my $DB = DBI->connect ('DBI:mysql:database=p50380g50450__checkwiki_p;host=tools-db;mysql_read_default_group=client;mysql_read_default_file=' . $ENV {'HOME'} . '/.my.cnf', undef, undef, { AutoCommit => 0, PrintError => 0 }) or die (DBI::errstr ());
+
+# Iterate over all projects.
+my $s = $DB->prepare ('SELECT Project, Last_Dump FROM cw_project;') || die ($DB->errstr ());
+$s->execute () || die ($DB->errstr ());
+$s->bind_columns (\ (my $Project, my $Last_Dump));
+while ($s->fetchrow_arrayref ()) {
+	my ($LatestDumpDate, $LatestDumpFilename) = FindLatestDump ($Project);
+	if (!defined ($Last_Dump) || $Last_Dump ne $LatestDumpDate) {
+		system ('jsub',
+				'-j', 'y',
+				'-mem', '512m',
+				'-N', 'dumpmuncher-' . $Project,
+				'-o', $ENV {'HOME'} . '/var/log',
+				'-once',
+				'checkwiki.pl',
+				'-c', $ENV {'HOME'} . '/checkwiki.cfg',
+				'-p', $Project,
+				'--dumpfile', $LatestDumpFilename,
+				'--tt-file', $ENV {'HOME'} . '/var/spool/templatetiger/' . $Project . '-' . $LatestDumpDate . '.txt');
+	}
+}
+
+# Disconnect from database;
+$DB->disconnect () or die ($DB->errstr ());
