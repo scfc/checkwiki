@@ -7215,21 +7215,17 @@ if (!$silent_modus) {
 
 open_db ();   # Connect to database.
 
+my $dump_date_for_output;
 if (defined ($DumpFilename)) {
 	$dump_or_live = 'dump';
 
 	# Get date from dump filename.
-	my $dump_date_for_output = $DumpFilename;
+	$dump_date_for_output = $DumpFilename;
 	$dump_date_for_output =~ s/^(?:.*\/)?\Q$project\E-(\d{4})(\d{2})(\d{2})-pages-articles\.xml\.bz2$/$1-$2-$3/ or
 		die ("Couldn't extract date from dump filename '$DumpFilename'");
 
-	# Update time of last dump for project in database.
-	my $sth = $dbh->prepare ('UPDATE cw_project SET Last_Dump = ? WHERE Project = ?;') or die ($dbh->errstr ());
-	$sth->execute ($dump_date_for_output, $project) or die ($dbh->errstr ());
-
 	# Delete old list of articles from last dump scan in table cw_dumpscan.
-	$sth = $dbh->prepare ('DELETE FROM cw_dumpscan WHERE Project = ?;') or die ($dbh->errstr ());
-	$sth->execute ($project) or die ($dbh->errstr ());
+	$dbh->do ('DELETE FROM cw_dumpscan WHERE Project = ?;', undef, $project) or die ($dbh->errstr ());
 
 	# Read dump file from pipe.
 	open (DUMP, '-|', 'bzcat', '-q', $DumpFilename) or
@@ -7253,6 +7249,9 @@ output_errors_desc_in_db() 				if ($quit_program eq 'no');			# update the databa
 # output_text_translation_wiki ();   # Output the new wikipage for translation.
 
 scan_pages ();   # Scan articles.
+
+# Update date of last dump for project in database.
+$dbh->do ('UPDATE cw_project SET Last_Dump = ? WHERE Project = ?;', undef, $dump_date_for_output, $project) or die ($dbh->errstr ());
 
 # Close files.
 if (defined ($DumpFilename)) {
