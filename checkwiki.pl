@@ -35,7 +35,8 @@ use URI::Escape;
 use XML::LibXML;
 use Data::Dumper;
 
-binmode(STDOUT, ":utf8");
+binmode( STDOUT, ":encoding(UTF-8)" );  # PRINT OUTPUT IN UTF-8.  ARTICLE TITLES
+                                        # ARE IN UTF-8
 
 our $output_directory = '/mnt/user-store/sk/data/checkwiki/';
 our $output_geo       = '/mnt/user-store/sk/data/geo/';
@@ -114,11 +115,11 @@ our $DbUsername;
 our $DbPassword;
 
 # MediaWiki::DumpFile variables
-our $pmwd = Parse::MediaWikiDump->new;
-our $pages = '';
+our $pmwd      = Parse::MediaWikiDump->new;
+our $pages     = '';
 our $file_size = 0;
-our $artcount = 0;
-our $start = time;
+our $artcount  = 0;
+our $start     = time;
 
 # Wiki-special variables
 
@@ -205,87 +206,16 @@ $akMonatstag = "0" . $akMonatstag if ( $akMonatstag < 10 );
 $akStunden   = "0" . $akStunden if ( $akStunden < 10 );
 $akMinuten   = "0" . $akMinuten if ( $akMinuten < 10 );
 
-our $start_text = '';
-$start_text = $start_text
-  . "The WikiProject '''Check Wikipedia''' will help to clean up the syntax of Wikipedia and to find some other errors.\n";
-$start_text = $start_text . "\n";
-$start_text = $start_text
-  . "'''Betatest''' - At the moment the script has some bugs and not every error on this page is an actual error. \n";
-$start_text = $start_text . "\n";
-
-our $description_text = '';
-$description_text =
-  $description_text . "== Project description in English == \n";
-
-$description_text =
-  $description_text . "* '''What is the goal of this project?'''\n";
-$description_text = $description_text
-  . "** This project should help to clean up the data of all articles in many different languages.\n";
-$description_text = $description_text
-  . "** If we have a clear and clean syntax in all articles more projects (for example: Wikipedia-DVD) can use our data more easily.\n";
-$description_text = $description_text
-  . "** The project was inspired by [[:en:Wikipedia:WikiProject Wiki Syntax]].\n";
-$description_text = $description_text
-  . "** In order to use the data of a Wikipedia project without the Mediawiki software you need to write a parser. If many articles include wrong syntax it is difficult to program the parser since it needs to be complex enough to recognize the syntax errors.\n";
-$description_text = $description_text
-  . "** This project helps to find many errors in all kinds of language and will support many languages in the future. \n";
-$description_text = $description_text . "\n";
-
-$description_text = $description_text . "* '''How does it work?'''\n";
-$description_text = $description_text
-  . "** The script scans every new [http://dumps.wikimedia.org dump] and creates a list of articles with errors.\n";
-$description_text = $description_text
-  . "** The script scans all articles on the list on a daily basis to create a new list for users, omitting already-corrected articles.\n";
-$description_text =
-    $description_text
-  . "** The script is written in Perl by: [[:de:User:Stefan Kühn|Stefan Kühn]] "
-  . "\n";
-$description_text =
-    $description_text
-  . "** You can download the script [http://toolserver.org/~sk/checkwiki/checkwiki.pl here]. It is licensed under GPL."
-  . "\n";
-$description_text =
-    $description_text
-  . "** [[:de:User:Stefan Kühn/Check Wikipedia|New features, last changes and discussion]]. "
-  . "\n";
-$description_text = $description_text . "\n";
-
-$description_text = $description_text . "* '''What can you do?'''\n";
-$description_text = $description_text
-  . "** The script creates a new error page at the toolserver every day. Please copy and paste the daily updated page at the toolserver (See downloads) to this page here. Attention: That page is a UTF-8 document. In case your browser cannot display the file in UTF-8 you can copy it into a text editor (for example: Notepad++) and convert it to UTF-8. \n";
-$description_text =
-  $description_text . "** You can fix an error in one or more articles. \n";
-$description_text =
-  $description_text . "** You can delete all fixed articles from this list. \n";
-$description_text = $description_text
-  . "** If all articles in one category have been fixed you can delete this category. \n";
-$description_text = $description_text
-  . "** You can suggest a new category of errors to the author of the script. \n";
-$description_text = $description_text
-  . "** You can also inform the author if you want this project to be implemented into your language's Wikipedia. \n";
-$description_text = $description_text . "\n";
-
-$description_text = $description_text . "* '''Please don't… '''\n";
-$description_text = $description_text
-  . "** insert an article by hand since it will disappear from the list with the next automatic update of this page. \n";
-$description_text = $description_text
-  . "** try to fix spelling mistakes within this page since all manual changes will disappear as well with the next update. Instead, send an e-mail or message to the author so he can fix the spelling in the script. \n";
-$description_text = $description_text . "\n";
-
-our $category_text = '';
-
-our $top_priority_script     = 'Top priority';
-our $top_priority_project    = '';
-our $middle_priority_script  = 'Middle priority';
-our $middle_priority_project = '';
-our $lowest_priority_script  = 'Lowest priority';
-our $lowest_priority_project = '';
+our $top_priority_script    = 'Top priority';
+our $middle_priority_script = 'Middle priority';
+our $lowest_priority_script = 'Lowest priority';
 
 our $dbh;    # DatenbaaseHandler
 
 ###############################
 # variables for one article
 ###############################
+
 $page_number = $page_number + 1;
 our $title         = '';    # title of the current article
 our $page_id       = -1;    # page id of the current article
@@ -371,12 +301,6 @@ sub get_time_string {
 
 sub open_db {
 
-    # Database configuration.
-    my $DbName = 'p50380g50450__checkwiki_p';
-    my $DbServer = 'tools-db';
-    my $DbUsername = 'p50380g50450';
-    my $DbPassword = 'zahgetumataefeex';
-    
     $dbh = DBI->connect(
         'DBI:mysql:'
           . $DbName
@@ -389,7 +313,7 @@ sub open_db {
         }
     ) or die( "Could not connect to database: " . DBI::errstr() . "\n" );
 
-    return();
+    return ();
 }
 
 ###########################################################################
@@ -400,51 +324,11 @@ sub close_db {
 
     $dbh->disconnect();
 
-    return();
+    return ();
 }
 
 ###########################################################################
-## CHECK OUT THE ERROR DESCRIPTION OF ALL POSSIBLE ERRORS 
-###########################################################################
-
-sub get_error_description {
-
-    print_line();
-    two_column_display( 'load:', 'all error description from script' );
-    error_list('get_description');
-
-    # count the number of error description
-
-    $number_of_error_description = 1;    # first error is error with number 1
-    while ( defined( $error_description[$number_of_error_description][1] ) ) {
-
-#print $number_of_error_description.' '. $error_description[$number_of_error_description][1]."\n";
-        $number_of_error_description = $number_of_error_description + 1;
-    }
-
-    # set all known error description to a basic level
-    for ( my $i = 1 ; $i <= $number_of_error_description ; $i++ ) {
-
-        #$error_description[$i][0] = -1;				# set in error
-        #$error_description[$i][1] = '';				# set in error
-        #$error_description[$i][2] = '';				# set in error
-        $error_description[$i][3]  = 0;
-        $error_description[$i][4]  = -1;
-        $error_description[$i][5]  = '';
-        $error_description[$i][6]  = '';
-        $error_description[$i][7]  = 0;
-        $error_description[$i][8]  = 0;
-        $error_description[$i][9]  = '';
-        $error_description[$i][10] = '';
-
-    }
-    my $output_number = $number_of_error_description - 1;
-    two_column_display( 'error description:', $output_number . ' in script' );
-
-}
-
-###########################################################################
-## LOAD ARTICLW FOR LIVE SCAN 
+## LOAD ARTICLE FOR LIVE SCAN
 ###########################################################################
 
 sub load_article_for_live_scan {
@@ -503,11 +387,11 @@ sub load_article_for_live_scan {
         die('No articles in scan list for live');
     }
 
-    return();
+    return ();
 }
 
 ###########################################################################
-## NEW ARTICLE 
+## NEW ARTICLE
 ###########################################################################
 
 sub new_article {
@@ -550,7 +434,7 @@ sub last_change_article {
 }
 
 ###########################################################################
-## 
+##
 ###########################################################################
 
 sub geo_error_article {
@@ -566,9 +450,9 @@ sub geo_error_article {
 
         #if existing
         #print 'file exist'."\n";
-        open( INPUT_GEO, "<$file_input_geo" );
+        open( my $input_geo, "<", $file_input_geo );
         do {
-            my $line = <INPUT_GEO>;
+            my $line = <$input_geo>;
             if ($line) {
                 $line =~ s/\n$//g;
                 my @split_line = split( /\t/, $line );
@@ -578,8 +462,8 @@ sub geo_error_article {
                     $geo_counter++;
                 }
             }
-        } until ( eof(INPUT_GEO) == 1 );
-        close(INPUT_GEO);
+        } until ( eof($input_geo) == 1 );
+        close($input_geo);
     }
     two_column_display( 'from file articles geo:', $geo_counter );
     print ' (no file: ' . $file_geo . ' )' if not( -e $file_input_geo );
@@ -588,7 +472,7 @@ sub geo_error_article {
 }
 
 ###########################################################################
-## 
+##
 ###########################################################################
 
 sub article_with_error_from_dump_scan {
@@ -630,7 +514,7 @@ sub get_done_article_from_database {
 }
 
 ###########################################################################
-## 
+##
 ###########################################################################
 
 sub get_oldest_article_from_database {
@@ -650,7 +534,7 @@ sub get_oldest_article_from_database {
 }
 
 ###########################################################################
-## 
+##
 ###########################################################################
 
 sub scan_pages {
@@ -664,74 +548,53 @@ sub scan_pages {
 
     my $page = '';
 
-    do {
-        if ( $dump_or_live eq 'dump' ) {
-           if (defined($page=$pages->next)) { # IF HAVEN'T REACHED END OF DUMP
-               if ($page->namespace eq '') {  # IF PAGE IS IN ARTICLE NAMESPACE
-                 set_variables_for_article();
-                 $title = ($page->title);
-                 $text = ${$page->text};
-                 $text = replace_special_letters($text);
-                 $page_namespace = 0;
-               }
-           }
-           else {
-               $end_of_dump = 'yes';
-           }
-            
+    if ( $dump_or_live eq 'dump' ) {
+        while ( defined( $page = $pages->next ) || $end_of_dump eq 'no' ) {
+            next unless $page->namespace eq '';
+            update_ui() if ++$artcount % 500 == 0;
+            set_variables_for_article();
+            $page_namespace = 0;
+
+            $title = case_fixer( $page->title );
+            $text  = ${ $page->text };
+            check_article();
+            $end_of_dump = 'yes' if ( $artcount > 10000 );
         }
-        else {
+    }
+    elsif ( $dump_or_live eq 'live' ) {
+        do {
             set_variables_for_article();
             get_next_page_from_live();
-        }
+            check_article();
+          } until (
+            $end_of_live eq 'yes'
 
-        if (
-                $end_of_dump eq 'no'
-            and $end_of_live eq 'no'
-            and not( $title =~ /\.js$/
-                or $title =~ /\.css$/ )
-          )
-        {
-            update_ui() if ++$artcount % 500 == 0;
-            check_article();    #Main check routine
-        }
-        else {
-            if (   $end_of_dump eq 'yes'
-                or $end_of_live eq 'yes' )
-            {
-                print 'articles scan finish' . "\n\n" if ( !$silent_modus );
+              #or $page_number > 2000
+              #or ($error_counter > 10000 and $project ne 'dewiki')
+              #or $page_id  > 7950
+              #or ($error_counter > 40000)
+          );
+    }
 
-            }
-            else {
-                print 'no check in article:' . "\t\t" . $title . "\n";
-            }
-        }
-      } until (
-        $end_of_dump eq 'yes'
-        or $end_of_live eq 'yes'
-        or $page_number > 2000
+    print 'articles scan finish' . "\n\n" if ( !$silent_modus );
 
-        #or $page_id  > 7950
-        #or  ($error_counter > 10000 and $project ne 'dewiki')
-        #or ($error_counter > 40000)
-        or ( $error_counter > 40000 and $dump_or_live eq 'live' )
-      );
 }
 
 sub update_ui {
     my $seconds = time - $start;
-    my $bytes = $pages->current_byte;
+    my $bytes   = $pages->current_byte;
 
-    print  "  ", pretty_number($artcount), " articles; ";
-    print  pretty_bytes($bytes), " processed; ";
+    print "  ", pretty_number($artcount), " articles; ";
+    print pretty_bytes($bytes), " processed; ";
 
-    if (defined($file_size)) {
-      my $percent = int($bytes / $file_size * 100);
+    if ( defined($file_size) ) {
+        my $percent = int( $bytes / $file_size * 100 );
 
-      print "$percent% completed\n";
-    } else {
-      my $bytes_per_second = int($bytes / $seconds);
-      print  pretty_bytes($bytes_per_second), " per second\n";
+        print "$percent% completed\n";
+    }
+    else {
+        my $bytes_per_second = int( $bytes / $seconds );
+        print pretty_bytes($bytes_per_second), " per second\n";
     }
 }
 
@@ -744,20 +607,21 @@ sub pretty_number {
     return $number;
 
 }
+
 sub pretty_bytes {
     my ($bytes) = @_;
     my $pretty = int($bytes) . ' bytes';
 
-    if (($bytes = $bytes / 1024) > 1) {
-      $pretty = int($bytes) . ' kilobytes';
+    if ( ( $bytes = $bytes / 1024 ) > 1 ) {
+        $pretty = int($bytes) . ' kilobytes';
     }
 
-    if (($bytes = $bytes / 1024) > 1) {
-      $pretty = sprintf("%0.2f", $bytes) . ' megabytes';
+    if ( ( $bytes = $bytes / 1024 ) > 1 ) {
+        $pretty = sprintf( "%0.2f", $bytes ) . ' megabytes';
     }
 
-    if (($bytes = $bytes / 1024) > 1) {
-      $pretty = sprintf("%0.4f", $bytes) . ' gigabytes';
+    if ( ( $bytes = $bytes / 1024 ) > 1 ) {
+        $pretty = sprintf( "%0.4f", $bytes ) . ' gigabytes';
     }
 
     return ($pretty);
@@ -767,17 +631,18 @@ sub case_fixer {
     my ($title) = @_;
 
     #check for namespace
-    if ($title =~ /^(.+?):(.+)/) {
-      $title = $1 . ':' . ucfirst($2);
-    } else {
-      $title = ucfirst($title);
+    if ( $title =~ /^(.+?):(.+)/ ) {
+        $title = $1 . ':' . ucfirst($2);
+    }
+    else {
+        $title = ucfirst($title);
     }
 
     return ($title);
 }
 
 ###########################################################################
-## 
+##
 ###########################################################################
 
 sub set_variables_for_article {
@@ -877,7 +742,7 @@ sub update_table_cw_error_from_dump {
 }
 
 ###########################################################################
-## 
+##
 ###########################################################################
 
 sub delete_deleted_article_from_db {
@@ -914,7 +779,7 @@ sub delete_article_from_table_cw_new {
 }
 
 ###########################################################################
-## 
+##
 ###########################################################################
 
 sub delete_article_from_table_cw_change {
@@ -932,7 +797,7 @@ sub delete_article_from_table_cw_change {
 }
 
 ###########################################################################
-## 
+##
 ###########################################################################
 
 sub update_table_cw_starter {
@@ -1100,7 +965,7 @@ sub ReadMetadata {
 }
 
 ###########################################################################
-## 
+##
 ###########################################################################
 
 sub get_magicword {
@@ -1488,7 +1353,7 @@ sub get_all_error_with_type {
 }
 
 ###########################################################################
-## 
+##
 ###########################################################################
 
 sub replace_special_letters {
@@ -1559,7 +1424,7 @@ sub raw_text {
 }
 
 ###########################################################################
-## 
+##
 ###########################################################################
 
 sub raw_text_more_articles {
@@ -1589,446 +1454,6 @@ sub raw_text_more_articles {
     my $result2  = '';
     $result2 = $content2 if ($content2);
     return ($result2);
-}
-
-###########################################################################
-## 
-###########################################################################
-
-sub load_text_translation {
-
-    # Get title of translation page.
-    my %TranslationPages = (
-        'afwiki' => 'Wikipedia:WikiProject Check Wikipedia/Translation',
-        'arwiki' => 'ويكيبيديا:فحص_ويكيبيديا/ترجمة',
-        'cawiki' => 'Viquipèdia:WikiProject Check Wikipedia/Translation',
-        'cswiki' => 'Wikipedie:WikiProjekt Check Wikipedia/Translation',
-        'commonswiki' => 'Commons:WikiProject Check Wikipedia/Translation',
-        'cywiki'      => 'Wicipedia:WikiProject Check Wikipedia/Translation',
-        'dawiki'      => 'Wikipedia:WikiProjekt Check Wikipedia/Oversættelse',
-        'dewiki'      => 'Wikipedia:WikiProjekt Syntaxkorrektur/Übersetzung',
-        'enwiki'      => 'Wikipedia:WikiProject Check Wikipedia/Translation',
-        'eowiki'      => 'Projekto:Kontrolu Vikipedion/Tradukado',
-        'eswiki'      => 'Wikiproyecto:Check Wikipedia/Translation',
-        'fiwiki'      => 'Wikipedia:Wikiprojekti Check Wikipedia/Translation',
-        'frwiki'      => 'Projet:Correction syntaxique/Traduction',
-        'fywiki' =>
-          'Meidogger:Stefan Kühn/WikiProject Check Wikipedia/Translation',
-        'hewiki' => 'Wikipedia:WikiProject Check Wikipedia/Translation',
-        'huwiki' => 'Wikipédia:Ellenőrzőműhely/Fordítás',
-        'idwiki' => 'Wikipedia:ProyekWiki Cek Wikipedia/Terjemahan',
-        'iswiki' => 'Wikipedia:WikiProject Check Wikipedia/Translation',
-        'itwiki' => 'Wikipedia:WikiProjekt Check Wikipedia/Translation',
-        'jawiki' =>
-          'プロジェクト:ウィキ文法のチェック/Translation',
-        'lawiki'     => 'Vicipaedia:WikiProject Check Wikipedia/Translation',
-        'ndswiki'    => 'Wikipedia:Wikiproject Check Wikipedia/Translation',
-        'nds_nlwiki' => 'Wikipedie:WikiProject Check Wikipedia/Translation',
-        'nlwiki'     => 'Wikipedia:Wikiproject/Check Wikipedia/Vertaling',
-        'nowiki'     => 'Wikipedia:WikiProject Check Wikipedia/Translation',
-        'pdcwiki'    => 'Wikipedia:WikiProject Check Wikipedia/Translation',
-        'plwiki'     => 'Wikiprojekt:Check Wikipedia/Tłumaczenie',
-        'ptwiki'     => 'Wikipedia:Projetos/Check Wikipedia/Tradução',
-        'ruwiki' =>
-'Википедия:Страницы с ошибками в викитексте/Перевод',
-        'rowiki' => 'Wikipedia:WikiProject Check Wikipedia/Translation',
-        'skwiki' => 'Wikipédia:WikiProjekt Check Wikipedia/Translation',
-        'svwiki' => 'Wikipedia:Projekt wikifiering/Syntaxfel/Translation',
-        'trwiki' => 'Vikipedi:Vikipedi proje kontrolü/Çeviri',
-        'ukwiki' =>
-          'Вікіпедія:Проект:Check Wikipedia/Translation',
-        'yiwiki' =>
-          'װיקיפּעדיע:קאנטראלירן_בלעטער/Translation',
-        'zhwiki' => '维基百科:错误检查专题/翻译'
-    );
-    my $translation_page = $TranslationPages{$project};
-    two_column_display( 'load translation of:', $translation_page )
-      if ( !$silent_modus );
-
-    my $translation_input = raw_text($translation_page);
-    $translation_input = replace_special_letters($translation_input);
-
-    my $input_text = '';
-
-    # start_text
-    $input_text =
-      get_translation_text( $translation_input, 'start_text_' . $project . '=',
-        'END' );
-    $start_text = $input_text if ( $input_text ne '' );
-
-    # description_text
-    $input_text = get_translation_text( $translation_input,
-        'description_text_' . $project . '=', 'END' );
-    $description_text = $input_text if ( $input_text ne '' );
-
-    # category_text
-    $input_text =
-      get_translation_text( $translation_input, 'category_001=', 'END' );
-    $category_text = $input_text if ( $input_text ne '' );
-
-    # priority
-    $input_text = get_translation_text( $translation_input,
-        'top_priority_' . $project . '=', 'END' );
-    $top_priority_project = $input_text if ( $input_text ne '' );
-    $input_text = get_translation_text( $translation_input,
-        'middle_priority_' . $project . '=', 'END' );
-    $middle_priority_project = $input_text if ( $input_text ne '' );
-    $input_text = get_translation_text( $translation_input,
-        'lowest_priority_' . $project . '=', 'END' );
-    $lowest_priority_project = $input_text if ( $input_text ne '' );
-
-    # find error description
-    for ( my $i = 1 ; $i < $number_of_error_description ; $i++ ) {
-        my $current_error_number = 'error_';
-        $current_error_number = $current_error_number . '0' if ( $i < 10 );
-        $current_error_number = $current_error_number . '0' if ( $i < 100 );
-        $current_error_number = $current_error_number . $i;
-
-        #print $i, $current_error_number."\n";
-
-        # Priority
-        $error_description[$i][4] = get_translation_text( $translation_input,
-            $current_error_number . '_prio_' . $project . '=', 'END' );
-
-        #print "x".$error_description[$i][4]."x"."\n";
-        if ( $error_description[$i][4] ne '' ) {
-
-            # if a translation was found
-            $error_description[$i][4] = int( $error_description[$i][4] );
-        }
-        else {
-            # if no translation was found
-            $error_description[$i][4] = $error_description[$i][0];
-        }
-        if ( $error_description[$i][4] == -1 ) {
-
-            # in project unkown then use prio from script
-            $error_description[$i][4] = $error_description[$i][0];
-        }
-
-   #print $i."\t".$error_description[$i][0]."\t".$error_description[$i][4]."\n";
-
-        $error_description[$i][5] = get_translation_text( $translation_input,
-            $current_error_number . '_head_' . $project . '=', 'END' );
-        $error_description[$i][6] = get_translation_text( $translation_input,
-            $current_error_number . '_desc_' . $project . '=', 'END' );
-
-#$error_description[$i][9]  = get_translation_text_XHTML($error_description[$i][5]);	# don't work
-#$error_description[$i][10] = get_translation_text_XHTML($error_description[$i][6]);	# don't work
-    }
-}
-
-###########################################################################
-##
-###########################################################################
-
-sub get_translation_text {
-    my ( $translation_text, $start_tag, $end_tag ) = @_;
-
-    my $pos_1 = index( $translation_text, $start_tag );
-    my $pos_2 = index( $translation_text, $end_tag, $pos_1 );
-
-    if ( $pos_1 > -1 && $pos_2 > 0 ) {
-        my $result = substr(
-            $translation_text,
-            $pos_1 + length($start_tag),
-            $pos_2 - $pos_1 - length($start_tag)
-        );
-
-        $result =~ s/^ //g;
-        $result =~ s/ $//g;
-
-        return $result;
-    }
-    else {
-        return '';
-    }
-}
-
-###########################################################################
-##
-###########################################################################
-
-sub get_translation_text_XHTML {
-
-    # don't work today
-
-# use Wikipedia-API to get XHTML from Wikitext
-# http://www.mediawiki.org/wiki/API:Parsing_wikitext#parse
-# http://en.wikipedia.org/w/api.php?action=parse&text=%5B%5Bfoo%5D%5D%20%5B%5BAPI:Query|bar%5D%5D%20%5Bhttp://www.example.com/%20baz%5D
-
-    my $translation_text = $_[0];
-    my $xhtml_text       = '';
-    print 'Translation=' . $translation_text . "\n";
-    if ( $translation_text ne '' ) {
-        my $url = '';
-        $url = $home;
-        $url =~ s/\/wiki\//\/w\//;
-        $url = $url . 'api.php?action=parse&text=' . $translation_text;
-
-        print 'URL=' . $url . "\n";
-        my $response;
-        my $ua = LWP::UserAgent->new;
-        $response = $ua->get($url);
-        my $content = $response->content;
-        $xhtml_text = $content if ($content);
-
-        # only text, delete all other
-        my $pos = index( $xhtml_text, 'text xml:space=' );
-        $xhtml_text = substr( $xhtml_text, $pos );
-        $pos = index( $xhtml_text, '</span>' ) + length('</span>');
-        $xhtml_text = substr( $xhtml_text, $pos );
-        $pos = index( $xhtml_text, '>&lt;/text&gt;</span>' );
-        $xhtml_text = substr( $xhtml_text, 0, $pos );
-        $pos = index( $xhtml_text, '<span' );
-        $xhtml_text = substr( $xhtml_text, 0, $pos );
-
-        # convert
-        $xhtml_text =~ s/&amp;/&/g;
-        $xhtml_text =~ s/&lt;/</g;
-        $xhtml_text =~ s/&gt;/>/g;
-        $xhtml_text =~ s/&quot;/>/g;
-        $xhtml_text =~ s/&amp;/&/g;
-        $xhtml_text =~ s/&lt;/</g;
-        $xhtml_text =~ s/&gt;/>/g;
-        $xhtml_text =~ s/&quot;/>/g;
-
-        #$xhtml_text =~ s/&quot;/"/g;
-        #$xhtml_text =~ s/&#039;/'/g;
-
-    }
-    print 'XHTML=' . $xhtml_text . "\n";
-    return ($xhtml_text);
-}
-
-###########################################################################
-##
-###########################################################################
-
-sub output_errors_desc_in_db {
-
-    #if ($load_modus_done and $dump_or_live eq 'live') {
-    two_column_display( 'Update descripton in DB:',
-        'insert new and update old error description' )
-      if ( !$silent_modus );
-
-    # mysql> desc cw_error_desc;
-    # +-----------------+---------------+------+-----+---------+-------+
-    # | Field           | Type          | Null | Key | Default | Extra |
-    # +-----------------+---------------+------+-----+---------+-------+
-    # | project         | varchar(100)  | YES  |     | NULL    |       |
-    # | id              | int(8)        | YES  |     | NULL    |       |
-    # | prio            | int(4)        | YES  |     | NULL    |       |
-    # | name            | varchar(255)  | YES  |     | NULL    |       |
-    # | text            | varchar(4000) | YES  |     | NULL    |       |
-    # | name_html       | varchar(255)  | YES  |     | NULL    |       |
-    # | text_html       | varchar(4000) | YES  |     | NULL    |       |
-    # | name_wiki_trans | varchar(255)  | YES  |     | NULL    |       |
-    # | text_wiki_trans | varchar(4000) | YES  |     | NULL    |       |
-    # | name_html_trans | varchar(255)  | YES  |     | NULL    |       |
-    # | text_html_trans | varchar(4000) | YES  |     | NULL    |       |
-    # +-----------------+---------------+------+-----+---------+-------+
-
-    for ( my $i = 1 ; $i < $number_of_error_description ; $i++ ) {
-        my $sql_headline = $error_description[$i][1];
-        $sql_headline =~ s/'/\\'/g;
-        my $sql_desc = $error_description[$i][2];
-        $sql_desc =~ s/'/\\'/g;
-        $sql_desc = substr( $sql_desc, 0, 3999 );    # max 4000
-        my $sql_headline_trans = $error_description[$i][5];
-        $sql_headline_trans =~ s/'/\\'/g;
-        my $sql_desc_trans = $error_description[$i][6];
-        $sql_desc_trans =~ s/'/\\'/g;
-        $sql_desc = substr( $sql_desc_trans, 0, 3999 );    # max 4000
-
-        # insert or update error
-        my $sql_text2 = "update cw_error_desc
-			set prio=" . $error_description[$i][4] . ",
-			name='" . $sql_headline . "' ,
-			text='" . $sql_desc . "',
-			name_trans='" . $sql_headline_trans . "' ,
-			text_trans='" . $sql_desc_trans . "'
-			where id = " . $i . "
-			and  project = '" . $project . "'
-			;";
-
-        #print $sql_text2."\n" if ($i == 18 or $i ==67 or $i ==91);
-        my $sth = $dbh->prepare($sql_text2);
-        my $x   = $sth->execute;
-        if ( $x eq '1' ) {
-
-            #print 'Update '.$x.' rows'."\n";
-        }
-        else {
-            two_column_display( 'new error:', 'description insert into db' );
-            $sql_text2 =
-"insert into cw_error_desc (project, id, prio, name, text, name_trans, text_trans)
-							values ('"
-              . $project . "', "
-              . $i . ", "
-              . $error_description[$i][4] . ", '"
-              . $sql_headline . "' ,'"
-              . $sql_desc . "',
-							'" . $sql_headline_trans . "' ,'" . $sql_desc_trans . "' );";
-
-            # print $sql_text2."\n";
-            $sth = $dbh->prepare($sql_text2);
-            $sth->execute;
-
-        }
-
-    }
-
-    #}
-}
-
-###########################################################################
-##
-###########################################################################
-
-sub output_text_translation_wiki {
-
-    # Output of translation-file
-    my $filename =
-      $output_directory . $project . '/' . $project . '_' . $translation_file;
-    two_column_display( 'Output translation text to:',
-        $project . '_' . $translation_file )
-      if ( !$silent_modus );
-    open( TRANSLATION, ">$filename" );
-
-    #######################################
-    print TRANSLATION '<pre>' . "\n";
-    print TRANSLATION
-      ' new translation text under http://toolserver.org/~sk/checkwiki/'
-      . $project . '/'
-      . " (updated daily) \n";
-
-    print TRANSLATION '#########################' . "\n";
-    print TRANSLATION '# metadata' . "\n";
-    print TRANSLATION '#########################' . "\n";
-
-    print TRANSLATION ' project=' . $project . " END\n";
-    print TRANSLATION ' category_001='
-      . $category_text
-      . " END  #for example: [[Category:Wikipedia]] \n";
-    print TRANSLATION "\n";
-
-    print TRANSLATION '#########################' . "\n";
-    print TRANSLATION '# start text' . "\n";
-    print TRANSLATION '#########################' . "\n";
-    print TRANSLATION "\n";
-    print TRANSLATION ' start_text_' . $project . '=' . $start_text . " END\n";
-
-    print TRANSLATION '#########################' . "\n";
-    print TRANSLATION '# description' . "\n";
-    print TRANSLATION '#########################' . "\n";
-    print TRANSLATION "\n";
-    print TRANSLATION ' description_text_'
-      . $project . '='
-      . $description_text
-      . " END\n";
-
-    print TRANSLATION '#########################' . "\n";
-    print TRANSLATION '# priority' . "\n";
-    print TRANSLATION '#########################' . "\n";
-    print TRANSLATION "\n";
-
-    print TRANSLATION ' top_priority_script=' . $top_priority_script . " END\n";
-    print TRANSLATION ' top_priority_'
-      . $project . '='
-      . $top_priority_project
-      . " END\n";
-    print TRANSLATION ' middle_priority_script='
-      . $middle_priority_script
-      . " END\n";
-    print TRANSLATION ' middle_priority_'
-      . $project . '='
-      . $middle_priority_project
-      . " END\n";
-    print TRANSLATION ' lowest_priority_script='
-      . $lowest_priority_script
-      . " END\n";
-    print TRANSLATION ' lowest_priority_'
-      . $project . '='
-      . $lowest_priority_project
-      . " END\n";
-    print TRANSLATION "\n";
-    print TRANSLATION " Please only translate the variables with …_"
-      . $project
-      . " at the end of the name. Not …_script= .\n";
-
-    ########################################
-#my $number_of_error_description = 1;
-#while  ($error_description[$number_of_error_description][1] ne '') {
-#print $number_of_error_description.' '. $error_description[$number_of_error_description][1]."\n";
-#	$number_of_error_description = $number_of_error_description + 1;
-#}
-#until ($error_description[$number_of_error_description][1] ne '');		# english Headline existed
-
-    my $number_of_error_description_output = $number_of_error_description - 1;
-    two_column_display( 'error description:',
-        $number_of_error_description_output . ' error description total' )
-      if ( !$silent_modus );
-
-    print TRANSLATION '#########################' . "\n";
-    print TRANSLATION '# error description' . "\n";
-    print TRANSLATION '#########################' . "\n";
-    print TRANSLATION '# prio = -1 (unknown)' . "\n";
-    print TRANSLATION '# prio = 0  (deactivated) ' . "\n";
-    print TRANSLATION '# prio = 1  (top priority)' . "\n";
-    print TRANSLATION '# prio = 2  (middle priority)' . "\n";
-    print TRANSLATION '# prio = 3  (lowest priority)' . "\n";
-    print TRANSLATION "\n";
-
-    for ( my $i = 1 ; $i < $number_of_error_description ; $i++ ) {
-
-        my $current_error_number = 'error_';
-        $current_error_number = $current_error_number . '0' if ( $i < 10 );
-        $current_error_number = $current_error_number . '0' . $i
-          if ( $i < 100 );
-        print TRANSLATION ' '
-          . $current_error_number
-          . '_prio_script='
-          . $error_description[$i][0]
-          . " END\n";
-        print TRANSLATION ' '
-          . $current_error_number
-          . '_head_script='
-          . $error_description[$i][1]
-          . " END\n";
-        print TRANSLATION ' '
-          . $current_error_number
-          . '_desc_script='
-          . $error_description[$i][2]
-          . " END\n";
-        print TRANSLATION ' '
-          . $current_error_number
-          . '_prio_'
-          . $project . '='
-          . $error_description[$i][4]
-          . " END\n";
-        print TRANSLATION ' '
-          . $current_error_number
-          . '_head_'
-          . $project . '='
-          . $error_description[$i][5]
-          . " END\n";
-        print TRANSLATION ' '
-          . $current_error_number
-          . '_desc_'
-          . $project . '='
-          . $error_description[$i][6]
-          . " END\n";
-        print TRANSLATION "\n";
-        print TRANSLATION
-'###########################################################################'
-          . "\n";
-        print TRANSLATION "\n";
-    }
-
-    print TRANSLATION '</pre>' . "\n";
-    close(TRANSLATION);
-
 }
 
 ###########################################################################
@@ -2226,6 +1651,7 @@ Verlag LANGEWIESCHE, ISBN-10: 3784551912 und ISBN-13: 9783784551913
     get_images();
     get_tables();
     get_gallery();
+
     #get_hiero();    #problem with <-- and --> (error 056)
     get_ref();
 
@@ -2234,6 +1660,7 @@ Verlag LANGEWIESCHE, ISBN-10: 3784551912 und ISBN-13: 9783784551913
     get_interwikis();
 
     create_line_array();
+
     #get_line_first_blank();
     get_headlines();
 
@@ -2274,7 +1701,7 @@ sub print_article_title_every_x {
 }
 
 ###########################################################################
-## DELETE ARTICLE IN DATABASE 
+## DELETE ARTICLE IN DATABASE
 ###########################################################################
 
 sub delete_old_errors_in_db {
@@ -2287,7 +1714,7 @@ sub delete_old_errors_in_db {
 }
 
 ###########################################################################
-## SET THE NAMESPACE ID OF AN ARTICLE 
+## SET THE NAMESPACE ID OF AN ARTICLE
 ###########################################################################
 
 sub get_namespace {
@@ -2314,7 +1741,7 @@ sub get_namespace {
 }
 
 ###########################################################################
-## 
+##
 ###########################################################################
 
 sub get_comments_nowiki_pre {
@@ -2445,7 +1872,7 @@ sub get_comments_nowiki_pre {
 }
 
 ###########################################################################
-## 
+##
 ###########################################################################
 
 sub get_next_pre {
@@ -2483,7 +1910,7 @@ sub get_next_pre {
 }
 
 ###########################################################################
-## 
+##
 ###########################################################################
 
 sub get_next_nowiki {
@@ -2512,7 +1939,7 @@ sub get_next_nowiki {
 }
 
 ###########################################################################
-## 
+##
 ###########################################################################
 
 sub get_next_comment {
@@ -2626,7 +2053,7 @@ sub get_math {
 }
 
 ###########################################################################
-## 
+##
 ###########################################################################
 
 sub get_source {
@@ -2679,7 +2106,7 @@ sub get_source {
 }
 
 ###########################################################################
-## 
+##
 ###########################################################################
 
 sub get_syntaxhighlight {
@@ -2733,7 +2160,7 @@ sub get_syntaxhighlight {
 }
 
 ###########################################################################
-## 
+##
 ###########################################################################
 
 sub get_code {
@@ -2780,7 +2207,7 @@ sub get_code {
 }
 
 ###########################################################################
-## 
+##
 ###########################################################################
 
 sub get_isbn {
@@ -3084,7 +2511,7 @@ sub check_isbn {
 }
 
 ###########################################################################
-## 
+##
 ###########################################################################
 
 sub get_templates {
@@ -3213,6 +2640,7 @@ sub get_templates {
 
             foreach (@template_split) {
                 $template_part = $template_part . $_;
+
                 #print "\t" . 'Test this templatepart: ' . $template_part . "\n"
                 #  if ( $details_for_page eq 'yes' );
 
@@ -3378,7 +2806,7 @@ sub get_templates {
 }
 
 ###########################################################################
-## 
+##
 ###########################################################################
 
 sub get_links {
@@ -3444,7 +2872,7 @@ sub get_links {
 }
 
 ###########################################################################
-## 
+##
 ###########################################################################
 
 sub get_images {
@@ -3642,7 +3070,7 @@ sub get_images {
 }
 
 ###########################################################################
-## 
+##
 ###########################################################################
 
 sub get_tables {
@@ -3702,7 +3130,7 @@ sub get_tables {
 }
 
 ###########################################################################
-## 
+##
 ###########################################################################
 
 sub get_gallery {
@@ -3832,7 +3260,7 @@ sub get_ref {
 }
 
 ###########################################################################
-## 
+##
 ###########################################################################
 
 sub check_for_redirect {
@@ -3844,7 +3272,7 @@ sub check_for_redirect {
 }
 
 ###########################################################################
-## 
+##
 ###########################################################################
 
 sub get_categories {
@@ -3956,7 +3384,7 @@ sub get_categories {
 }
 
 ###########################################################################
-## 
+##
 ###########################################################################
 
 sub get_interwikis {
@@ -4047,7 +3475,7 @@ sub get_interwikis {
 }
 
 ###########################################################################
-## 
+##
 ###########################################################################
 
 sub create_line_array {
@@ -4055,7 +3483,7 @@ sub create_line_array {
 }
 
 ###########################################################################
-## 
+##
 ###########################################################################
 
 sub get_line_first_blank {
@@ -4080,7 +3508,7 @@ sub get_line_first_blank {
 }
 
 ###########################################################################
-## 
+##
 ###########################################################################
 
 sub get_headlines {
@@ -4128,7 +3556,7 @@ sub error_check {
 }
 
 ###########################################################################
-## 
+##
 ###########################################################################
 
 sub error_list {
@@ -4234,22 +3662,13 @@ sub error_list {
 }
 
 ###########################################################################
-## 
+##
 ###########################################################################
 
 sub error_001_no_bold_title {
     my $error_code = 1;
     my $attribut   = $_[0];
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = -1;
-        $error_description[$error_code][1] = 'No bold title';
-        $error_description[$error_code][2] =
-            'This article has no bold title like <nowiki>'
-          . "'''Title'''"
-          . '</nowiki>.';
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
         if (    $page_namespace == 0
             and index( $text, "'''" ) == -1
             and $page_is_redirect eq 'no' )
@@ -4265,14 +3684,7 @@ sub error_002_have_br {
     my $error_code = 2;
     my $attribut   = $_[0];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 1;
-        $error_description[$error_code][1] =
-          'Article with false <nowiki><br/></nowiki>';
-        $error_description[$error_code][2] =
-'This article contains a <nowiki><br\></nowiki> or <nowiki><\br></nowiki> or <nowiki><br.></nowiki> but a <nowiki><br></br> or <br/></nowiki> tag is necessary in order to be correct XHTML-syntax (see [http://www.w3.org/TR/xhtml1/#h-4.6 1], [http://www.w3.org/TR/2006/REC-xml11-20060816/#sec-starttags 2]).';
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
         my $test      = 'no found';
         my $test_line = '';
 
@@ -4343,14 +3755,7 @@ sub error_003_have_ref {
     my $error_code = 3;
     my $attribut   = $_[0];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 2;
-        $error_description[$error_code][1] =
-'Article with <nowiki><ref></nowiki> and no <nowiki><references /></nowiki>';
-        $error_description[$error_code][2] =
-'This article has a <nowiki><ref></nowiki> and not a <nowiki><references /></nowiki>. This is not correct syntax.';
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
         if (   $page_namespace == 0
             or $page_namespace == 104 )
         {
@@ -4481,13 +3886,7 @@ sub error_004_have_html_and_no_topic {
     my $error_code = 4;
     my $attribut   = $_[0];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 2;
-        $error_description[$error_code][1] = 'Article with weblink';
-        $error_description[$error_code][2] =
-'This article has a weblink and not a headline (like "<nowiki>== Weblinks ==</nowiki>"). All weblinks should be in the linklist or list of references.';
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
         if (    ( $page_namespace == 0 or $page_namespace == 104 )
             and index( $text, 'http://' ) > -1
             and index( $text, '==' ) == -1
@@ -4508,13 +3907,7 @@ sub error_005_Comment_no_correct_end {
     my $attribut   = $_[0];
     my $comment    = $_[1];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 1;
-        $error_description[$error_code][1] = 'Comment not correct end';
-        $error_description[$error_code][2] =
-'Found a comment <nowiki>"<!--"</nowiki> with no <nowiki>"-->"</nowiki> end.';
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
         if (
             $comment ne ''
             and (  $page_namespace == 0
@@ -4533,21 +3926,15 @@ sub error_006_defaultsort_with_special_letters {
     my $error_code = 6;
     my $attribut   = $_[0];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 2;
-        $error_description[$error_code][1] = 'DEFAULTSORT with special letters';
-        $error_description[$error_code][2] =
-'Please don´t use special letters in the DEFAULTSORT (in ca: also in ORDENA).'
-          . "\n"
-          . '* in de: ä → a, ö → o, ü → u, ß → ss ' . "\n"
-          . '* in fi: ü → y, é → e, ß → ss, etc.' . "\n"
-          . '* in sv and fi is allowed ÅÄÖåäö' . "\n"
-          . '* in cs is allowed čďěňřšťžČĎŇŘŠŤŽ' . "\n"
-          . '* in da, no, nn is allowed ÆØÅæøå' . "\n"
-          . '* in ro is allowed ăîâşţ' . "\n"
-          . '* in ru: Ё → Е, ё → е' . "\n" . "\n";
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+
+    #* in de: ä → a, ö → o, ü → u, ß → ss
+    #* in fi: ü → y, é → e, ß → ss, etc.
+    #* in sv and fi is allowed ÅÄÖåäö
+    #* in cs is allowed čďěňřšťžČĎŇŘŠŤŽ
+    #* in da, no, nn is allowed ÆØÅæøå
+    #* in ro is allowed ăîâşţ
+    #* in ru: Ё → Е, ё → е
+    if ( $attribut eq 'check' ) {
 
         # {{DEFAULTSORT:Mueller, Kai}}
         # {{ORDENA:Alfons I}}
@@ -4633,13 +4020,7 @@ sub error_007_headline_only_three {
     my $error_code = 7;
     my $attribut   = $_[0];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 1;
-        $error_description[$error_code][1] = 'Headlines start with three "="';
-        $error_description[$error_code][2] =
-'The first headline start with <nowiki>"=== XY ==="</nowiki>. It should only be <nowiki>"== XY =="</nowiki>. See also error 083!';
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
 
         if ( $headlines[0]
             and ( $page_namespace == 0 or $page_namespace == 104 ) )
@@ -4667,13 +4048,7 @@ sub error_008_headline_start_end {
     my $error_code = 8;
     my $attribut   = $_[0];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 1;
-        $error_description[$error_code][1] = 'Headline should end with "="';
-        $error_description[$error_code][2] =
-          'A headline should end with an "=".';
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
         foreach (@headlines) {
             my $current_line  = $_;
             my $current_line1 = $current_line;
@@ -4693,15 +4068,6 @@ sub error_008_headline_start_end {
                     '<nowiki>' . $current_line . '</nowiki>' );
 
 #print "\t". $error_code."\t".$title."\t".'<nowiki>'.$current_line.'</nowiki>'."\n";
-
-                #if ($title eq '28 april'){
-                #	my $test_length = length($current_line);
-                #	for (my $i =0; $i<= $test_length; $i++) {
-                #		my $test_text = substr($current_line, $i, 1);
-                #		print $test_text."\t".ord($test_text)."\n";
-                #	}
-                #}
-
             }
         }
     }
@@ -4711,15 +4077,8 @@ sub error_009_more_then_one_category_in_a_line {
     my $error_code = 9;
     my $attribut   = $_[0];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 3;
-        $error_description[$error_code][1] = 'Categories more at one line';
-        $error_description[$error_code][2] =
-'There is more then one category at one line. Please write only one at one line. It is better to read.';
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
         my $error_line = '';
-        print $error_code. "\n" if ( $details_for_page eq 'yes' );
 
         foreach (@lines) {
             my $current_line = $_;
@@ -4752,13 +4111,7 @@ sub error_010_count_square_breaks {
     my $attribut   = $_[0];
     my $comment    = $_[1];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 1;
-        $error_description[$error_code][1] = 'Square brackets not correct end';
-        $error_description[$error_code][2] =
-'Different number of <nowiki>[[</nowiki> and <nowiki>]]</nowiki> brackets. If it is sourcecode then use <nowiki><source> or <code></nowiki>.';
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
         if (
             $comment ne ''
             and (  $page_namespace == 0
@@ -4778,13 +4131,7 @@ sub error_011_html_names_entities {
     my $error_code = 11;
     my $attribut   = $_[0];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 3;
-        $error_description[$error_code][1] = 'HTML named entities';
-        $error_description[$error_code][2] =
-'Find <tt>&a<code></code>uml;</tt> or <tt>&o<code></code>uml;</tt> or <tt>&u<code></code>uml;</tt>, <tt>&sz<code></code>lig;</tt> or other. Please use [[Unicode]] characters (äüöÄÜÖßåÅ…).';
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
         if (   $page_namespace == 0
             or $page_namespace == 6
             or $page_namespace == 104 )
@@ -4852,14 +4199,7 @@ sub error_012_html_list_elements {
     my $error_code = 12;
     my $attribut   = $_[0];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 3;
-        $error_description[$error_code][1] = 'HTML List elements';
-        $error_description[$error_code][2] =
-            'Article contains a <nowiki>"<ol>", "<ul>" or "<li>"</nowiki>. '
-          . "In most cases we can use simpler wiki markups in place of these HTML-like tags.";
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
         my $test      = 'no found';
         my $test_line = '';
         my $test_text = lc($text);
@@ -4908,13 +4248,7 @@ sub error_013_Math_no_correct_end {
     my $attribut   = $_[0];
     my $comment    = $_[1];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 1;
-        $error_description[$error_code][1] = 'Math not correct end';
-        $error_description[$error_code][2] =
-'Found a <nowiki>"<math>"</nowiki> but no <nowiki>"</math>"</nowiki>.';
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
         if ( $comment ne '' ) {
             error_register( $error_code, '<nowiki>' . $comment . '</nowiki>' );
 
@@ -4928,13 +4262,7 @@ sub error_014_Source_no_correct_end {
     my $attribut   = $_[0];
     my $comment    = $_[1];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 1;
-        $error_description[$error_code][1] = 'Source not correct end';
-        $error_description[$error_code][2] =
-'Found a <nowiki>"<source …>"</nowiki> but no <nowiki>"</source>"</nowiki>.';
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
         if ( $comment ne '' ) {
             error_register( $error_code, '<nowiki>' . $comment . '</nowiki>' );
 
@@ -4948,13 +4276,7 @@ sub error_015_Code_no_correct_end {
     my $attribut   = $_[0];
     my $comment    = $_[1];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 1;
-        $error_description[$error_code][1] = 'Code not correct end';
-        $error_description[$error_code][2] =
-'Found a <nowiki>"<code>"</nowiki> but no <nowiki>"</code>"</nowiki>.';
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
         if ( $comment ne '' ) {
             error_register( $error_code, '<nowiki>' . $comment . '</nowiki>' );
 
@@ -4967,14 +4289,7 @@ sub error_016_unicode_control_characters {
     my $error_code = 16;
     my $attribut   = $_[0];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 1;
-        $error_description[$error_code][1] =
-          'Template with Unicode control characters';
-        $error_description[$error_code][2] =
-'Find Unicode control characters <tt>&#x<code></code>FEFF;</tt> or <tt>&#x<code></code>200E;</tt> or <tt>&#x<code></code>200B;</tt> ([[:en:Left-to-right_mark]], [[:en:Right-to-left mark]], [[:en:Byte-order mark]]). This could be a problem inside a template. Copy the template in a texteditor (for example [[Notepad++]]), where you see the controle characters and delete this. Copy then this text back in the article.';
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
         if (   $page_namespace == 0
             or $page_namespace == 6
             or $page_namespace == 104 )
@@ -5010,13 +4325,7 @@ sub error_017_category_double {
     my $attribut   = $_[0];
     my $comment    = $_[1];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 2;
-        $error_description[$error_code][1] = 'Category double';
-        $error_description[$error_code][2] =
-          'In this article is a category double.';
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
 
         #print $title."\n" if ($page_number > 25000);;
         for ( my $i = 0 ; $i <= $category_counter - 1 ; $i++ ) {
@@ -5067,13 +4376,7 @@ sub error_018_category_first_letter_small {
     my $error_code = 18;
     my $attribut   = $_[0];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 0;
-        $error_description[$error_code][1] = 'Category first letter small';
-        $error_description[$error_code][2] =
-'The first letter of the category is small. It should be a big letter. If a user would scan a dump and he use the category then he will be very happy if all categories begin with a big letter.';
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
         if ( $project ne 'commonswiki' ) {
             for ( my $i = 0 ; $i <= $category_counter ; $i++ ) {
                 my $test_letter = substr( $category[$i][2], 0, 1 );
@@ -5092,13 +4395,7 @@ sub error_019_headline_only_one {
     my $error_code = 19;
     my $attribut   = $_[0];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 1;
-        $error_description[$error_code][1] = 'Headlines start with one "="';
-        $error_description[$error_code][2] =
-'The first headline start with <nowiki>"= XY ="</nowiki>. It should only <nowiki>"== XY =="</nowiki>.';
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
         if ( $headlines[0]
             and ( $page_namespace == 0 or $page_namespace == 104 ) )
         {
@@ -5116,13 +4413,7 @@ sub error_020_symbol_for_dead {
     my $error_code = 20;
     my $attribut   = $_[0];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 3;
-        $error_description[$error_code][1] = 'Symbol for dead';
-        $error_description[$error_code][2] =
-          'The article had a &dag<code></code>ger; and not †.';
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
         my $pos = index( $text, '&dagger;' );
         if ( $pos > -1
             and ( $page_namespace == 0 or $page_namespace == 104 ) )
@@ -5141,15 +4432,7 @@ sub error_021_category_is_english {
     my $error_code = 21;
     my $attribut   = $_[0];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 3;
-        $error_description[$error_code][1] = 'Category is english';
-        $error_description[$error_code][2] =
-            'The article had a category in english. It should renamed in "'
-          . $namespace_cat[0]
-          . ':ABC…". It is ok for the mediawiki software, but a new wikipedian maybe have a problem with the english language.';
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
         if (    $project ne 'enwiki'
             and $project ne 'commonswiki'
             and ( $page_namespace == 0 or $page_namespace == 104 )
@@ -5173,13 +4456,7 @@ sub error_022_category_with_space {
     my $error_code = 22;
     my $attribut   = $_[0];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 3;
-        $error_description[$error_code][1] = 'Category with space';
-        $error_description[$error_code][2] =
-'The article had a category a space in front (for example: <nowiki>[[  Category:ABC]] or [[Category : ABC]]</nowiki> ). The mediawiki has no problem with this, but but if you write a external parser this it only one of your problem. Please fix it.';
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
         if (   $page_namespace == 0
             or $page_namespace == 6
             or $page_namespace == 104 )
@@ -5209,12 +4486,7 @@ sub error_023_nowiki_no_correct_end {
     my $attribut   = $_[0];
     my $comment    = $_[1];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 1;
-        $error_description[$error_code][1] = 'Nowiki not correct end';
-        $error_description[$error_code][2] = 'Found no nowiki end.';
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
         if (
             $comment ne ''
             and (  $page_namespace == 0
@@ -5234,12 +4506,7 @@ sub error_024_pre_no_correct_end {
     my $attribut   = $_[0];
     my $comment    = $_[1];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 1;
-        $error_description[$error_code][1] = 'Pre not correct end';
-        $error_description[$error_code][2] = 'Found no pre end.';
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
         if (
             $comment ne ''
             and (  $page_namespace == 0
@@ -5259,13 +4526,7 @@ sub error_025_headline_hierarchy {
     my $attribut   = $_[0];
     my $comment    = $_[1];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 2;
-        $error_description[$error_code][1] = 'Headline hierarchy';
-        $error_description[$error_code][2] =
-'After a headline of level 1 (==) should not be a headline of level 3 (====). (See also [http://www.w3.org/TR/WCAG20-TECHS/G141.html W3C Techniques for WCAG 2.0])';
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
         my $number_headline = -1;
         my $old_headline    = '';
         my $new_headline    = '';
@@ -5311,15 +4572,7 @@ sub error_026_html_text_style_elements {
     my $error_code = 26;
     my $attribut   = $_[0];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 3;
-        $error_description[$error_code][1] =
-          'HTML text style element <nowiki><b></nowiki>';
-        $error_description[$error_code][2] =
-            'Article contains a <nowiki><b></nowiki>. '
-          . "In most cases we can use simpler wiki markups in place of these HTML-like tags.";
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
         my $test      = 'no found';
         my $test_line = '';
         my $test_text = lc($text);
@@ -5352,13 +4605,7 @@ sub error_027_unicode_syntax {
     my $error_code = 27;
     my $attribut   = $_[0];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 3;
-        $error_description[$error_code][1] = 'Unicode syntax';
-        $error_description[$error_code][2] =
-'Find <tt>&#<code></code>0000;</tt> (decimal) or <tt>&#x<code></code>0000;</tt> (hexadecimal). Please use the [[Unicode]] characters.';
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
         if (   $page_namespace == 0
             or $page_namespace == 6
             or $page_namespace == 104 )
@@ -5387,12 +4634,7 @@ sub error_028_table_no_correct_end {
     my $attribut   = $_[0];
     my $comment    = $_[1];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 1;
-        $error_description[$error_code][1] = 'Table not correct end';
-        $error_description[$error_code][2] = 'Found no end of the table.';
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
         if (    $comment ne ''
             and ( $page_namespace == 0 or $page_namespace == 104 )
             and index( $text, '{{end}}' ) == -1
@@ -5412,12 +4654,7 @@ sub error_029_gallery_no_correct_end {
     my $attribut   = $_[0];
     my $comment    = $_[1];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 1;
-        $error_description[$error_code][1] = 'Gallery not correct end';
-        $error_description[$error_code][2] = 'Found no end of the gallery.';
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
         if (
             $comment ne ''
             and (  $page_namespace == 0
@@ -5437,13 +4674,7 @@ sub error_030_image_without_description {
     my $attribut   = $_[0];
     my $comment    = $_[1];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 1;
-        $error_description[$error_code][1] = 'Image without description';
-        $error_description[$error_code][2] =
-'The article has an image without a description. In order to provide good accessibility for everyone (e.g. blind people) a description for every image is needed. (See also [http://www.w3.org/TR/2008/NOTE-WCAG20-TECHS-20081211/H37.html W3C Techniques for WCAG 2.0]) ';
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
         if ( $comment ne '' ) {
             if (   $page_namespace == 0
                 or $page_namespace == 6
@@ -5462,14 +4693,7 @@ sub error_031_html_table_elements {
     my $error_code = 31;
     my $attribut   = $_[0];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 2;
-        $error_description[$error_code][1] = 'HTML table element';
-        $error_description[$error_code][2] =
-'Article contains a <nowiki>"<table>", "<td>", "<th>" or "<tr>"</nowiki>. '
-          . "In most cases we can use simpler wiki markups in place of these HTML-like tags.";
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
         my $test      = 'no found';
         my $test_line = '';
         my $test_text = lc($text);
@@ -5523,13 +4747,7 @@ sub error_032_double_pipe_in_link {
     my $error_code = 32;
     my $attribut   = $_[0];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 1;
-        $error_description[$error_code][1] = 'Double pipe in one link';
-        $error_description[$error_code][2] =
-          'Article contains a link like <nowiki>[[text|text2|text3]]</nowiki>';
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
         if (   $page_namespace == 0
             or $page_namespace == 6
             or $page_namespace == 104 )
@@ -5561,15 +4779,7 @@ sub error_033_html_text_style_elements_underline {
     my $error_code = 33;
     my $attribut   = $_[0];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 3;
-        $error_description[$error_code][1] =
-          'HTML text style element <nowiki><u></nowiki>';
-        $error_description[$error_code][2] =
-            'Article contains a <nowiki><u></nowiki>. '
-          . "In most cases we can use simpler wiki markups in place of these HTML-like tags.";
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
         my $test      = 'no found';
         my $test_line = '';
         my $test_text = lc($text);
@@ -5601,13 +4811,7 @@ sub error_034_template_programming_elements {
     my $error_code = 34;
     my $attribut   = $_[0];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 1;
-        $error_description[$error_code][1] = 'Template programming element';
-        $error_description[$error_code][2] =
-'Article contains a <nowiki>"#if:" or "#ifeq:" or "#ifexist:" or "#switch:" or "#tag:" or "{{NAMESPACE}}" or "{{SITENAME}}" or "{{PAGENAME}}" or "{{FULLPAGENAME}}" or "{{{1}}}" (Parameter)</nowiki>. ';
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
         my $test      = 'no found';
         my $test_line = '';
         foreach (@lines) {
@@ -5664,13 +4868,7 @@ sub error_035_gallery_without_description {
     my $error_code = 35;
     my $attribut   = $_[0];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 1;
-        $error_description[$error_code][1] = 'Gallery without description';
-        $error_description[$error_code][2] =
-          'Article contains a gallery without image description. ';
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
         my $text_gallery = $_[0];
 
         my $test = '';
@@ -5712,13 +4910,7 @@ sub error_036_redirect_not_correct {
     my $error_code = 36;
     my $attribut   = $_[0];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 3;
-        $error_description[$error_code][1] = 'Redirect not correct';
-        $error_description[$error_code][2] =
-'Article contains something like "<nowiki>#REDIRECT = [[Target page]]</nowiki>". The equal sign is not correct. Correct is "<nowiki>#REDIRECT [[Target page]]</nowiki>" or "<nowiki>#REDIRECT: [[Target page]]</nowiki>".';
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
         if ( $page_is_redirect eq 'yes' ) {
             if ( lc($text) =~ /#redirect[ ]?+[^ :\[][ ]?+\[/ ) {
                 my $output_text = text_reduce( $text, 80 );
@@ -5726,7 +4918,7 @@ sub error_036_redirect_not_correct {
                 error_register( $error_code,
                     '<nowiki>' . $output_text . ' </nowiki>' );
 
-                #print "\t".$title."\n";
+                #print "\t". $error_code."\t".$title."\n";
                 #print "\t\t".$text."\n";
             }
         }
@@ -5737,15 +4929,7 @@ sub error_037_title_with_special_letters_and_no_defaultsort {
     my $error_code = 37;
     my $attribut   = $_[0];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 3;
-        $error_description[$error_code][1] =
-          'Title with special letters and no DEFAULTSORT';
-        $error_description[$error_code][2] =
-'The title has a special letter and in the article is no DEFAULTSORT (or in ca: ORDENA, es:ORDENAR, de:SORTIERUNG). Also one category has not the syntax <nowiki>[[Category:ABC|Text]]</nowiki>'
-          . "\n" . "\n";
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
         if (    ( $page_namespace == 0 or $page_namespace == 104 )
             and $category_counter > -1
             and $project ne 'arwiki'
@@ -5842,15 +5026,7 @@ sub error_038_html_text_style_elements_italic {
     my $error_code = 38;
     my $attribut   = $_[0];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 3;
-        $error_description[$error_code][1] =
-          'HTML text style element <nowiki><i></nowiki>';
-        $error_description[$error_code][2] =
-            'Article contains a <nowiki><i></nowiki>. '
-          . "In most cases we can use simpler wiki markups in place of these HTML-like tags.";
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
         my $test      = 'no found';
         my $test_line = '';
         my $test_text = lc($text);
@@ -5885,15 +5061,7 @@ sub error_039_html_text_style_elements_paragraph {
     my $error_code = 39;
     my $attribut   = $_[0];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 3;
-        $error_description[$error_code][1] =
-          'HTML text style element <nowiki><p></nowiki>';
-        $error_description[$error_code][2] =
-            'Article contains a <nowiki><p></nowiki>. '
-          . "In most cases we can use simpler wiki markups in place of these HTML-like tags.";
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
         my $test      = 'no found';
         my $test_line = '';
         my $test_text = lc($text);
@@ -5926,15 +5094,7 @@ sub error_040_html_text_style_elements_font {
     my $error_code = 40;
     my $attribut   = $_[0];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 3;
-        $error_description[$error_code][1] =
-          'HTML text style element <nowiki><font></nowiki>';
-        $error_description[$error_code][2] =
-            'Article contains a <nowiki><font></nowiki>. '
-          . "In most cases we can use simpler wiki markups in place of these HTML-like tags.";
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
         my $test      = 'no found';
         my $test_line = '';
         my $test_text = lc($text);
@@ -5969,15 +5129,7 @@ sub error_041_html_text_style_elements_big {
     my $error_code = 41;
     my $attribut   = $_[0];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 3;
-        $error_description[$error_code][1] =
-          'HTML text style element <nowiki><big></nowiki>';
-        $error_description[$error_code][2] =
-            'Article contains a <nowiki><big></nowiki>. '
-          . "In most cases we can use simpler wiki markups in place of these HTML-like tags.";
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
         my $test      = 'no found';
         my $test_line = '';
         my $test_text = lc($text);
@@ -6009,15 +5161,7 @@ sub error_042_html_text_style_elements_small {
     my $error_code = 42;
     my $attribut   = $_[0];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 3;
-        $error_description[$error_code][1] =
-          'HTML text style element <nowiki><small></nowiki>';
-        $error_description[$error_code][2] =
-            'Article contains a <nowiki><small</nowiki>. '
-          . "In most cases we can use simpler wiki markups in place of these HTML-like tags.";
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
         my $test      = 'no found';
         my $test_line = '';
         my $test_text = lc($text);
@@ -6051,13 +5195,7 @@ sub error_043_template_no_correct_end {
     my $attribut   = $_[0];
     my $comment    = $_[1];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 1;
-        $error_description[$error_code][1] = 'Template not correct end';
-        $error_description[$error_code][2] =
-'Found a template with <nowiki>"{{"</nowiki> and with no <nowiki>"}}"</nowiki>.';
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
         if (
             $comment ne ''
             and (  $page_namespace == 0
@@ -6076,15 +5214,7 @@ sub error_044_headline_with_bold {
     my $error_code = 44;
     my $attribut   = $_[0];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 3;
-        $error_description[$error_code][1] = 'Headlines with bold';
-        $error_description[$error_code][2] =
-            'The headline is bold <nowiki>"== '
-          . "'''XY'''"
-          . ' =="</nowiki>. It should only be <nowiki>"== XY =="</nowiki>.';
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             foreach (@headlines) {
                 my $current_line = $_;
@@ -6128,13 +5258,7 @@ sub error_045_interwiki_double {
     my $error_code = 45;
     my $attribut   = $_[0];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 1;
-        $error_description[$error_code][1] = 'Interwiki double';
-        $error_description[$error_code][2] =
-          'Article contains double interwiki link to one other languages.';
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
 
         #print $title."\n";
         #print 'Interwikis='.$interwiki_counter."\n";
@@ -6178,16 +5302,7 @@ sub error_046_count_square_breaks_begin {
     my $error_code = 46;
     my $attribut   = $_[0];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 1;
-        $error_description[$error_code][1] =
-          'Square brackets not correct begin';
-        $error_description[$error_code][2] =
-'Different number of <nowiki>[[</nowiki> and <nowiki>]]</nowiki> brackets. If it is sourcecode then use <nowiki><source> or <code></nowiki>.';
-        $error_description[$error_code][2] =
-          infotext_new_error( $error_description[$error_code][2] );
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
         my $text_test = '';
 
 #$text_test = 'abc[[Kartographie]], Bild:abd|[[Globus]]]] ohne [[Gradnetz]] weiterer Text
@@ -6274,13 +5389,7 @@ sub error_047_template_no_correct_begin {
     my $error_code = 47;
     my $attribut   = $_[0];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 1;
-        $error_description[$error_code][1] = 'Template not correct begin';
-        $error_description[$error_code][2] =
-'Found a template with no <nowiki>"{{"</nowiki> but with <nowiki>"}}"</nowiki>.';
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
 
         my $text_test = '';
 
@@ -6356,15 +5465,7 @@ sub error_048_title_in_text {
     my $error_code = 48;
     my $attribut   = $_[0];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 3;
-        $error_description[$error_code][1] = 'Title in text';
-        $error_description[$error_code][2] =
-'Found a link to the title inside the text. Change this <nowiki>[[Title]]</nowiki> into <nowiki>'
-          . "'''Title'''"
-          . '</nowiki>';
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
 
         my $text_test = $text;
 
@@ -6396,13 +5497,7 @@ sub error_049_headline_with_html {
     my $error_code = 49;
     my $attribut   = $_[0];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 3;
-        $error_description[$error_code][1] = 'Headline with HTML';
-        $error_description[$error_code][2] =
-'Found a headline in format <nowiki><h2>Headline</h2></nowiki> in the text. Please use wikisyntax <nowiki>== Headline ==</nowiki>. If it is sourcecode then use <nowiki><source> or <code></nowiki>.';
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
 
         if (   $page_namespace == 0
             or $page_namespace == 6
@@ -6438,13 +5533,7 @@ sub error_050_dash {
     my $error_code = 50;
     my $attribut   = $_[0];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 3;
-        $error_description[$error_code][1] = 'en dash or em dash';
-        $error_description[$error_code][2] =
-'The article had a dash. Write for  <tt>&nda<code></code>sh;</tt> better "–" or <tt>&mda<code></code>sh;</tt> better "—". ';
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
         my $pos = -1;
         $pos = index( lc($text), '&ndash;' );
         $pos = index( lc($text), '&mdash;' ) if $pos == -1;
@@ -6468,13 +5557,7 @@ sub error_051_interwiki_before_last_headline {
     my $error_code = 51;
     my $attribut   = $_[0];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 3;
-        $error_description[$error_code][1] = 'Interwiki before last headline';
-        $error_description[$error_code][2] =
-'The article had in the text a interwiki before the last headline. Interwikis should written at the end of the article.';
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
         my $number_of_headlines = @headlines;
         my $pos                 = -1;
 
@@ -6518,13 +5601,7 @@ sub error_052_category_before_last_headline {
     my $error_code = 52;
     my $attribut   = $_[0];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 3;
-        $error_description[$error_code][1] = 'Category before last headline';
-        $error_description[$error_code][2] =
-'The article had in the text a category before the last headline. Category should written at the end of the article before the interwikis.';
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
         my $number_of_headlines = @headlines;
         my $pos                 = -1;
 
@@ -6565,13 +5642,7 @@ sub error_053_interwiki_before_category {
     my $error_code = 53;
     my $attribut   = $_[0];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 3;
-        $error_description[$error_code][1] = 'Interwiki before last category';
-        $error_description[$error_code][2] =
-'The article had in the text a interwiki before the last category. Interwikis should written at the end of the article after the categories.';
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
         if (    $category_counter > -1
             and $interwiki_counter > -1
             and ( $page_namespace == 0 or $page_namespace == 104 ) )
@@ -6607,13 +5678,7 @@ sub error_054_break_in_list {
     my $error_code = 54;
     my $attribut   = $_[0];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 3;
-        $error_description[$error_code][1] = 'Break in list';
-        $error_description[$error_code][2] =
-'The article had a list, where one line had a break (<nowiki><br /></nowiki>) at the and of the line. This break can be deleted.';
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             my $found_text = '';
             foreach (@lines) {
@@ -6655,15 +5720,7 @@ sub error_055_html_text_style_elements_small_double {
     my $error_code = 55;
     my $attribut   = $_[0];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 3;
-        $error_description[$error_code][1] =
-          'HTML text style element <nowiki><small></nowiki> double';
-        $error_description[$error_code][2] =
-            'Article contains the tag <nowiki><small></nowiki>. '
-          . " In the most case we don't need this double tag.";
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
         my $test_line = '';
         my $test_text = lc($text);
 
@@ -6712,13 +5769,7 @@ sub error_056_arrow_as_ASCII_art {
     my $error_code = 56;
     my $attribut   = $_[0];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 3;
-        $error_description[$error_code][1] = 'Arrow as ASCII art';
-        $error_description[$error_code][2] =
-'The article had an arrow like "<nowiki><--</nowiki>" or "<nowiki>--></nowiki>" or "<nowiki><==</nowiki>" or "<nowiki>==></nowiki>". Write better this arrow with the Unicode "←" or "→" or "⇐" or "⇒". See [[:en:Arrow (symbol)]]. If it is sourcecode then use <nowiki><source> or <code></nowiki>. Also you can use <nowiki><math></nowiki> for mathematical formula.';
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             my $pos = -1;
             $pos = index( lc($text), '->' );
@@ -6743,13 +5794,7 @@ sub error_057_headline_end_with_colon {
     my $error_code = 57;
     my $attribut   = $_[0];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 3;
-        $error_description[$error_code][1] = 'Headlines end with colon';
-        $error_description[$error_code][2] =
-'One headline in this article end with a colon <nowiki>"== Headline : =="</nowiki>. This colon can be deleted.';
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             foreach (@headlines) {
                 my $current_line = $_;
@@ -6772,13 +5817,7 @@ sub error_058_headline_with_capitalization {
     my $error_code = 58;
     my $attribut   = $_[0];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 3;
-        $error_description[$error_code][1] = 'Headlines with capitalization';
-        $error_description[$error_code][2] =
-'One headline in this article has only capitalization <nowiki>"== HEADLINE IS BIG =="</nowiki>. Also this headline has more then 10 letters, so a normal abbreviation like <nowiki>"== UNO =="</nowiki> is not a problem.';
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
 
         my $found_text = '';
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
@@ -6847,50 +5886,38 @@ sub error_059_template_value_end_with_br {
     my $error_code = 59;
     my $attribut   = $_[0];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 3;
-        $error_description[$error_code][1] = 'Template value end with break';
-        $error_description[$error_code][2] =
-'At the end of a value in a template is a break. (For example: <nowiki>{{Template|name=Mr. King<br/>}}</nowiki>) This break should inside the template not in the value and you can delete this break. ';
+    if ( $attribut eq 'check' ) {
+        my $found_text = '';
+        if ( $page_namespace == 0 or $page_namespace == 104 ) {
+            for ( my $i = 0 ; $i <= $number_of_template_parts ; $i++ ) {
+
+                #print $template[$i][3]."\t".$template[$i][4]."\n";
+                if ( $found_text eq '' ) {
+                    if ( $template[$i][4] =~
+/<([ ]+)?(\/|\\)?([ ]+)?br([ ]+)?(\/|\\)?([ ]+)?>([ ])?([ ])?$/
+                      )
+                    {
+                        $found_text =
+                          $template[$i][3] . '=…'
+                          . text_reduce_to_end( $template[$i][4], 20 );
+                    }
+                }
+            }
+            if ( $found_text ne '' ) {
+                error_register( $error_code,
+                    '<nowiki>' . $found_text . '</nowiki>' );
+
+                #print "\t". $error_code."\t".$title."\t".$found_text."\n";
+            }
+        }
     }
-#    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
-#        my $found_text = '';
-#        if ( $page_namespace == 0 or $page_namespace == 104 ) {
-#            for ( my $i = 0 ; $i <= $number_of_template_parts ; $i++ ) {
-#
-#                #print $template[$i][3]."\t".$template[$i][4]."\n";
-#                if ( $found_text eq '' ) {
-#                    if ( $template[$i][4] =~
-#/<([ ]+)?(\/|\\)?([ ]+)?br([ ]+)?(\/|\\)?([ ]+)?>([ ])?([ ])?$/
-#                      )
-#                    {
-#                        $found_text =
-#                          $template[$i][3] . '=…'
-#                          . text_reduce_to_end( $template[$i][4], 20 );
-#                    }
-#                }
-#            }
-#            if ( $found_text ne '' ) {
-#                error_register( $error_code,
-#                    '<nowiki>' . $found_text . '</nowiki>' );
-#
-#                #print "\t". $error_code."\t".$title."\t".$found_text."\n";
-#            }
-#        }
-#    }
 }
 
 sub error_060_template_parameter_with_problem {
     my $error_code = 60;
     my $attribut   = $_[0];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 1;
-        $error_description[$error_code][1] = 'Template parameter with problem';
-        $error_description[$error_code][2] =
-'In the parameter of a template the script found an unusual letter (<nowiki>[|]:*</nowiki>) For example: <nowiki>{{Template| parameter_1=100 | [[parameter]]_2=200 }}</nowiki>).';
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
         my $found_text = '';
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             for ( my $i = 0 ; $i <= $number_of_template_parts ; $i++ ) {
@@ -6917,13 +5944,7 @@ sub error_061_reference_with_punctuation {
     my $error_code = 61;
     my $attribut   = $_[0];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 3;
-        $error_description[$error_code][1] = 'Reference with punctuation';
-        $error_description[$error_code][2] =
-'The script found a punctuation after the reference. For example: "<nowiki></ref>.</nowiki>" - The punctation should stand before the references.';
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
         my $found_text = '';
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             my $pos = -1;
@@ -6957,13 +5978,7 @@ sub error_062_headline_alone {
     my $attribut   = $_[0];
     my $comment    = $_[1];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 2;
-        $error_description[$error_code][1] = 'Headline alone';
-        $error_description[$error_code][2] =
-"There are more then 5 headlines and one headline of level 3 (===) or deeper is alone. The script don't found an other headline of this level in this subsection. If you have only one subpoint, integrate it with the point above or reorganize.";
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
             my $number_of_headlines = @headlines;
@@ -7050,15 +6065,7 @@ sub error_063_html_text_style_elements_small_ref_sub_sup {
     my $error_code = 63;
     my $attribut   = $_[0];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 2;
-        $error_description[$error_code][1] =
-          'HTML text style element <nowiki><small></nowiki> in ref, sub or sup';
-        $error_description[$error_code][2] =
-'Article contains the tag <nowiki><small></nowiki> in a <nowiki><ref></nowiki> or <nowiki><sub></nowiki> or <nowiki><sub></nowiki> tag. '
-          . " Inside inside this tags we don't need a small text because the tag output is smaller then the standard.";
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
         my $test_line = '';
         my $test_text = lc($text);
 
@@ -7115,13 +6122,7 @@ sub error_064_link_equal_linktext {
     my $error_code = 64;
     my $attribut   = $_[0];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 2;
-        $error_description[$error_code][1] = 'Link equal to linktext';
-        $error_description[$error_code][2] =
-'The script found a structur like <nowiki>[[Link|Link]]</nowiki> in this article.';
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
 
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             my $found_text = '';
@@ -7188,13 +6189,7 @@ sub error_065_image_description_with_break {
     my $error_code = 65;
     my $attribut   = $_[0];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 3;
-        $error_description[$error_code][1] = 'Image description with break';
-        $error_description[$error_code][2] =
-'The script found in this article at the end of an image description the tag <nowiki><br /></nowiki>. You can delete this manual break.';
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             my $found_text = '';
             foreach (@images_all) {
@@ -7224,14 +6219,7 @@ sub error_066_image_description_with_full_small {
     my $error_code = 66;
     my $attribut   = $_[0];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 3;
-        $error_description[$error_code][1] =
-          'Image description with full <nowiki><small></nowiki>.';
-        $error_description[$error_code][2] =
-'The script found in the description of an image the <nowiki><small></nowiki>. The description is already set to 94% in the stylesheet. This tag can be deleted.';
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             my $found_text = '';
             foreach (@images_all) {
@@ -7261,13 +6249,7 @@ sub error_067_reference_after_punctuation {
     my $error_code = 67;
     my $attribut   = $_[0];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 0;
-        $error_description[$error_code][1] = 'Reference after punctuation';
-        $error_description[$error_code][2] =
-'The script found the reference after a punctuation. For example: "<nowiki>.<ref></nowiki>" - The punctation should stand after the references.';
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
         my $found_text = '';
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             my $pos = -1;
@@ -7300,13 +6282,7 @@ sub error_068_link_to_other_language {
     my $error_code = 68;
     my $attribut   = $_[0];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 2;
-        $error_description[$error_code][1] = 'Link to other language';
-        $error_description[$error_code][2] =
-'The script found a link to another language, for example <nowiki>[[:is:Link]]</nowiki> in this article (not an interwiki-link). In many languages is a direct link inside the article not allowed (for example in plwiki).';
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             my $found_text = '';
             foreach (@links_all) {
@@ -7339,15 +6315,7 @@ sub error_069_isbn_wrong_syntax {
     my $attribut   = $_[0];
     my $found_text = $_[1];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 1;
-        $error_description[$error_code][1] = 'ISBN wrong syntax';
-        $error_description[$error_code][2] =
-'The script check the ISBN and found a problem with the syntax. A normal ISBN look like ISBN 3-8001-6191-5 or ISBN 0-911266-16-X or ISBN 978-0911266160. Allowed are numbers, space, "-" and "X"/"x". Without space and "-" only 10 or 13 characters. Please don'
-          . "'"
-          . 't write ISBN-10: or ISBN-13.';
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
         if ( ( $page_namespace == 0 or $page_namespace == 104 )
             and $found_text ne '' )
         {
@@ -7364,13 +6332,7 @@ sub error_070_isbn_wrong_length {
     my $attribut   = $_[0];
     my $found_text = $_[1];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 1;
-        $error_description[$error_code][1] = 'ISBN wrong length';
-        $error_description[$error_code][2] =
-'The script check the ISBN and found with not 10 or 13 characters. ISBN should have 10 or 13 characters.';
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
         if ( ( $page_namespace == 0 or $page_namespace == 104 )
             and $found_text ne '' )
         {
@@ -7387,13 +6349,7 @@ sub error_071_isbn_wrong_pos_X {
     my $attribut   = $_[0];
     my $found_text = $_[1];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 1;
-        $error_description[$error_code][1] = 'ISBN wrong position of X';
-        $error_description[$error_code][2] =
-'The script check the ISBN and found a ISBN where the character "X" are not at position 10. The character X is only at position 10 allowed. It is for the checksum of 10.';
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
 
         if ( ( $page_namespace == 0 or $page_namespace == 104 )
             and $found_text ne '' )
@@ -7411,13 +6367,7 @@ sub error_072_isbn_10_wrong_checksum {
     my $attribut   = $_[0];
     my $found_text = $_[1];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 1;
-        $error_description[$error_code][1] = 'ISBN wrong checksum in ISBN-10';
-        $error_description[$error_code][2] =
-'The script check the ISBN and found a problem with the checksum in this ISBN-10.';
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
         if ( ( $page_namespace == 0 or $page_namespace == 104 )
             and $found_text ne '' )
         {
@@ -7434,13 +6384,7 @@ sub error_073_isbn_13_wrong_checksum {
     my $attribut   = $_[0];
     my $found_text = $_[1];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 1;
-        $error_description[$error_code][1] = 'ISBN wrong checksum in ISBN-13';
-        $error_description[$error_code][2] =
-'The script check the ISBN and found a problem with the checksum in this ISBN-13.';
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
         if ( ( $page_namespace == 0 or $page_namespace == 104 )
             and $found_text ne '' )
         {
@@ -7456,13 +6400,7 @@ sub error_074_link_with_no_target {
     my $error_code = 74;
     my $attribut   = $_[0];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 1;
-        $error_description[$error_code][1] = 'Link with no target';
-        $error_description[$error_code][2] =
-'The script found a link with no target, for example <nowiki>[[|linktext]]</nowiki>.';
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             my $found_text = '';
             foreach (@links_all) {
@@ -7489,15 +6427,7 @@ sub error_075_indented_list {
     my $error_code = 75;
     my $attribut   = $_[0];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 3;
-        $error_description[$error_code][1] = 'Indented list';
-        $error_description[$error_code][2] =
-'The article had a list, where one line is indent (<nowiki>:* text</nowiki>). A list don'
-          . "'"
-          . 't need an intend with ":". Use more "*" to indent the list. ';
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             my $found_text = '';
             foreach (@lines) {
@@ -7528,13 +6458,7 @@ sub error_076_link_with_no_space {
     my $error_code = 76;
     my $attribut   = $_[0];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 3;
-        $error_description[$error_code][1] = 'Link with no space';
-        $error_description[$error_code][2] =
-'The script found a link with "%20" for space <nowiki>[[Link%20Link|Linktext]]</nowiki>. Please replace this %20 with a space.';
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             my $found_text = '';
             foreach (@links_all) {
@@ -7561,14 +6485,7 @@ sub error_077_image_description_with_partial_small {
     my $error_code = 77;
     my $attribut   = $_[0];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 3;
-        $error_description[$error_code][1] =
-          'Image description with partial <nowiki><small></nowiki>';
-        $error_description[$error_code][2] =
-'The script found in the description of an image the <nowiki><small></nowiki>. The description is already set to 94% in the stylesheet. This tag can be deleted.';
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             my $found_text = '';
             foreach (@images_all) {
@@ -7598,13 +6515,7 @@ sub error_078_reference_double {
     my $error_code = 78;
     my $attribut   = $_[0];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 3;
-        $error_description[$error_code][1] = 'Reference double';
-        $error_description[$error_code][2] =
-'The script found in the article two <nowiki><references ...></nowiki>. One can be deleted.';
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             my $test_text      = lc($text);
             my $number_of_refs = 0;
@@ -7645,14 +6556,7 @@ sub error_079_external_link_without_description {
     my $error_code = 79;
     my $attribut   = $_[0];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 2;
-        $error_description[$error_code][1] =
-          'External link without description';
-        $error_description[$error_code][2] =
-'The script found in the article an external link without description (for example: <nowiki>[http://www.wikipedia.org]</nowiki>). Please insert a description to this link like <nowiki>[http://www.wikipedia.org Wikipedia]</nowiki>.';
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             my $test_text = lc($text);
 
@@ -7709,13 +6613,7 @@ sub error_080_external_link_with_line_break {
     my $error_code = 80;
     my $attribut   = $_[0];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 2;
-        $error_description[$error_code][1] = 'External link with line break';
-        $error_description[$error_code][2] =
-'The script found in the article an external link with a line break in the description. This is a problem for the mediawiki parser. Please delete the line break.';
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             my $test_text = lc($text);
 
@@ -7768,13 +6666,7 @@ sub error_081_ref_double {
     my $error_code = 81;
     my $attribut   = $_[0];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 1;
-        $error_description[$error_code][1] = 'Reference tag in article double';
-        $error_description[$error_code][2] =
-'The script found in the article a double ref-tag. Please use the format <nowiki><ref name="foo">Book ABC</ref></nowiki> and the following times <nowiki><ref name="foo" /></nowiki>';
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             my $number_of_ref = @ref;
             my $found_text    = '';
@@ -7810,13 +6702,7 @@ sub error_082_link_to_other_wikiproject {
     my $error_code = 82;
     my $attribut   = $_[0];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 2;
-        $error_description[$error_code][1] = 'Link to other wikiproject';
-        $error_description[$error_code][2] =
-'The script found a link to another wikimedia foundation project, for example <nowiki>[[:wikt:Link]]</nowiki> in this article (not an interwiki-link) (See [[:en:Wikipedia:InterWikimedia links]]. In many languages is a direct link inside the article not allowed.';
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             my $found_text = '';
             foreach (@links_all) {
@@ -7849,14 +6735,7 @@ sub error_083_headline_only_three_and_later_level_two {
     my $error_code = 83;
     my $attribut   = $_[0];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 1;
-        $error_description[$error_code][1] =
-          'Headlines start with three "=" and later with level two';
-        $error_description[$error_code][2] =
-'The first headline start with <nowiki>"=== XY ==="</nowiki>. It should only be <nowiki>"== XY =="</nowiki>. Later in the text the script found a level 2 headline (<nowiki>"=="</nowiki>). See also error 007!';
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
         if ( $headlines[0]
             and ( $page_namespace == 0 or $page_namespace == 104 ) )
         {
@@ -7883,13 +6762,7 @@ sub error_084_section_without_text {
     my $error_code = 84;
     my $attribut   = $_[0];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 1;
-        $error_description[$error_code][1] = 'Section without content';
-        $error_description[$error_code][2] =
-          'There is a section between two headlines without content.';
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
         if ( $headlines[0]
             and ( $page_namespace == 0 or $page_namespace == 104 ) )
         {
@@ -7958,13 +6831,7 @@ sub error_085_tag_without_content {
     my $error_code = 85;
     my $attribut   = $_[0];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 3;
-        $error_description[$error_code][1] = 'Tag without content';
-        $error_description[$error_code][2] =
-'The script found a tag without content or a line break like <nowiki><noinclude></noinclude></nowiki>. This tag can be deleted.';
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             my $found_text = '';
             my $found_pos  = -1;
@@ -8005,14 +6872,7 @@ sub error_086_link_with_two_brackets_to_external_source {
     my $error_code = 86;
     my $attribut   = $_[0];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 2;
-        $error_description[$error_code][1] =
-          'Link with two brackets to external source';
-        $error_description[$error_code][2] =
-'The script found a link with two brackets to external source like <nowiki>[[http://www.wikipedia.org Wikipedia]]</nowiki>. External links only need one bracket like <nowiki>[http://www.wikipedia.org Wikipedia]</nowiki>.';
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             my $found_text = '';
             foreach (@links_all) {
@@ -8043,14 +6903,7 @@ sub error_087_html_names_entities_without_semicolon {
     my $error_code = 87;
     my $attribut   = $_[0];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = -1;
-        $error_description[$error_code][1] =
-          'HTML named entities without semicolon';
-        $error_description[$error_code][2] =
-'Find named entities (like &amp;uml;) in the text without the semicolon.';
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
         if (   $page_namespace == 0
             or $page_namespace == 6
             or $page_namespace == 104 )
@@ -8120,14 +6973,7 @@ sub error_088_defaultsort_with_first_blank {
     my $error_code = 88;
     my $attribut   = $_[0];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 3;
-        $error_description[$error_code][1] =
-          'DEFAULTSORT with blank at first position';
-        $error_description[$error_code][2] =
-'The script found a DEFAULTSORT with a blank at first position like <nowiki>{{DEFAULTSORT: Doe, John}}</nowiki>.';
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
 
         if (    ( $page_namespace == 0 or $page_namespace == 104 )
             and $project ne 'arwiki'
@@ -8172,14 +7018,7 @@ sub error_089_defaultsort_with_capitalization_in_the_middle_of_the_word {
     my $error_code = 89;
     my $attribut   = $_[0];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 3;
-        $error_description[$error_code][1] =
-          'DEFAULTSORT with capitalization in the middle of the word';
-        $error_description[$error_code][2] =
-'The script found a DEFAULTSORT with capitalization in the middle of the word like  <nowiki>{{DEFAULTSORT:DuBois, Lewis}} or {{DEFAULTSORT:SSX}}</nowiki>. The Mediawiki-software allowed not a capitalization in the word. Write "Dubois, Lewis" or "Ssx" for correct sorting in the category';
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
         if (    ( $page_namespace == 0 or $page_namespace == 104 )
             and $project ne 'arwiki'
             and $project ne 'hewiki'
@@ -8223,14 +7062,7 @@ sub error_090_defaultsort_with_lowercase_letters {
     my $error_code = 90;
     my $attribut   = $_[0];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 3;
-        $error_description[$error_code][1] =
-          'DEFAULTSORT with lowercase letters';
-        $error_description[$error_code][2] =
-'The script found a DEFAULTSORT with lowercase letters like  <nowiki>{{DEFAULTSORT:Role-playing game}} or {{DEFAULTSORT:2004 in Film}}</nowiki>. The Mediawiki-software need for every word a capitalization of the first letter. Write "Role-Playing Game" or "2004 In Film" for correct sorting in the category';
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
         if (    ( $page_namespace == 0 or $page_namespace == 104 )
             and $project ne 'arwiki'
             and $project ne 'hewiki'
@@ -8274,14 +7106,7 @@ sub error_091_title_with_lowercase_letters_and_no_defaultsort {
     my $error_code = 91;
     my $attribut   = $_[0];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 3;
-        $error_description[$error_code][1] =
-          'DEFAULTSORT is missing and title with lowercase_letters';
-        $error_description[$error_code][2] =
-'The script found no DEFAULTSORT and the title of the article has lowercase letters at the beginning of a word like "Role-playing game" or "2004 in Film". This article make problem with sorting in categories. Write a <nowiki>{{DEFAULTSORT:Role-Playing Game}} or {{DEFAULTSORT:2004 In Film}}</nowiki>.';
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
         if (    ( $page_namespace == 0 or $page_namespace == 104 )
             and $category_counter > -1
             and $project ne 'arwiki'
@@ -8320,15 +7145,7 @@ sub error_092_headline_double {
     my $error_code = 92;
     my $attribut   = $_[0];
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'get_description' ) {
-        $error_description[$error_code][0] = 2;
-        $error_description[$error_code][1] = 'Headline double';
-        $error_description[$error_code][2] =
-          "There is a double headline (one behind the other) in this article. ";
-        $error_description[$error_code][2] =
-          infotext_new_error( $error_description[$error_code][2] );
-    }
-    if ( $attribut eq 'check' and $error_description[$error_code][4] != 0 ) {
+    if ( $attribut eq 'check' ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             my $found_text          = '';
             my $number_of_headlines = @headlines;
@@ -8355,44 +7172,27 @@ sub error_092_headline_double {
 
 sub error_register {
 
-    # all errors will be regestrie
-
     my $error_code = shift;
     my $notice     = shift;
 
-    if (
-        (
-                $error_description[$error_code][0] > 0
-            and $error_description[$error_code][4] == -1
-        )    #in script activated and in project unknown
-        or (    $error_description[$error_code][0] > 0
-            and $error_description[$error_code][4] >
-            0 )    #in script activated and in project activated
-        or (    $error_description[$error_code][0] == 0
-            and $error_description[$error_code][4] >
-            0 )    #in script deactivated and in project activated
-      )
-    {
-        # only register if in script higher than 0 and…
-        #	in project is unknown
-        #       or in project higher 0
+    # only register if in script higher than 0 and…
+    #	in project is unknown
+    #       or in project higher 0
 
-        $notice =~ s/\n//g;
+    $notice =~ s/\n//g;
 
-        #print "\t". $error_code."\t".$title."\t".$notice."\n";
-        #print "\t". $error_code."\t".$title."\t".$notice."\n" ;
+    #print "\t". $error_code."\t".$title."\t".$notice."\n";
+    #print "\t". $error_code."\t".$title."\t".$notice."\n" ;
 
-        $page_has_error    = 'yes';
-        $page_error_number = $page_error_number + 1;
+    $page_has_error    = 'yes';
+    $page_error_number = $page_error_number + 1;
 
-        #print 'Page errir number: '.$page_error_number."\n";
-        $error_description[$error_code][3] =
-          $error_description[$error_code][3] + 1;
+    #print 'Page errir number: '.$page_error_number."\n";
+    $error_description[$error_code][3] = $error_description[$error_code][3] + 1;
 
-        $error_counter = $error_counter + 1;
+    $error_counter = $error_counter + 1;
 
-        insert_into_db( $error_counter, $title, $error_code, $notice );
-    }
+    insert_into_db( $error_counter, $title, $error_code, $notice );
 
 }
 
@@ -8504,20 +7304,6 @@ sub two_column_display {
     printf "%-30s %-30s\n", $text1, $text2;
 }
 
-sub infotext_new_error {
-    my $infotext = $_[0];
-    $infotext = $infotext . "\n\n"
-      . '<span style="color:#e80000;">This is a new error. If you find a bug then please tell this [[:de:Benutzer Diskussion:Stefan Kühn/Check Wikipedia|here]].</span>';
-    return ($infotext);
-}
-
-sub infotext_change_error {
-    my $infotext = $_[0];
-    $infotext = $infotext . "\n\n"
-      . '<span style="color:#e80000;">The script was change for this error. Please fix the translation. If you find a bug then please tell this [[:de:Benutzer:Stefan Kühn/Check Wikipedia|here]].</span>';
-    return ($infotext);
-}
-
 sub usage {
     print STDERR "To scan a dump:\n"
       . "$0 -p dewiki --dumpfile DUMPFILE --tt-file TEMPLATETIGERFILE\n"
@@ -8535,9 +7321,8 @@ sub usage {
 ###########################################################################
 ###########################################################################
 
-
 ## GET COMMAND LINE OPTIONS
-#
+
 my ( $load_mode, $DumpFilename, $TTFilename );
 
 my @Options = (
@@ -8573,7 +7358,6 @@ if (
     usage();
     exit(1);
 }
-
 
 # Check that a project name is given.
 if ( !defined($project) ) {
@@ -8622,24 +7406,32 @@ my $dump_date_for_output;
 if ( defined($DumpFilename) ) {
     $dump_or_live = 'dump';
 
-    # Get date from dump filename.
+    # GET DATE FROM THE DUMP FILENAME
     $dump_date_for_output = $DumpFilename;
     $dump_date_for_output =~
 s/^(?:.*\/)?\Q$project\E-(\d{4})(\d{2})(\d{2})-pages-articles\.xml\.bz2$/$1-$2-$3/;
 
-#    # Delete old list of articles from last dump scan in table cw_dumpscan.
-#    $dbh->do( 'DELETE FROM cw_dumpscan WHERE Project = ?;', undef, $project )
-#      or die( $dbh->errstr() );
+  # DELETE OLD LIST OF ARTICLES FROM LAST DUMP SCAN IN TABLE cw_dumpscan
+  #    $dbh->do( 'DELETE FROM cw_dumpscan WHERE Project = ?;', undef, $project )
+  #      or die( $dbh->errstr() );
+
 #$DumpFilename = '/public/datasets/public/enwiki/20130604/enwiki-20130604-pages-articles.xml.bz2';
-    # Open dump via METAWIKI::DumpFile
-    my $dump;
-    $file_size = (stat($DumpFilename))[7]; 
-    open( $dump, '-|', 'bzcat', '-q', $DumpFilename )
-          or die("Couldn't open dump file '$DumpFilename'");
 
-    $pages = $pmwd->pages($dump);
+    # GET DUMP FILE SIZE, UNCOMPRESS AND THEN OPEN VIA METAWIKI::DumpFile
+    #my $dump;
+    $file_size = ( stat($DumpFilename) )[7];
 
-    # Open Templatetiger file.
+    #open( $dump, '-|', 'bzcat', '-q', $DumpFilename )
+    #      or die("Couldn't open dump file '$DumpFilename'");
+
+    $DumpFilename =
+      '/home/bgwhite/windows/enwiki/enwiki-20130604-pages-articles.xml';
+    $dump_date_for_output = '20130604';
+    $pages                = $pmwd->pages($DumpFilename);
+
+    #    $pages = $pmwd->pages($dump);
+
+    # OPEN TEMPLATETIGER FILE
     if (
         !(
             $TTFile = File::Temp->new(
@@ -8651,36 +7443,30 @@ s/^(?:.*\/)?\Q$project\E-(\d{4})(\d{2})(\d{2})-pages-articles\.xml\.bz2$/$1-$2-$
         )
       )
     {
-        die("Couldn't open temporary file for Templatetiger");
+        die("Couldn't open temporary file for Templatetiger\n");
     }
+    binmode( $TTFile, ":encoding(UTF-8)" );    # Convert string ouput to UTF-8
 }
 else {
     $dump_or_live = 'live';
     load_article_for_live_scan();
 }
-binmode($TTFile,  ":utf8");
 
 ReadMetadata();
 
-get_error_description()
-  if ( $quit_program eq 'no' );    # all errordescription from this script
-load_text_translation()
-  if ( $quit_program eq 'no' );    # load translation from wikipage
-output_errors_desc_in_db()
-  if ( $quit_program eq 'no' )
-  ;    # update the database with newest error description
+for ( my $i = 1 ; $i <= 150 ; $i++ ) {
+    $error_description[$i][3] = 0;
+}
 
-# FIXME: Disabled for now.  --tl, 2013-06-01
-# output_text_translation_wiki ();   # Output the new wikipage for translation.
-
+# MAIN ROUTINE - SCAN PAGES FOR ERRORS
 scan_pages();    # Scan articles.
 
-# Update date of last dump for project in database.
+# UPDATE DATE OF LAST DUMP IN DATABASE FOR PROJECT GIVEN
 $dbh->do( 'UPDATE cw_project SET Last_Dump = ? WHERE Project = ?;',
     undef, $dump_date_for_output, $project )
   or die( $dbh->errstr() );
 
-# Close files.
+# CLOSE FILES.  ONLY NEED TO DO Templatetiger FILE
 if ( defined($DumpFilename) ) {
 
     # Move Templatetiger file to spool.
