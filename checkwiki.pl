@@ -136,6 +136,7 @@ our $xml_text_from_api =
   q{};                       # the text from more then one articles from the API
 
 our $error_counter = -1;     # number of found errors in all article
+our @ErrorPriorityValue;     # Priority value each error has
 
 our @error_description;   # Error Description
                           # 0 priority in script
@@ -885,6 +886,40 @@ sub update_table_cw_starter {
             );
         }
     }
+
+    return ();
+}
+
+###########################################################################
+##
+###########################################################################
+
+sub getErrors {
+    my $error_counter = 0;
+    my $priority      = -1;
+
+    my $sth = $dbh->prepare('SELECT COUNT(*) FROM cw_error_desc')
+      || die "Can not prepare statement: $DBI::errstr\n";
+    $sth->execute or die "Cannot execute: " . $sth->errstr . "\n";
+
+    $number_of_error_description = $sth->fetchrow();
+
+    my $sql_text =
+      "SELECT prio FROM cw_error_desc WHERE project = '" . $project . "';";
+    $sth = $dbh->prepare($sql_text)
+      || die "Can not prepare statement: $DBI::errstr\n";
+    $sth->execute or die "Cannot execute: " . $sth->errstr . "\n";
+
+    for ( my $i = 1 ; $i <= $number_of_error_description ; $i++ ) {
+        $ErrorPriorityValue[$i] = $sth->fetchrow();
+        if ( $ErrorPriorityValue[$i] > 0 ) {
+            $error_counter++;
+        }
+    }
+
+    two_column_display( 'Total # of errors possible:',
+        $number_of_error_description );
+    two_column_display( 'Number of errors to process:', $error_counter );
 
     return ();
 }
@@ -1714,6 +1749,8 @@ Verlag LANGEWIESCHE, ISBN-10: 3784551912 und ISBN-13: 9783784551913
 
     #get_line_first_blank();
     get_headlines();
+
+    error_check();
 
     set_article_as_scan_live_in_db( $title, $page_id )
       if ( $dump_or_live eq 'live' );
@@ -3598,6 +3635,19 @@ sub get_headlines {
 
 ###########################################################################
 ##
+##########################################################################
+
+sub error_check {
+
+    print 'Start check error' . "\n" if ( $details_for_page eq 'yes' );
+
+    error_list('check');
+
+    return ();
+}
+
+###########################################################################
+##
 ###########################################################################
 
 sub error_list {
@@ -3633,7 +3683,6 @@ sub error_list {
     error_028_table_no_correct_end( $attribut, '' );
     error_029_gallery_no_correct_end( $attribut, '' );
     error_030_image_without_description( $attribut, '' );
-
     error_031_html_table_elements($attribut);
     error_032_double_pipe_in_link($attribut);
     error_033_html_text_style_elements_underline($attribut);
@@ -3641,7 +3690,6 @@ sub error_list {
     error_035_gallery_without_description( $attribut, '' );
     error_036_redirect_not_correct($attribut);
     error_037_title_with_special_letters_and_no_defaultsort($attribut);
-
     error_038_html_text_style_elements_italic($attribut);
     error_039_html_text_style_elements_paragraph($attribut);
     error_040_html_text_style_elements_font($attribut);
@@ -3710,7 +3758,7 @@ sub error_001_no_bold_title {
     my ($attribut) = @_;
     my $error_code = 1;
 
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if (    $page_namespace == 0
             and index( $text, "'''" ) == -1
             and $page_is_redirect eq 'no' )
@@ -3733,7 +3781,7 @@ sub error_002_have_br {
     my $error_code = 2;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         my $test      = 'no found';
         my $test_line = q{};
 
@@ -3811,7 +3859,7 @@ sub error_003_have_ref {
     my $error_code = 3;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if (   $page_namespace == 0
             or $page_namespace == 104 )
         {
@@ -3949,7 +3997,7 @@ sub error_004_have_html_and_no_topic {
     my $error_code = 4;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if (    ( $page_namespace == 0 or $page_namespace == 104 )
             and index( $text, 'http://' ) > -1
             and index( $text, '==' ) == -1
@@ -3976,7 +4024,7 @@ sub error_005_Comment_no_correct_end {
     my $error_code = 5;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if (
             $comment ne ''
             and (  $page_namespace == 0
@@ -4010,7 +4058,7 @@ sub error_006_defaultsort_with_special_letters {
     #* in da, no, nn is allowed ÆØÅæøå
     #* in ro is allowed ăîâşţ
     #* in ru: Ё → Е, ё → е
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
 
         # {{DEFAULTSORT:Mueller, Kai}}
         # {{ORDENA:Alfons I}}
@@ -4103,7 +4151,7 @@ sub error_007_headline_only_three {
     my $error_code = 7;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
 
         if ( $headlines[0]
             and ( $page_namespace == 0 or $page_namespace == 104 ) )
@@ -4138,7 +4186,7 @@ sub error_008_headline_start_end {
     my $error_code = 8;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         foreach (@headlines) {
             my $current_line  = $_;
             my $current_line1 = $current_line;
@@ -4174,7 +4222,7 @@ sub error_009_more_then_one_category_in_a_line {
     my $error_code = 9;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         my $error_line = q{};
 
         foreach (@lines) {
@@ -4214,7 +4262,7 @@ sub error_010_count_square_breaks {
     my $error_code = 10;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if (
             $comment ne ''
             and (  $page_namespace == 0
@@ -4241,7 +4289,7 @@ sub error_011_html_names_entities {
     my $error_code = 11;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if (   $page_namespace == 0
             or $page_namespace == 6
             or $page_namespace == 104 )
@@ -4316,7 +4364,7 @@ sub error_012_html_list_elements {
     my $error_code = 12;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         my $test      = 'no found';
         my $test_line = q{};
         my $test_text = lc($text);
@@ -4371,7 +4419,7 @@ sub error_013_Math_no_correct_end {
     my $error_code = 13;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $comment ne '' ) {
             error_register( $error_code, '<nowiki>' . $comment . '</nowiki>' );
 
@@ -4391,7 +4439,7 @@ sub error_014_Source_no_correct_end {
     my $error_code = 14;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $comment ne '' ) {
             error_register( $error_code, '<nowiki>' . $comment . '</nowiki>' );
 
@@ -4411,7 +4459,7 @@ sub error_015_Code_no_correct_end {
     my $error_code = 15;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $comment ne '' ) {
             error_register( $error_code, '<nowiki>' . $comment . '</nowiki>' );
 
@@ -4431,7 +4479,7 @@ sub error_016_unicode_control_characters {
     my $error_code = 16;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if (   $page_namespace == 0
             or $page_namespace == 6
             or $page_namespace == 104 )
@@ -4473,7 +4521,7 @@ sub error_017_category_double {
     my $error_code = 17;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
 
         #print $title."\n" if ($page_number > 25000);;
         for ( my $i = 0 ; $i <= $category_counter - 1 ; $i++ ) {
@@ -4531,7 +4579,7 @@ sub error_018_category_first_letter_small {
     my $error_code = 18;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $project ne 'commonswiki' ) {
             for ( my $i = 0 ; $i <= $category_counter ; $i++ ) {
                 my $test_letter = substr( $category[$i][2], 0, 1 );
@@ -4557,7 +4605,7 @@ sub error_019_headline_only_one {
     my $error_code = 19;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $headlines[0]
             and ( $page_namespace == 0 or $page_namespace == 104 ) )
         {
@@ -4582,7 +4630,7 @@ sub error_020_symbol_for_dead {
     my $error_code = 20;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         my $pos = index( $text, '&dagger;' );
         if ( $pos > -1
             and ( $page_namespace == 0 or $page_namespace == 104 ) )
@@ -4608,7 +4656,7 @@ sub error_021_category_is_english {
     my $error_code = 21;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if (    $project ne 'enwiki'
             and $project ne 'commonswiki'
             and ( $page_namespace == 0 or $page_namespace == 104 )
@@ -4639,7 +4687,7 @@ sub error_022_category_with_space {
     my $error_code = 22;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if (   $page_namespace == 0
             or $page_namespace == 6
             or $page_namespace == 104 )
@@ -4675,7 +4723,7 @@ sub error_023_nowiki_no_correct_end {
     my $error_code = 23;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if (
             $comment ne ''
             and (  $page_namespace == 0
@@ -4701,7 +4749,7 @@ sub error_024_pre_no_correct_end {
     my $error_code = 24;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if (
             $comment ne ''
             and (  $page_namespace == 0
@@ -4727,7 +4775,7 @@ sub error_025_headline_hierarchy {
     my $error_code = 25;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         my $number_headline = -1;
         my $old_headline    = q{};
         my $new_headline    = q{};
@@ -4780,7 +4828,7 @@ sub error_026_html_text_style_elements {
     my $error_code = 26;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         my $test      = 'no found';
         my $test_line = q{};
         my $test_text = lc($text);
@@ -4820,7 +4868,7 @@ sub error_027_unicode_syntax {
     my $error_code = 27;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if (   $page_namespace == 0
             or $page_namespace == 6
             or $page_namespace == 104 )
@@ -4855,7 +4903,7 @@ sub error_028_table_no_correct_end {
     my $error_code = 28;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if (    $comment ne ''
             and ( $page_namespace == 0 or $page_namespace == 104 )
             and index( $text, '{{end}}' ) == -1
@@ -4881,7 +4929,7 @@ sub error_029_gallery_no_correct_end {
     my $error_code = 29;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if (
             $comment ne ''
             and (  $page_namespace == 0
@@ -4907,7 +4955,7 @@ sub error_030_image_without_description {
     my $error_code = 30;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $comment ne '' ) {
             if (   $page_namespace == 0
                 or $page_namespace == 6
@@ -4933,7 +4981,7 @@ sub error_031_html_table_elements {
     my $error_code = 31;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         my $test      = 'no found';
         my $test_line = q{};
         my $test_text = lc($text);
@@ -4994,7 +5042,7 @@ sub error_032_double_pipe_in_link {
     my $error_code = 32;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if (   $page_namespace == 0
             or $page_namespace == 6
             or $page_namespace == 104 )
@@ -5033,7 +5081,7 @@ sub error_033_html_text_style_elements_underline {
     my $error_code = 33;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         my $test      = 'no found';
         my $test_line = q{};
         my $test_text = lc($text);
@@ -5072,7 +5120,7 @@ sub error_034_template_programming_elements {
     my $error_code = 34;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         my $test      = 'no found';
         my $test_line = q{};
         foreach (@lines) {
@@ -5136,7 +5184,7 @@ sub error_035_gallery_without_description {
     my $error_code = 35;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
 
         my $test = q{};
         if (
@@ -5184,7 +5232,7 @@ sub error_036_redirect_not_correct {
     my $error_code = 36;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_is_redirect eq 'yes' ) {
             if ( lc($text) =~ /#redirect[ ]?+[^ :\[][ ]?+\[/ ) {
                 my $output_text = text_reduce( $text, 80 );
@@ -5210,7 +5258,7 @@ sub error_037_title_with_special_letters_and_no_defaultsort {
     my $error_code = 37;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if (    ( $page_namespace == 0 or $page_namespace == 104 )
             and $category_counter > -1
             and $project ne 'arwiki'
@@ -5314,7 +5362,7 @@ sub error_038_html_text_style_elements_italic {
     my $error_code = 38;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         my $test      = 'no found';
         my $test_line = q{};
         my $test_text = lc($text);
@@ -5356,7 +5404,7 @@ sub error_039_html_text_style_elements_paragraph {
     my $error_code = 39;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         my $test      = 'no found';
         my $test_line = q{};
         my $test_text = lc($text);
@@ -5396,7 +5444,7 @@ sub error_040_html_text_style_elements_font {
     my $error_code = 40;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         my $test      = 'no found';
         my $test_line = q{};
         my $test_text = lc($text);
@@ -5438,7 +5486,7 @@ sub error_041_html_text_style_elements_big {
     my $error_code = 41;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         my $test      = 'no found';
         my $test_line = q{};
         my $test_text = lc($text);
@@ -5477,7 +5525,7 @@ sub error_042_html_text_style_elements_small {
     my $error_code = 42;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         my $test      = 'no found';
         my $test_line = q{};
         my $test_text = lc($text);
@@ -5517,7 +5565,7 @@ sub error_043_template_no_correct_end {
     my $error_code = 43;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if (
             $comment ne ''
             and (  $page_namespace == 0
@@ -5543,7 +5591,7 @@ sub error_044_headline_with_bold {
     my $error_code = 44;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             foreach (@headlines) {
                 my $current_line = $_;
@@ -5594,7 +5642,7 @@ sub error_045_interwiki_double {
     my $error_code = 45;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
 
         #print $title."\n";
         #print 'Interwikis='.$interwiki_counter."\n";
@@ -5645,7 +5693,7 @@ sub error_046_count_square_breaks_begin {
     my $error_code = 46;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         my $text_test = q{};
 
 #$text_test = 'abc[[Kartographie]], Bild:abd|[[Globus]]]] ohne [[Gradnetz]] weiterer Text
@@ -5737,7 +5785,7 @@ sub error_047_template_no_correct_begin {
     my $error_code = 47;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
 
         my $text_test = q{};
 
@@ -5820,7 +5868,7 @@ sub error_048_title_in_text {
     my $error_code = 48;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
 
         my $text_test = $text;
 
@@ -5859,7 +5907,7 @@ sub error_049_headline_with_html {
     my $error_code = 49;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
 
         if (   $page_namespace == 0
             or $page_namespace == 6
@@ -5902,7 +5950,7 @@ sub error_050_dash {
     my $error_code = 50;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         my $pos = -1;
         $pos = index( lc($text), '&ndash;' );
         $pos = index( lc($text), '&mdash;' ) if $pos == -1;
@@ -5933,7 +5981,7 @@ sub error_051_interwiki_before_last_headline {
     my $error_code = 51;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         my $number_of_headlines = @headlines;
         my $pos                 = -1;
 
@@ -5984,7 +6032,7 @@ sub error_052_category_before_last_headline {
     my $error_code = 52;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         my $number_of_headlines = @headlines;
         my $pos                 = -1;
 
@@ -6032,7 +6080,7 @@ sub error_053_interwiki_before_category {
     my $error_code = 53;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if (    $category_counter > -1
             and $interwiki_counter > -1
             and ( $page_namespace == 0 or $page_namespace == 104 ) )
@@ -6075,7 +6123,7 @@ sub error_054_break_in_list {
     my $error_code = 54;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             my $found_text = q{};
             foreach (@lines) {
@@ -6124,7 +6172,7 @@ sub error_055_html_text_style_elements_small_double {
     my $error_code = 55;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         my $test_line = q{};
         my $test_text = lc($text);
 
@@ -6180,7 +6228,7 @@ sub error_056_arrow_as_ASCII_art {
     my $error_code = 56;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             my $pos = -1;
             $pos = index( lc($text), '->' );
@@ -6212,7 +6260,7 @@ sub error_057_headline_end_with_colon {
     my $error_code = 57;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             foreach (@headlines) {
                 my $current_line = $_;
@@ -6242,7 +6290,7 @@ sub error_058_headline_with_capitalization {
     my $error_code = 58;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
 
         my $found_text = q{};
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
@@ -6318,7 +6366,7 @@ sub error_059_template_value_end_with_br {
     my $error_code = 59;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         my $found_text = q{};
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             for ( my $i = 0 ; $i <= $number_of_template_parts ; $i++ ) {
@@ -6356,7 +6404,7 @@ sub error_060_template_parameter_with_problem {
     my $error_code = 60;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         my $found_text = q{};
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             for ( my $i = 0 ; $i <= $number_of_template_parts ; $i++ ) {
@@ -6388,12 +6436,12 @@ sub error_060_template_parameter_with_problem {
 sub error_061_reference_with_punctuation {
     my ($attribut) = @_;
     my $error_code = 61;
+    my $found_txt  = q{};
+    my $pos        = -1;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
-        my $found_txt = q{};
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
-            my $pos = -1;
             $pos = index( $text, '</ref>.' )    if ( $pos == -1 );
             $pos = index( $text, '</ref> .' )   if ( $pos == -1 );
             $pos = index( $text, '</ref>  .' )  if ( $pos == -1 );
@@ -6430,7 +6478,7 @@ sub error_062_headline_alone {
     my $error_code = 62;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
             my $number_of_headlines = @headlines;
@@ -6524,7 +6572,7 @@ sub error_063_html_text_style_elements_small_ref_sub_sup {
     my $error_code = 63;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         my $test_line = q{};
         my $test_text = lc($text);
 
@@ -6588,7 +6636,7 @@ sub error_064_link_equal_linktext {
     my $error_code = 64;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
 
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             my $found_text = q{};
@@ -6662,7 +6710,7 @@ sub error_065_image_description_with_break {
     my $error_code = 65;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             my $found_text = q{};
             foreach (@images_all) {
@@ -6699,7 +6747,7 @@ sub error_066_image_description_with_full_small {
     my $error_code = 66;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             my $found_text = q{};
             foreach (@images_all) {
@@ -6736,7 +6784,7 @@ sub error_067_reference_after_punctuation {
     my $error_code = 67;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         my $found_text = q{};
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             my $pos = -1;
@@ -6776,7 +6824,7 @@ sub error_068_link_to_other_language {
     my $error_code = 68;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             my $found_text = q{};
             foreach (@links_all) {
@@ -6815,7 +6863,7 @@ sub error_069_isbn_wrong_syntax {
     my $error_code = 69;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if ( ( $page_namespace == 0 or $page_namespace == 104 )
             and $found_text ne '' )
         {
@@ -6838,7 +6886,7 @@ sub error_070_isbn_wrong_length {
     my $error_code = 70;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if ( ( $page_namespace == 0 or $page_namespace == 104 )
             and $found_text ne '' )
         {
@@ -6861,7 +6909,7 @@ sub error_071_isbn_wrong_pos_X {
     my $error_code = 71;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
 
         if ( ( $page_namespace == 0 or $page_namespace == 104 )
             and $found_text ne '' )
@@ -6885,7 +6933,7 @@ sub error_072_isbn_10_wrong_checksum {
     my $error_code = 72;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if ( ( $page_namespace == 0 or $page_namespace == 104 )
             and $found_text ne '' )
         {
@@ -6908,7 +6956,7 @@ sub error_073_isbn_13_wrong_checksum {
     my $error_code = 73;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if ( ( $page_namespace == 0 or $page_namespace == 104 )
             and $found_text ne '' )
         {
@@ -6931,7 +6979,7 @@ sub error_074_link_with_no_target {
     my $error_code = 74;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             my $found_text = q{};
             foreach (@links_all) {
@@ -6965,7 +7013,7 @@ sub error_075_indented_list {
     my $error_code = 75;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             my $found_text = q{};
             foreach (@lines) {
@@ -7003,7 +7051,7 @@ sub error_076_link_with_no_space {
     my $error_code = 76;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             my $found_text = q{};
             foreach (@links_all) {
@@ -7037,7 +7085,7 @@ sub error_077_image_description_with_partial_small {
     my $error_code = 77;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             my $found_text = q{};
             foreach (@images_all) {
@@ -7074,7 +7122,7 @@ sub error_078_reference_double {
     my $error_code = 78;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             my $test_text      = lc($text);
             my $number_of_refs = 0;
@@ -7122,7 +7170,7 @@ sub error_079_external_link_without_description {
     my $error_code = 79;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             my $test_text = lc($text);
 
@@ -7186,7 +7234,7 @@ sub error_080_external_link_with_line_break {
     my $error_code = 80;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             my $test_text = lc($text);
 
@@ -7246,7 +7294,7 @@ sub error_081_ref_double {
     my $error_code = 81;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             my $number_of_ref = @ref;
             my $found_text    = q{};
@@ -7289,7 +7337,7 @@ sub error_082_link_to_other_wikiproject {
     my $error_code = 82;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             my $found_text = q{};
             foreach (@links_all) {
@@ -7329,7 +7377,7 @@ sub error_083_headline_only_three_and_later_level_two {
     my $error_code = 83;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $headlines[0]
             and ( $page_namespace == 0 or $page_namespace == 104 ) )
         {
@@ -7363,7 +7411,7 @@ sub error_084_section_without_text {
     my $error_code = 84;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $headlines[0]
             and ( $page_namespace == 0 or $page_namespace == 104 ) )
         {
@@ -7439,7 +7487,7 @@ sub error_085_tag_without_content {
     my $error_code = 85;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             my $found_text = q{};
             my $found_pos  = -1;
@@ -7487,7 +7535,7 @@ sub error_086_link_with_two_brackets_to_external_source {
     my $error_code = 86;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             my $found_text = q{};
             foreach (@links_all) {
@@ -7525,7 +7573,7 @@ sub error_087_html_names_entities_without_semicolon {
     my $error_code = 87;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if (   $page_namespace == 0
             or $page_namespace == 6
             or $page_namespace == 104 )
@@ -7602,7 +7650,7 @@ sub error_088_defaultsort_with_first_blank {
     my $error_code = 88;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
 
         if (    ( $page_namespace == 0 or $page_namespace == 104 )
             and $project ne 'arwiki'
@@ -7654,7 +7702,7 @@ sub error_089_defaultsort_with_capitalization_in_the_middle_of_the_word {
     my $error_code = 89;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if (    ( $page_namespace == 0 or $page_namespace == 104 )
             and $project ne 'arwiki'
             and $project ne 'hewiki'
@@ -7705,7 +7753,7 @@ sub error_090_defaultsort_with_lowercase_letters {
     my $error_code = 90;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if (    ( $page_namespace == 0 or $page_namespace == 104 )
             and $project ne 'arwiki'
             and $project ne 'hewiki'
@@ -7756,7 +7804,7 @@ sub error_091_title_with_lowercase_letters_and_no_defaultsort {
     my $error_code = 91;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if (    ( $page_namespace == 0 or $page_namespace == 104 )
             and $category_counter > -1
             and $project ne 'arwiki'
@@ -7802,7 +7850,7 @@ sub error_092_headline_double {
     my $error_code = 92;
 
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' ) {
+    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             my $found_text          = q{};
             my $number_of_headlines = @headlines;
@@ -8077,13 +8125,15 @@ if ( !$silent_modus ) {
     print "$0, version $VERSION.\n";
 }
 
-two_column_display( 'start:',
-        $akJahr . '-'
+two_column_display(
+    'Start time:',
+    $akJahr . '-'
       . $akMonat . '-'
       . $akMonatstag . ' '
       . $akStunden . ':'
-      . $akMinuten );
-two_column_display( 'project:', $project );
+      . $akMinuten
+);
+two_column_display( 'Project:', $project );
 
 if ( !$silent_modus ) {
     two_column_display( 'Modus:',
@@ -8106,6 +8156,8 @@ s/^(?:.*\/)?\Q$project\E-(\d{4})(\d{2})(\d{2})-pages-articles\.xml\.bz2$/$1-$2-$
   # DELETE OLD LIST OF ARTICLES FROM LAST DUMP SCAN IN TABLE cw_dumpscan
   #    $dbh->do( 'DELETE FROM cw_dumpscan WHERE Project = ?;', undef, $project )
   #      or die( $dbh->errstr() );
+
+#$DumpFilename = '/public/datasets/public/enwiki/20130604/enwiki-20130604-pages-articles.xml.bz2';
 
     # GET DUMP FILE SIZE, UNCOMPRESS AND THEN OPEN VIA METAWIKI::DumpFile
     my $dump;
@@ -8137,6 +8189,7 @@ else {
     load_article_for_live_scan();
 }
 
+getErrors();
 ReadMetadata();
 
 for ( my $i = 1 ; $i <= 150 ; $i++ ) {
