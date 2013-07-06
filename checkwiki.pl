@@ -44,20 +44,20 @@ our $output_geo       = '/mnt/user-store/sk/data/geo/';
 our $dump;
 our $quit_program =
   'no';    # quit the program (yes,no), for quit the programm in an emergency
-our $quit_reason = '';    # quit the program reason
+our $quit_reason = q{};    # quit the program reason
 
-our $dump_or_live = '';   # scan modus (dump, live)
-our $silent_modus = 0;    # silent modus (very low output at screen) for batch
+our $dump_or_live = q{};   # scan modus (dump, live)
+our $silent_modus = 0;     # silent modus (very low output at screen) for batch
 
-our $starter_modus   = 0; # to update in the loadmodus the cw_starter table
-our $load_modus_done = 1; # done article from db
-our $load_modus_new  = 1; # new article from db
-our $load_modus_dump = 1; # new article from db
+our $starter_modus   = 0;  # to update in the loadmodus the cw_starter table
+our $load_modus_done = 1;  # done article from db
+our $load_modus_new  = 1;  # new article from db
+our $load_modus_dump = 1;  # new article from db
 our $load_modus_last_change = 1;    # last_change article from db
 our $load_modus_old         = 1;    # old article from db
 
 our $details_for_page =
-  'no';   # yes/no 	durring the scan you can get more details for a article scan
+  'no';   # yes/no  durring the scan you can get more details for a article scan
 
 our $time_start = time();    # start timer in secound
 our $time_end   = time();    # end time in secound
@@ -65,15 +65,15 @@ our $date       = 0;         # date of dump "20060324"
 
 our $line_number = 0;        # number of line in dump
 our $project;                # name of the project 'dewiki'
-our $language    = '';       # language of dump 'de', 'en';
+our $language    = q{};      # language of dump 'de', 'en';
 our $page_number = 0;        # number of pages in namesroom 0
-our $base = '';    # base of article, 'http://de.wikipedia.org/wiki/Hauptseite'
-our $home = '';    # base of article, 'http://de.wikipedia.org/wiki/'
+our $base = q{};    # base of article, 'http://de.wikipedia.org/wiki/Hauptseite'
+our $home = q{};    # base of article, 'http://de.wikipedia.org/wiki/'
 
-our @namespace;    # namespace values
-                   # 0 number
-                   # 1 namespace in project language
-                   # 2 namespace in english language
+our @namespace;     # namespace values
+                    # 0 number
+                    # 1 namespace in project language
+                    # 2 namespace in english language
 
 our @namespacealiases;    # namespacealiases values
                           # 0 number
@@ -116,7 +116,7 @@ our $DbPassword;
 
 # MediaWiki::DumpFile variables
 our $pmwd      = Parse::MediaWikiDump->new;
-our $pages     = '';
+our $pages     = q{};
 our $file_size = 0;
 our $artcount  = 0;
 our $start     = time;
@@ -132,7 +132,8 @@ our @live_to_scan;    # article of one error number which should be scanned
 our $number_article_live_to_scan = -1;    # all article from one error
 our @article_was_scanned;    #if an article was scanned, this will insert here
 
-our $xml_text_from_api = ''; # the text from more then one articles from the API
+our $xml_text_from_api =
+  q{};                       # the text from more then one articles from the API
 
 our $error_counter = -1;     # number of found errors in all article
 
@@ -154,8 +155,8 @@ our $number_of_error_description = -1;    # number of error_description
 our $max_error_count = 50;                # maximum of shown article per error
 our $maximum_current_error_scan =
   -1;    # how much shold be scanned for reach the max_error_count
-our $rest_of_errors_not_scan_yet          = '';
-our $number_of_all_errors_in_all_articles = 0;    #all errors
+our $rest_of_errors_not_scan_yet          = q{};
+our $number_of_all_errors_in_all_articles = 0;     #all errors
 
 our $for_statistic_new_article                   = 0;
 our $for_statistic_last_change_article           = 0;
@@ -217,23 +218,23 @@ our $dbh;    # DatenbaaseHandler
 ###############################
 
 $page_number = $page_number + 1;
-our $title         = '';    # title of the current article
-our $page_id       = -1;    # page id of the current article
-our $revision_id   = -1;    # revision id of the current article
-our $revision_time = -1;    # revision time of the current article
-our $text          = '';    # text of the current article  (for work)
-our $text_origin   = '';    # text of the current article origin (for save)
+our $title         = q{};    # title of the current article
+our $page_id       = -1;     # page id of the current article
+our $revision_id   = -1;     # revision id of the current article
+our $revision_time = -1;     # revision time of the current article
+our $text          = q{};    # text of the current article  (for work)
+our $text_origin   = q{};    # text of the current article origin (for save)
 our $text_without_comments =
-  '';    # text of the current article without_comments (for save)
+  q{};    # text of the current article without_comments (for save)
 
 our $page_namespace;    # namespace of page
 our $page_is_redirect       = 'no';
 our $page_is_disambiguation = 'no';
 
-our $page_categories = '';
-our $page_interwikis = '';
+our $page_categories = q{};
+our $page_interwikis = q{};
 
-our $page_has_error    = 'no';    # yes/no 	error in this page
+our $page_has_error    = 'no';    # yes/no  error in this page
 our $page_error_number = -1;      # number of all article for this page
 
 our @comments;                    # 0 pos_start
@@ -248,7 +249,7 @@ our @category;                    # 0 pos_start
                                   # 4 original	[[Category:Test|Linkname]]
 
 our $category_counter = -1;
-our $category_all     = '';       # all categries
+our $category_all     = q{};      # all categries
 
 our @interwiki;                   # 0 pos_start
                                   # 1 pos_end
@@ -280,7 +281,7 @@ our @images_all;                       # all images
 our @isbn;                             # all ibsn of books
 our @ref;                              # all ref
 
-our $page_has_geo_error    = 'no';     # yes/no 	geo error in this page
+our $page_has_geo_error    = 'no';     # yes/no   geo error in this page
 our $page_geo_error_number = -1;       # number of all article for this page
 
 our $end_of_dump =
@@ -290,6 +291,10 @@ our $end_of_live =
 
 our $statistic_online_page =
   -1;      # number of pages online from metadata-statistic
+
+###########################################################################
+###
+############################################################################
 
 sub get_time_string {
     return strftime( '%Y%m%d %H%M%S', localtime() );
@@ -355,7 +360,7 @@ sub load_article_for_live_scan {
     # Delete all double/multi input article
     my ( $all_errors_of_this_article, @new_live_article, $old_title );
     foreach my $Line (@live_article) {
-        $Line =~ /^([^\t]+)\t(\d+)\n?$/ || die("Couldn't parse '$Line'");
+        $Line =~ /^([^\t]+)\t(\d+)\n?$/ || die("Couldn't parse '$Line'\n");
 
         my ( $current_title, $current_errors ) = ( $1, $2 );
 
@@ -384,7 +389,7 @@ sub load_article_for_live_scan {
     if ( !@live_article ) {
 
         # If no articles were found, end the scan.
-        die('No articles in scan list for live');
+        die("No articles in scan list for live\n");
     }
 
     return ();
@@ -404,14 +409,22 @@ sub new_article {
 
     my $sth = $dbh->prepare(
 'SELECT DISTINCT Title FROM cw_new WHERE Scan_Live = 0 AND Project = ? AND Daytime >= (SELECT Daytime FROM cw_new WHERE Scan_Live = 0 AND Project = ? ORDER BY Daytime LIMIT 1) ORDER BY Daytime LIMIT ?;'
-    ) or die( $dbh->errstr() );
-    $sth->execute( $project, $project, $limit ) or die( $dbh->errstr() );
+    ) || die "Can not prepare statement: $DBI::errstr\n";
+    $sth->execute( $project, $project, $limit )
+      or die "Cannot execute: " . $sth->errstr . "\n";
+
     while ( my $r = $sth->fetchrow_arrayref() ) {
         push( @live_article, $r->[0] . "\t0" );
         $for_statistic_new_article++;
     }
     two_column_display( 'from db articles new:', $for_statistic_new_article );
+
+    return ();
 }
+
+###########################################################################
+##
+###########################################################################
 
 sub last_change_article {
     my ($limit) = @_;
@@ -423,14 +436,18 @@ sub last_change_article {
 
     my $sth = $dbh->prepare(
 'SELECT DISTINCT Title FROM cw_change WHERE Scan_Live = 0 AND Project = ? AND Daytime >= (SELECT Daytime FROM cw_change WHERE Scan_Live = 0 AND Project = ? ORDER BY Daytime LIMIT 1) ORDER BY Daytime LIMIT ?;'
-    ) or die( $dbh->errstr() );
-    $sth->execute( $project, $project, $limit ) or die( $dbh->errstr() );
+    ) || die "Can not prepare statement: $DBI::errstr\n";
+    $sth->execute( $project, $project, $limit )
+      or die "Cannot execute: " . $sth->errstr . "\n";
+
     while ( my $r = $sth->fetchrow_arrayref() ) {
         push( @live_article, $r->[0] . "\t0" );
         $for_statistic_last_change_article++;
     }
     two_column_display( 'from db articles changed:',
         $for_statistic_last_change_article );
+
+    return ();
 }
 
 ###########################################################################
@@ -469,6 +486,8 @@ sub geo_error_article {
     print ' (no file: ' . $file_geo . ' )' if not( -e $file_input_geo );
     print "\n";
     $for_statistic_geo_article = $geo_counter;
+
+    return ();
 }
 
 ###########################################################################
@@ -484,8 +503,10 @@ sub article_with_error_from_dump_scan {
 
     my $sth = $dbh->prepare(
 'SELECT DISTINCT Title FROM cw_dumpscan WHERE Scan_Live = 0 AND Project = ? LIMIT ?;'
-    ) or die( $dbh->errstr() );
-    $sth->execute( $project, $limit ) or die( $dbh->errstr() );
+    ) || die "Can not prepare statement: $DBI::errstr\n";
+    $sth->execute( $project, $limit )
+      or die "Cannot execute: " . $sth->errstr . "\n";
+
     while ( my $r = $sth->fetchrow_arrayref() ) {
         push( @live_article, $r->[0] . "\t0" );
         $database_dump_scan_counter++;
@@ -495,22 +516,31 @@ sub article_with_error_from_dump_scan {
         $database_dump_scan_counter );
 
 #print "\t".$database_dump_scan_counter."\t".'articles from dump (not scan live) from db'."\n";
+
+    return ();
 }
+
+###########################################################################
+##
+###########################################################################
 
 sub get_done_article_from_database {
     my ($limit) = @_;
-
     my $database_ok_counter = 0;
 
     my $sth = $dbh->prepare(
         'SELECT Title FROM cw_error WHERE Ok = 1 AND Project = ? LIMIT ?;')
-      or die( $dbh->errstr() );
-    $sth->execute( $project, $limit ) or die( $dbh->errstr() );
+      || die "Can not prepare statement: $DBI::errstr\n";
+    $sth->execute( $project, $limit )
+      or die "Cannot execute: " . $sth->errstr . "\n";
+
     while ( my $r = $sth->fetchrow_arrayref() ) {
         push( @live_article, $r->[0] . "\t0" );
         $database_ok_counter++;
     }
     two_column_display( 'from db done articles:', $database_ok_counter );
+
+    return ();
 }
 
 ###########################################################################
@@ -519,18 +549,21 @@ sub get_done_article_from_database {
 
 sub get_oldest_article_from_database {
     my ($limit) = @_;
-
     my $database_ok_counter = 0;
 
     my $sth = $dbh->prepare(
 'SELECT Title FROM cw_error WHERE Project = ? AND DATEDIFF(NOW(), Found) > 31 ORDER BY DATEDIFF(NOW(), Found) DESC LIMIT ?;'
-    ) or die( $dbh->errstr() );
-    $sth->execute( $project, $limit ) or die( $dbh->errstr() );
+    ) || die "Can not prepare statement: $DBI::errstr\n";
+    $sth->execute( $project, $limit )
+      or die "Cannot execute: " . $sth->errstr . "\n";
+
     while ( my $r = $sth->fetchrow_arrayref() ) {
         push( @live_article, $r->[0] . "\t0" );
         $database_ok_counter++;
     }
     two_column_display( 'from db old articles:', $database_ok_counter );
+
+    return ();
 }
 
 ###########################################################################
@@ -546,7 +579,7 @@ sub scan_pages {
     $end_of_dump = 'no';
     $end_of_live = 'no';
 
-    my $page = '';
+    my $page = q{};
 
     if ( $dump_or_live eq 'dump' ) {
         while ( defined( $page = $pages->next ) || $end_of_dump eq 'no' ) {
@@ -578,7 +611,12 @@ sub scan_pages {
 
     print 'articles scan finish' . "\n\n" if ( !$silent_modus );
 
+    return ();
 }
+
+###########################################################################
+##
+###########################################################################
 
 sub update_ui {
     my $seconds = time - $start;
@@ -596,7 +634,13 @@ sub update_ui {
         my $bytes_per_second = int( $bytes / $seconds );
         print pretty_bytes($bytes_per_second), " per second\n";
     }
+
+    return ();
 }
+
+###########################################################################
+###
+###########################################################################
 
 sub pretty_number {
     my $number = reverse(shift);
@@ -607,6 +651,10 @@ sub pretty_number {
     return $number;
 
 }
+
+###########################################################################
+###
+##########################################################################
 
 sub pretty_bytes {
     my ($bytes) = @_;
@@ -627,18 +675,22 @@ sub pretty_bytes {
     return ($pretty);
 }
 
+###########################################################################
+###
+###########################################################################
+
 sub case_fixer {
-    my ($title) = @_;
+    my ($my_title) = @_;
 
     #check for namespace
-    if ( $title =~ /^(.+?):(.+)/ ) {
-        $title = $1 . ':' . ucfirst($2);
+    if ( $my_title =~ /^(.+?):(.+)/ ) {
+        $my_title = $1 . ':' . ucfirst($2);
     }
     else {
-        $title = ucfirst($title);
+        $my_title = ucfirst($title);
     }
 
-    return ($title);
+    return ($my_title);
 }
 
 ###########################################################################
@@ -647,22 +699,22 @@ sub case_fixer {
 
 sub set_variables_for_article {
     $page_number   = $page_number + 1;
-    $title         = '';               # title of the current article
+    $title         = q{};              # title of the current article
     $page_id       = -1;               # page id of the current article
     $revision_id   = -1;               # revision id of the current article
     $revision_time = -1;               # revision time of the current article
-    $text          = '';               # text of the current article  (for work)
-    $text_origin = '';    # text of the current article origin (for save)
+    $text          = q{};              # text of the current article  (for work)
+    $text_origin = q{};    # text of the current article origin (for save)
     $text_without_comments =
-      '';    # text of the current article without_comments (for save)
+      q{};    # text of the current article without_comments (for save)
 
     $page_is_redirect       = 'no';
     $page_is_disambiguation = 'no';
 
-    $page_categories = '';
-    $page_interwikis = '';
+    $page_categories = q{};
+    $page_interwikis = q{};
 
-    $page_has_error    = 'no';    # yes/no 	error in this page
+    $page_has_error    = 'no';    # yes/no  error in this page
     $page_error_number = -1;      # number of all article for this page
 
     undef(@comments);             # 0 pos_start
@@ -677,7 +729,7 @@ sub set_variables_for_article {
                                   # 4 original	[[Category:Test|Linkname]]
 
     $category_counter = -1;
-    $category_all     = '';       # all categries
+    $category_all     = q{};      # all categries
 
     undef(@interwiki);            # 0 pos_start
                                   # 1 pos_end
@@ -708,9 +760,10 @@ sub set_variables_for_article {
     undef(@isbn);                      # all ibsn of books
     undef(@ref);                       # all ref
 
-    $page_has_geo_error    = 'no';     # yes/no 	geo error in this page
+    $page_has_geo_error    = 'no';     # yes/no  geo error in this page
     $page_geo_error_number = -1;       # number of all article for this page
 
+    return ();
 }
 
 ###########################################################################
@@ -718,27 +771,25 @@ sub set_variables_for_article {
 ###########################################################################
 
 sub update_table_cw_error_from_dump {
+
     if ( $dump_or_live eq 'dump' ) {
         print 'move all article from cw_dumpscan into cw_error' . "\n";
-
         my $sth = $dbh->prepare('DELETE FROM cw_error WHERE Project = ?;')
-          or die( $dbh->errstr() );
-        $sth->execute($project) or die( $dbh->errstr() );
-
-#set @test = 'T%';
-#insert into cw_error (select * from cw_dumpscan where project = 'nlwiki' and title like @test);
-#delete from cw_dumpscan where project = 'nlwiki' and title like @test;
+          || die "Can not prepare statement: $DBI::errstr\n";
+        $sth->execute($project) or die "Cannot execute: " . $sth->errstr . "\n";
 
         $sth = $dbh->prepare(
 "INSERT INTO cw_error (SELECT * FROM cw_dumpscan WHERE Project = ?);"
-        ) or die( $dbh->errstr() );
-        $sth->execute($project) or die( $dbh->errstr() );
+        ) || die "Can not prepare statement: $DBI::errstr\n";
+        $sth->execute($project) or die "Cannot execute: " . $sth->errstr . "\n";
 
         print 'delete all article from this project in cw_dumpscan' . "\n";
         $sth = $dbh->prepare("DELETE FROM cw_dumpscan WHERE Project = ?;")
-          or die( $dbh->errstr() );
-        $sth->execute($project) or die( $dbh->errstr() );
+          || die "Can not prepare statement: $DBI::errstr\n";
+        $sth->execute($project) or die "Cannot execute: " . $sth->errstr . "\n";
     }
+
+    return ();
 }
 
 ###########################################################################
@@ -754,9 +805,11 @@ sub delete_deleted_article_from_db {
     # --tl, 2013-06-01
     my $sth = $dbh->prepare(
 "DELETE FROM cw_error WHERE Ok = 1 AND Project = ? AND Found NOT LIKE CONCAT('%', ?, '%');"
-    ) or die( $dbh->errstr() );
+    ) || die "Can not prepare statement: $DBI::errstr\n";
     $sth->execute( $project, substr( get_time_string(), 0, 7 ) )
-      or die( $dbh->errstr() );
+      or die "Cannot execute: " . $sth->errstr . "\n";
+
+    return ();
 }
 
 ###########################################################################
@@ -768,14 +821,16 @@ sub delete_article_from_table_cw_new {
     # Delete all scanned or older than 7 days from this project.
     my $sth = $dbh->prepare(
 'DELETE FROM cw_new WHERE Project = ? AND (Scan_Live = 1 OR DATEDIFF(NOW(), Daytime) > 7);'
-    ) or die( $dbh->errstr() );
-    $sth->execute($project) or die( $dbh->errstr() );
+    ) || die "Can not prepare statement: $DBI::errstr\n";
+    $sth->execute($project) or die "Cannot execute: " . $sth->errstr . "\n";
 
     # Delete all articles from don't scan projects.
     $sth =
       $dbh->prepare('DELETE FROM cw_new WHERE DATEDIFF(NOW(), Daytime) > 8;')
-      or die( $dbh->errstr() );
-    $sth->execute() or die( $dbh->errstr() );
+      || die "Can not prepare statement: $DBI::errstr\n";
+    $sth->execute or die "Cannot execute: " . $sth->errstr . "\n";
+
+    return ();
 }
 
 ###########################################################################
@@ -787,13 +842,16 @@ sub delete_article_from_table_cw_change {
     # Delete all scanned or older than three days from this project.
     my $sth = $dbh->prepare(
 'DELETE FROM cw_change WHERE Project = ? AND (Scan_Live = 1 OR DATEDIFF(NOW(), Daytime) > 3);'
-    ) or die( $dbh->errstr() );
-    $sth->execute($project) or die( $dbh->errstr() );
+    ) || die "Can not prepare statement: $DBI::errstr\n";
+    $sth->execute($project) or die "Cannot execute: " . $sth->errstr . "\n";
 
     # Delete all articles from don't scan projects.
-    $sth = $dbh->prepare(
-        'DELETE FROM cw_change WHERE DATEDIFF(NOW(), Daytime) > 8;');
-    $sth->execute() or die( $dbh->errstr() );
+    $sth =
+      $dbh->prepare('DELETE FROM cw_change WHERE DATEDIFF(NOW(), Daytime) > 8;')
+      || die "Can not prepare statement: $DBI::errstr\n";
+    $sth->execute() or die "Cannot execute: " . $sth->errstr . "\n";
+
+    return ();
 }
 
 ###########################################################################
@@ -814,7 +872,7 @@ sub update_table_cw_starter {
                   . 'Current_Run = ?, '
                   . 'Last_Run_Change = IF(?, TRUE, Last_Run_Change) '
                   . 'WHERE Project = ?);' )
-              or die( $dbh->errstr() );
+              or die( $dbh->errstr() . "\n" );
             $sth->execute(
                 $load_modus_done        ? $error_counter : 0,
                 $load_modus_new         ? $error_counter : 0,
@@ -827,6 +885,8 @@ sub update_table_cw_starter {
             );
         }
     }
+
+    return ();
 }
 
 ###########################################################################
@@ -849,7 +909,7 @@ sub ReadMetadata {
         )
       )
     {
-        die("Couldn't calculate server name for project '$project'");
+        die( "Couldn't calculate server name for project" . $project . "\n" );
     }
 
     my $url = 'http://' . $ServerName . '/w/api.php';
@@ -862,18 +922,18 @@ sub ReadMetadata {
     my $Response = $UA->get($url);
 
     if ( !$Response->is_success() ) {
-        die("Could not retrieve metadata");
+        die("Could not retrieve metadata\n");
     }
 
     my $Content = $Response->decoded_content( raise_error => 1 );
     if ( !defined($Content) ) {
-        die("Could not decode content");
+        die("Could not decode content\n");
     }
     my $metatext = $Content;
 
     # Parse siteinfo to DOM.
-    my $XMLParser = new XML::LibXML() or die($!);
-    my $SiteInfo = $XMLParser->parse_string($Content) or die($!);
+    my $XMLParser = XML::LibXML->new or die( $! . "\n" );
+    my $SiteInfo = $XMLParser->parse_string($Content) or die( $! . "\n" );
 
     # Extract sitename.
     my $sitename =
@@ -881,10 +941,10 @@ sub ReadMetadata {
     two_column_display( 'Sitename:', $sitename ) if ( !$silent_modus );
 
     # Extract base.
-    my $base =
+    my $my_base =
       ( $SiteInfo->findnodes(q!//api/query/general/@base!) )[0]->getData();
-    two_column_display( 'Base:', $base ) if ( !$silent_modus );
-    $home = $base;
+    two_column_display( 'Base:', $my_base ) if ( !$silent_modus );
+    $home = $my_base;
     $home =~ s/[^\/]+$//;
 
     # Get namespaces numbers and names (e. g., "6, Tabulator image").
@@ -893,7 +953,7 @@ sub ReadMetadata {
         my $canonical = $Node->getAttribute('canonical');
         my $name      = $Node->textContent();
 
-        $canonical = '' if ( !defined($canonical) );
+        $canonical = q{} if ( !defined($canonical) );
 
         # Store namespace.
         push( @namespace, [ $id, $name, $canonical ] );
@@ -962,6 +1022,8 @@ sub ReadMetadata {
     $statistic_online_page =
       ( $SiteInfo->findnodes(q!//api/query/statistics/@pages!) )[0]->getData();
     two_column_display( 'pages online:', $statistic_online_page );
+
+    return ();
 }
 
 ###########################################################################
@@ -1072,7 +1134,7 @@ sub get_next_page_from_live {
                 #print 'Search now for more :'.$maximum_current_error_scan."\n";
             }
             $current_live_article = 0;
-            $xml_text_from_api    = '';
+            $xml_text_from_api    = q{};
 
 #print '#############################################################'."\n";
 #print 'Error '.$current_live_error_scan.' :'."\t".$number_article_live_to_scan."\n" if ($number_article_live_to_scan > 0);
@@ -1093,7 +1155,7 @@ sub get_next_page_from_live {
 
 # after check live all errors, then start with check of error 0 (new articles, last changes, ...)
         $current_live_article    = 0;
-        $xml_text_from_api       = '';
+        $xml_text_from_api       = q{};
         $current_live_error_scan = 0;
         get_all_error_with_number($current_live_error_scan);
         $number_article_live_to_scan = @live_to_scan;
@@ -1114,7 +1176,7 @@ sub get_next_page_from_live {
 
             # if list of xml_text_from_api is empty, then load next ariticles
             #print 'Load next texts from API'."\n";
-            my $many_titles    = '';
+            my $many_titles    = q{};
             my $i              = $current_live_article;
             my $end_many_title = 'false';
             do {
@@ -1178,8 +1240,8 @@ sub get_next_page_from_live {
 
                     #BIG PROBLEM
                     print 'WARNING: Big problem with API' . "\n";
-                    $text              = '';
-                    $xml_text_from_api = '';
+                    $text              = q{};
+                    $xml_text_from_api = q{};
                 }
             }
 
@@ -1241,6 +1303,8 @@ sub get_next_page_from_live {
             $text = replace_special_letters($text);
         }
     }
+
+    return ();
 }
 
 ###########################################################################
@@ -1248,8 +1312,9 @@ sub get_next_page_from_live {
 ###########################################################################
 
 sub save_errors_for_next_scan {
-    my $from_number = $_[0];
+    my ($from_number) = @_;
     $number_article_live_to_scan = @live_to_scan;
+
     for ( my $i = $from_number ; $i < $number_article_live_to_scan ; $i++ ) {
 
         #print $live_to_scan[$i]."\n";
@@ -1264,6 +1329,8 @@ sub save_errors_for_next_scan {
           . $rest_title . "\t"
           . $current_live_error_scan;
     }
+
+    return ();
 }
 
 ###########################################################################
@@ -1273,7 +1340,7 @@ sub save_errors_for_next_scan {
 sub get_all_error_with_number {
 
 # get from array "live_article" with all errors, only this errors with error number X
-    my $error_live = $_[0];
+    my ($error_live) = @_;
 
     #print 'Error number: '.$error_live."\n";
 
@@ -1328,28 +1395,8 @@ sub get_all_error_with_number {
             }
         }
     }
-}
 
-###########################################################################
-##
-###########################################################################
-
-sub get_all_error_with_type {
-
-    #  at the moment not in use
-    # get from all error, only this errors with number X
-    my $error_type        = $_[0];
-    my $number_of_article = @live_article;
-    for ( my $i = 0 ; $i < $number_of_article ; $i++ ) {
-        my $current_live_line = $live_article[$i];
-        my @line_split = split( /\t/, $current_live_line );
-        if ( $line_split[1] eq $error_type ) {
-
-            #			$live_article[$i] =~ s/\tD\t/\tL\t/;
-            #			$live_article[$i] =~ s/\tO\t/\tL\t/;
-            push( @live_to_scan, $current_live_line );    #."\t".$i
-        }
-    }
+    return ();
 }
 
 ###########################################################################
@@ -1357,7 +1404,7 @@ sub get_all_error_with_type {
 ###########################################################################
 
 sub replace_special_letters {
-    my $content = $_[0];
+    my ($content) = @_;
 
 # only in dump must replace not in live
 # http://de.wikipedia.org/w/index.php?title=Benutzer_Diskussion:Stefan_K%C3%BChn&oldid=48573921#Dump
@@ -1380,16 +1427,16 @@ sub replace_special_letters {
 ###########################################################################
 
 sub raw_text {
-    my $title = $_[0];
+    my ($my_title) = @_;
 
-    $title =~ s/&amp;/%26/g;    # Problem with & in title
-    $title =~ s/&#039;/'/g;     # Problem with apostroph in title
-    $title =~ s/&lt;/</g;
-    $title =~ s/&gt;/>/g;
-    $title =~ s/&quot;/"/g;
+    $my_title =~ s/&amp;/%26/g;    # Problem with & in title
+    $my_title =~ s/&#039;/'/g;     # Problem with apostroph in title
+    $my_title =~ s/&lt;/</g;
+    $my_title =~ s/&gt;/>/g;
+    $my_title =~ s/&quot;/"/g;
 
 # http://localhost/~daniel/WikiSense/WikiProxy.php?wiki=$lang.wikipedia.org&title=$article
-    my $url2 = '';
+    my $url2 = q{};
 
 #$url2 = 'http://localhost/~daniel/WikiSense/WikiProxy.php?wiki=de.wikipedia.org&title='.$title;
     $url2 = $home;
@@ -1399,7 +1446,7 @@ sub raw_text {
     $url2 =
         $url2
       . 'api.php?action=query&prop=revisions&titles='
-      . $title
+      . $my_title
       . '&rvprop=timestamp|content&format=xml';
 
     #print $url2."\n";
@@ -1417,7 +1464,7 @@ sub raw_text {
     #}
     #until ($response2->is_success);
     my $content2 = $response2->content;
-    my $result2  = '';
+    my $result2  = q{};
     $result2 = $content2 if ($content2);
 
     return ($result2);
@@ -1428,22 +1475,22 @@ sub raw_text {
 ###########################################################################
 
 sub raw_text_more_articles {
-    my $title = $_[0];
+    my ($my_title) = @_;
 
-    #$title =~ s/&amp;/%26/g;		# Problem with & in title
-    #$title =~ s/&#039;/'/g;			# Problem with apostroph in title
-    #$title =~ s/&lt;/</g;
-    #$title =~ s/&gt;/>/g;
-    #$title =~ s/&quot;/"/g;
-    #$title =~ s/&#039;/'/g;
+    #$my_title =~ s/&amp;/%26/g;		# Problem with & in title
+    #$my_title =~ s/&#039;/'/g;			# Problem with apostroph in title
+    #$my_title =~ s/&lt;/</g;
+    #$my_title =~ s/&gt;/>/g;
+    #$my_title =~ s/&quot;/"/g;
+    #$my_title =~ s/&#039;/'/g;
 
-    my $url2 = '';
+    my $url2 = q{};
     $url2 = $home;
     $url2 =~ s/\/wiki\//\/w\//;
     $url2 =
         $url2
       . 'api.php?action=query&prop=revisions&titles='
-      . $title
+      . $my_title
       . '&rvprop=timestamp|content&format=xml';
 
     printf( "\$url2 = %s\n", $url2 );
@@ -1451,7 +1498,7 @@ sub raw_text_more_articles {
     my $ua2 = LWP::UserAgent->new;
     $response2 = $ua2->get($url2);
     my $content2 = $response2->content;
-    my $result2  = '';
+    my $result2  = q{};
     $result2 = $content2 if ($content2);
     return ($result2);
 }
@@ -1462,6 +1509,8 @@ sub raw_text_more_articles {
 
 sub output_little_statistic {
     print 'errors found:' . "\t\t" . $error_counter . " (+1)\n";
+
+    return ();
 }
 
 ###########################################################################
@@ -1482,6 +1531,8 @@ sub output_duration {
       . $duration_secounds
       . ' secounds' . "\n";
     print $project. ' ' . $dump_or_live . "\n" if ( !$silent_modus );
+
+    return ();
 }
 
 ###########################################################################
@@ -1664,40 +1715,10 @@ Verlag LANGEWIESCHE, ISBN-10: 3784551912 und ISBN-13: 9783784551913
     #get_line_first_blank();
     get_headlines();
 
-    error_check();
-
     set_article_as_scan_live_in_db( $title, $page_id )
       if ( $dump_or_live eq 'live' );
 
-}
-
-###########################################################################
-##
-###########################################################################
-
-sub print_article_title_every_x {
-
-    #print in the Loop every x article a short message
-    #Output every x articles
-    my $steps = $_[0];
-
-    #print "$page_number \t$title\n";
-    my $x              = int( $page_number / $steps ) * $steps;
-    my $project_output = $project;
-    $project_output =~ s/wiki$//;
-
-    #$statistic_online_page
-
-    if ( $page_number == 1 or $page_number == $x ) {
-        my $percent = int( $page_number / $statistic_online_page * 100 ) . '%';
-        if ( $dump_or_live eq 'live' ) {
-            my $output_current_live_article = $current_live_article + 1;
-            $percent =
-              $output_current_live_article . '/' . $number_article_live_to_scan;
-        }
-        printf "%-3s %-8s %-5s %-8s %-40s\n", $project_output,
-          'p=' . $page_number, $percent, 'id=' . $page_id, $title;
-    }
+    return ();
 }
 
 ###########################################################################
@@ -1708,9 +1729,12 @@ sub delete_old_errors_in_db {
     if ( $dump_or_live eq 'live' && $page_id && $title ne '' ) {
         my $sth = $dbh->prepare(
             'DELETE FROM cw_error WHERE Error_ID = ? AND Project = ?;')
-          or die( $dbh->errstr() );
-        $sth->execute( $page_id, $project ) or die( $dbh->errstr() );
+          || die "Can not prepare statement: $DBI::errstr\n";
+        $sth->execute( $page_id, $project )
+          or die "Cannot execute: " . $sth->errstr . "\n";
     }
+
+    return ();
 }
 
 ###########################################################################
@@ -1738,6 +1762,8 @@ sub get_namespace {
 
     # If no namespace prefix or not found.
     $page_namespace = 0;
+
+    return ();
 }
 
 ###########################################################################
@@ -1762,7 +1788,7 @@ sub get_comments_nowiki_pre {
         #print $pos_comment.' '.$pos_nowiki.' '.$pos_pre."\n";
 
         #first tag
-        my $tag_first = '';
+        my $tag_first = q{};
         $tag_first = 'comment' if ( $pos_comment > -1 );
         $tag_first = 'nowiki'
           if (
@@ -1869,6 +1895,7 @@ sub get_comments_nowiki_pre {
     } until ( $loop_again == 0 );
     $text_without_comments = $text;
 
+    return ();
 }
 
 ###########################################################################
@@ -1898,15 +1925,15 @@ sub get_next_pre {
         #replace comment with space
         my $text_before = substr( $text, 0, $pos_start );
         my $text_after  = substr( $text, $pos_end );
-        my $filler      = '';
+        my $filler      = q{};
         for ( my $i = 0 ; $i < ( $pos_end - $pos_start ) ; $i++ ) {
             $filler = $filler . ' ';
         }
         $text   = $text_before . $filler . $text_after;
         $result = $pos_end;
     }
-    return ($result);
 
+    return ($result);
 }
 
 ###########################################################################
@@ -1928,13 +1955,14 @@ sub get_next_nowiki {
         #replace comment with space
         my $text_before = substr( $text, 0, $pos_start );
         my $text_after  = substr( $text, $pos_end );
-        my $filler      = '';
+        my $filler      = q{};
         for ( my $i = 0 ; $i < ( $pos_end - $pos_start ) ; $i++ ) {
             $filler = $filler . ' ';
         }
         $text   = $text_before . $filler . $text_after;
         $result = $pos_end;
     }
+
     return ($result);
 }
 
@@ -1961,15 +1989,15 @@ sub get_next_comment {
         #replace comment with space
         my $text_before = substr( $text, 0, $pos_start );
         my $text_after  = substr( $text, $pos_end );
-        my $filler      = '';
+        my $filler      = q{};
         for ( my $i = 0 ; $i < ( $pos_end - $pos_start ) ; $i++ ) {
             $filler = $filler . ' ';
         }
         $text   = $text_before . $filler . $text_after;
         $result = $pos_end;
     }
-    return ($result);
 
+    return ($result);
 }
 
 ###########################################################################
@@ -2035,7 +2063,7 @@ sub get_math {
             #replace comment with space
             my $text_before = substr( $text, 0, $pos_start );
             my $text_after  = substr( $text, $pos_end );
-            my $filler      = '';
+            my $filler      = q{};
             for ( my $i = 0 ; $i < ( $pos_end - $pos_start ) ; $i++ ) {
                 $filler = $filler . ' ';
             }
@@ -2050,6 +2078,8 @@ sub get_math {
         }
 
     } until ( $end_search eq 'yes' );
+
+    return ();
 }
 
 ###########################################################################
@@ -2087,7 +2117,7 @@ sub get_source {
             #replace comment with space
             my $text_before = substr( $text, 0, $pos_start );
             my $text_after  = substr( $text, $pos_end );
-            my $filler      = '';
+            my $filler      = q{};
             for ( my $i = 0 ; $i < ( $pos_end - $pos_start ) ; $i++ ) {
                 $filler = $filler . ' ';
             }
@@ -2103,6 +2133,7 @@ sub get_source {
 
     } until ( $end_search eq 'yes' );
 
+    return ();
 }
 
 ###########################################################################
@@ -2142,7 +2173,7 @@ sub get_syntaxhighlight {
             #replace comment with space
             my $text_before = substr( $text, 0, $pos_start );
             my $text_after  = substr( $text, $pos_end );
-            my $filler      = '';
+            my $filler      = q{};
             for ( my $i = 0 ; $i < ( $pos_end - $pos_start ) ; $i++ ) {
                 $filler = $filler . ' ';
             }
@@ -2157,6 +2188,7 @@ sub get_syntaxhighlight {
 
     } until ( $end_search eq 'yes' );
 
+    return ();
 }
 
 ###########################################################################
@@ -2189,7 +2221,7 @@ sub get_code {
             #replace comment with space
             my $text_before = substr( $text, 0, $pos_start );
             my $text_after  = substr( $text, $pos_end );
-            my $filler      = '';
+            my $filler      = q{};
             for ( my $i = 0 ; $i < ( $pos_end - $pos_start ) ; $i++ ) {
                 $filler = $filler . ' ';
             }
@@ -2204,6 +2236,8 @@ sub get_code {
         }
 
     } until ( $end_search eq 'yes' );
+
+    return ();
 }
 
 ###########################################################################
@@ -2247,7 +2281,7 @@ sub get_isbn {
 
             #print $output_isbn."\n";
 
-            my $result_isbn = '';
+            my $result_isbn = q{};
             my $i           = -1;
             my $finish      = 'no';
 
@@ -2332,6 +2366,7 @@ sub get_isbn {
         }
     }
 
+    return ();
 }
 
 ###########################################################################
@@ -2339,7 +2374,7 @@ sub get_isbn {
 ###########################################################################
 
 sub check_isbn {
-    my $current_isbn = $_[0];
+    my ($current_isbn) = @_;
 
     #print 'check: '."\t".$current_isbn."\n";
     # length
@@ -2392,8 +2427,8 @@ sub check_isbn {
 
     my $check_10      = 'no ok';
     my $check_13      = 'no ok';
-    my $found_text_10 = '';
-    my $found_text_13 = '';
+    my $found_text_10 = q{};
+    my $found_text_13 = q{};
 
     # Check Checksum 13
     if ( $result eq 'yes' ) {
@@ -2508,6 +2543,8 @@ sub check_isbn {
     #} else {
     #	print "\t".'Check ISBN: wrong ISBN!'."\n";
     #}
+
+    return ();
 }
 
 ###########################################################################
@@ -2535,15 +2572,15 @@ sub get_templates {
     while ( $text_test =~ /\{\{/g ) {
 
         #Begin of template
-        my $pos_start             = pos($text_test) - 2;
+        $pos_start = pos($text_test) - 2;
         my $temp_text             = substr( $text_test, $pos_start );
-        my $temp_text_2           = '';
+        my $temp_text_2           = q{};
         my $beginn_curly_brackets = 1;
         my $end_curly_brackets    = 0;
         while ( $temp_text =~ /\}\}/g ) {
 
             # Find currect end - number of {{ == }}
-            my $pos_end = pos($temp_text);
+            $pos_end     = pos($temp_text);
             $temp_text_2 = substr( $temp_text, 0, $pos_end );
             $temp_text_2 = ' ' . $temp_text_2 . ' ';
 
@@ -2579,7 +2616,7 @@ sub get_templates {
     # extract for each template all attributes and values
     my $number_of_templates   = -1;
     my $template_part_counter = -1;
-    my $output                = '';
+    my $output                = q{};
     foreach (@templates_all) {
         my $current_template = $_;
 
@@ -2593,7 +2630,7 @@ sub get_templates {
         }
 
         $number_of_templates = $number_of_templates + 1;
-        my $template_name = '';
+        my $template_name = q{};
 
         my @template_split = split( /\|/, $current_template );
         my $number_of_splits = @template_split;
@@ -2634,7 +2671,7 @@ sub get_templates {
             shift(@template_split);
 
             # get next part of template
-            my $template_part = '';
+            my $template_part = q{};
             my @template_part_array;
             undef(@template_part_array);
 
@@ -2672,7 +2709,7 @@ sub get_templates {
                 {
 
                     push( @template_part_array, $template_part );
-                    $template_part = '';
+                    $template_part = q{};
                 }
                 else {
                     $template_part = $template_part . '|';
@@ -2685,7 +2722,7 @@ sub get_templates {
             my $template_part_without_attribut = -1;
 
             foreach (@template_part_array) {
-                my $template_part = $_;
+                $template_part = $_;
 
                 #print "\t\t".'Template part: '.$_."\n";
 
@@ -2698,8 +2735,8 @@ sub get_templates {
                 $template[$template_part_counter][1] = $template_name;
                 $template[$template_part_counter][2] = $template_part_number;
 
-                my $attribut = '';
-                my $value    = '';
+                my $attribut = q{};
+                my $value    = q{};
                 if ( index( $template_part, '=' ) > -1 ) {
 
                     #template part with "="   {{test|attribut=value}}
@@ -2803,6 +2840,7 @@ sub get_templates {
 
     #die  if ($title eq 'Methanol');
 
+    return ();
 }
 
 ###########################################################################
@@ -2828,15 +2866,15 @@ sub get_links {
     while ( $text_test =~ /\[\[/g ) {
 
         #Begin of link
-        my $pos_start              = pos($text_test) - 2;
+        $pos_start = pos($text_test) - 2;
         my $link_text              = substr( $text_test, $pos_start );
-        my $link_text_2            = '';
+        my $link_text_2            = q{};
         my $beginn_square_brackets = 1;
         my $end_square_brackets    = 0;
         while ( $link_text =~ /\]\]/g ) {
 
             # Find currect end - number of [[==]]
-            my $pos_end = pos($link_text);
+            $pos_end     = pos($link_text);
             $link_text_2 = substr( $link_text, 0, $pos_end );
             $link_text_2 = ' ' . $link_text_2 . ' ';
 
@@ -2869,6 +2907,7 @@ sub get_links {
         }
     }
 
+    return ();
 }
 
 ###########################################################################
@@ -2880,7 +2919,7 @@ sub get_images {
     # get all images from all links
     undef(@images_all);
 
-    my $found_error_text = '';
+    my $found_error_text = q{};
     foreach (@links_all) {
         my $current_link = $_;
 
@@ -3067,6 +3106,7 @@ sub get_images {
         error_030_image_without_description( 'check', $found_error_text );
     }
 
+    return ();
 }
 
 ###########################################################################
@@ -3114,7 +3154,7 @@ sub get_tables {
             #replace comment with space
             my $text_before = substr( $text, 0, $pos_start );
             my $text_after  = substr( $text, $pos_end );
-            my $filler      = '';
+            my $filler      = q{};
             for ( my $i = 0 ; $i < ( $pos_end - $pos_start ) ; $i++ ) {
                 $filler = $filler . ' ';
             }
@@ -3127,6 +3167,8 @@ sub get_tables {
         }
 
     } until ( $end_search eq 'yes' );
+
+    return ();
 }
 
 ###########################################################################
@@ -3155,7 +3197,7 @@ sub get_gallery {
               substr( $text, $pos_start, $pos_end - $pos_start );
             error_035_gallery_without_description( 'check', $text_gallery );
 
-            my $filler = '';
+            my $filler = q{};
             for ( my $i = 0 ; $i < ( $pos_end - $pos_start ) ; $i++ ) {
                 $filler = $filler . ' ';
             }
@@ -3168,6 +3210,8 @@ sub get_gallery {
             $end_search = 'yes';
         }
     } until ( $end_search eq 'yes' );
+
+    return ();
 }
 
 ###########################################################################
@@ -3202,7 +3246,7 @@ sub get_hiero {
             #replace comment with space
             my $text_before = substr( $text, 0, $pos_start );
             my $text_after  = substr( $text, $pos_end );
-            my $filler      = '';
+            my $filler      = q{};
             for ( my $i = 0 ; $i < ( $pos_end - $pos_start ) ; $i++ ) {
                 $filler = $filler . ' ';
             }
@@ -3216,6 +3260,8 @@ sub get_hiero {
         }
 
     } until ( $end_search eq 'yes' );
+
+    return ();
 }
 
 ###########################################################################
@@ -3257,6 +3303,7 @@ sub get_ref {
 
     } until ( $end_search eq 'yes' );
 
+    return ();
 }
 
 ###########################################################################
@@ -3269,6 +3316,8 @@ sub check_for_redirect {
     if ( index( lc($text), '#redirect' ) > -1 ) {
         $page_is_redirect = 'yes';
     }
+
+    return ();
 }
 
 ###########################################################################
@@ -3300,7 +3349,7 @@ sub get_categories {
 
         my $search_word = $namespace_cat_word;
         while ( $text_test =~ /\[\[([ ]+)?($search_word:)/ig ) {
-            my $pos_start = pos($text_test) - length($search_word) - 1;
+            $pos_start = pos($text_test) - length($search_word) - 1;
 
 #print "search word <b>$search_word</b> gefunden bei Position $pos_start<br>\n";
 
@@ -3324,8 +3373,8 @@ sub get_categories {
                 $category_counter               = $category_counter + 1;
                 $category[$category_counter][0] = $pos_start;
                 $category[$category_counter][1] = $pos_end;
-                $category[$category_counter][2] = '';
-                $category[$category_counter][3] = '';
+                $category[$category_counter][2] = q{};
+                $category[$category_counter][3] = q{};
                 $category[$category_counter][4] =
                   substr( $text_test, $pos_start, $pos_end - $pos_start );
 
@@ -3334,7 +3383,7 @@ sub get_categories {
                 #replace comment with space
                 #my $text_before = substr( $text, 0, $pos_start );
                 #my $text_after  = substr( $text, $pos_end );
-                #my $filler = '';
+                #my $filler = q{};
                 #for (my $i = 0; $i < ($pos_end-$pos_start); $i++) {
                 # 		$filler = $filler.' ';
                 #}
@@ -3360,7 +3409,7 @@ sub get_categories {
                 #filter linkname
                 $category[$category_counter][3] =
                   $category[$category_counter][4];
-                $category[$category_counter][3] = ''
+                $category[$category_counter][3] = q{}
                   if ( index( $category[$category_counter][3], '|' ) == -1 );
                 $category[$category_counter][3] =~
                   s/^(.)*\|//gi;    #delete [[category:xy|
@@ -3381,6 +3430,7 @@ sub get_categories {
         }
     }
 
+    return ();
 }
 
 ###########################################################################
@@ -3401,7 +3451,7 @@ sub get_interwikis {
 
         my $search_word = $current_lang;
         while ( $text_test =~ /\[\[([ ]+)?($search_word:)/ig ) {
-            my $pos_start = pos($text_test) - length($search_word) - 1;
+            $pos_start = pos($text_test) - length($search_word) - 1;
 
 #print "search word <b>$search_word</b> gefunden bei Position $pos_start<br>\n";
 
@@ -3425,8 +3475,8 @@ sub get_interwikis {
                 $interwiki_counter                = $interwiki_counter + 1;
                 $interwiki[$interwiki_counter][0] = $pos_start;
                 $interwiki[$interwiki_counter][1] = $pos_end;
-                $interwiki[$interwiki_counter][2] = '';
-                $interwiki[$interwiki_counter][3] = '';
+                $interwiki[$interwiki_counter][2] = q{};
+                $interwiki[$interwiki_counter][3] = q{};
                 $interwiki[$interwiki_counter][4] =
                   substr( $text_test, $pos_start, $pos_end - $pos_start );
 
@@ -3444,7 +3494,7 @@ sub get_interwikis {
                 #filter linkname
                 $interwiki[$interwiki_counter][3] =
                   $interwiki[$interwiki_counter][4];
-                $interwiki[$interwiki_counter][3] = ''
+                $interwiki[$interwiki_counter][3] = q{}
                   if ( index( $interwiki[$interwiki_counter][3], '|' ) == -1 );
                 $interwiki[$interwiki_counter][3] =~
                   s/^(.)*\|//gi;    #delete [[category:xy|
@@ -3472,6 +3522,8 @@ sub get_interwikis {
             }
         }
     }
+
+    return ();
 }
 
 ###########################################################################
@@ -3480,6 +3532,8 @@ sub get_interwikis {
 
 sub create_line_array {
     @lines = split( /\n/, $text );
+
+    return ();
 }
 
 ###########################################################################
@@ -3505,6 +3559,8 @@ sub get_line_first_blank {
 
         }
     }
+
+    return ();
 }
 
 ###########################################################################
@@ -3514,7 +3570,7 @@ sub get_line_first_blank {
 sub get_headlines {
     undef(@headlines);
 
-    my $section_text = '';
+    my $section_text = q{};
 
     #get headlines
     foreach (@lines) {
@@ -3524,7 +3580,7 @@ sub get_headlines {
 
             # save section
             push( @section, $section_text );
-            $section_text = '';
+            $section_text = q{};
 
             # save headline
             push( @headlines, $current_line );
@@ -3537,22 +3593,7 @@ sub get_headlines {
     #	print $_."\n";
     #}
 
-}
-
-###########################################################################
-##
-###########################################################################
-
-sub error_check {
-
-    print 'Start check error' . "\n" if ( $details_for_page eq 'yes' );
-
-    error_list('check');
-
-    #############
-    # next feature
-    ## comment_very_long;
-
+    return ();
 }
 
 ###########################################################################
@@ -3560,8 +3601,7 @@ sub error_check {
 ###########################################################################
 
 sub error_list {
-
-    my $attribut = $_[0];    # check / get_description
+    my ($attribut) = @_;    # check / get_description
 
     error_001_no_bold_title($attribut);    # don´t work - deactivated
     error_002_have_br($attribut);
@@ -3659,15 +3699,17 @@ sub error_list {
     error_091_title_with_lowercase_letters_and_no_defaultsort($attribut);
     error_092_headline_double($attribut);
 
+    return ();
 }
 
 ###########################################################################
-##
+##  ERROR 01
 ###########################################################################
 
 sub error_001_no_bold_title {
+    my ($attribut) = @_;
     my $error_code = 1;
-    my $attribut   = $_[0];
+
     if ( $attribut eq 'check' ) {
         if (    $page_namespace == 0
             and index( $text, "'''" ) == -1
@@ -3678,15 +3720,22 @@ sub error_001_no_bold_title {
             #print "\t". $error_code."\t".$title."\n";
         }
     }
+
+    return ();
 }
 
+###########################################################################
+## ERROR 02
+###########################################################################
+
 sub error_002_have_br {
+    my $attribut   = @_;
     my $error_code = 2;
-    my $attribut   = $_[0];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
         my $test      = 'no found';
-        my $test_line = '';
+        my $test_line = q{};
 
         if (   $page_namespace == 0
             or $page_namespace == 104 )
@@ -3749,11 +3798,18 @@ sub error_002_have_br {
             #print "\t". $error_code."\t".$title."\t".$test_line."\n";
         }
     }
+
+    return ();
 }
 
+###########################################################################
+## ERROR 02
+###########################################################################
+
 sub error_003_have_ref {
+    my $attribut   = @_;
     my $error_code = 3;
-    my $attribut   = $_[0];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
         if (   $page_namespace == 0
@@ -3825,11 +3881,11 @@ sub error_003_have_ref {
                     /\{\{[ ]?+список примечаний/ );  # in ruwiki
                 $test = "true"
                   if ( $test_text =~ /\{\{[ ]?+Примечания/ )
-                  ;    # in ruwiki	(Problem with big letters)
+                  ;    # in ruwiki (Problem with big letters)
                 $test = "true"
                   if (
                     $test_text =~ /\{\{[ ]?+Список примечаний/ )
-                  ;    # in ruwiki	(Problem with big letters)
+                  ;    # in ruwiki (Problem with big letters)
                 $test = "true"
                   if ( $test_text =~ /\{\{[ ]?+kaynakça/ );    # in trwiki
                 $test = "true"
@@ -3880,11 +3936,18 @@ sub error_003_have_ref {
             }
         }
     }
+
+    return ();
 }
 
+###########################################################################
+## ERROR 04
+###########################################################################
+
 sub error_004_have_html_and_no_topic {
+    my ($attribut) = @_;
     my $error_code = 4;
-    my $attribut   = $_[0];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
         if (    ( $page_namespace == 0 or $page_namespace == 104 )
@@ -3900,12 +3963,18 @@ sub error_004_have_html_and_no_topic {
             #print "\t". $error_code."\t".$title."\n";
         }
     }
+
+    return ();
 }
 
+###########################################################################
+## ERROR 05
+###########################################################################
+
 sub error_005_Comment_no_correct_end {
+    my ( $attribut, $comment ) = @_;
     my $error_code = 5;
-    my $attribut   = $_[0];
-    my $comment    = $_[1];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
         if (
@@ -3920,11 +3989,18 @@ sub error_005_Comment_no_correct_end {
             #print "\t". $error_code."\t".$title."\n";
         }
     }
+
+    return ();
 }
 
+###########################################################################
+## ERROR 06
+###########################################################################
+
 sub error_006_defaultsort_with_special_letters {
+    my ($attribut) = @_;
     my $error_code = 6;
-    my $attribut   = $_[0];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
 
     #* in de: ä → a, ö → o, ü → u, ß → ss
@@ -4014,11 +4090,18 @@ s/[АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЬЫЪЭЮЯабвгде�
             }
         }
     }
+
+    return ();
 }
 
+###########################################################################
+## ERROR 07
+###########################################################################
+
 sub error_007_headline_only_three {
+    my ($attribut) = @_;
     my $error_code = 7;
-    my $attribut   = $_[0];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
 
@@ -4042,11 +4125,18 @@ sub error_007_headline_only_three {
             }
         }
     }
+
+    return ();
 }
 
+###########################################################################
+## ERROR 08
+###########################################################################
+
 sub error_008_headline_start_end {
+    my ($attribut) = @_;
     my $error_code = 8;
-    my $attribut   = $_[0];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
         foreach (@headlines) {
@@ -4071,14 +4161,21 @@ sub error_008_headline_start_end {
             }
         }
     }
+
+    return ();
 }
 
+###########################################################################
+## ERROR 09
+###########################################################################
+
 sub error_009_more_then_one_category_in_a_line {
+    my ($attribut) = @_;
     my $error_code = 9;
-    my $attribut   = $_[0];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
-        my $error_line = '';
+        my $error_line = q{};
 
         foreach (@lines) {
             my $current_line = $_;
@@ -4104,12 +4201,18 @@ sub error_009_more_then_one_category_in_a_line {
 #print "\t". $error_code."\t".$title."\t".'<nowiki>'.$error_line.'</nowiki>'."\n";
         }
     }
+
+    return ();
 }
 
+###########################################################################
+## ERROR 10
+###########################################################################
+
 sub error_010_count_square_breaks {
+    my ( $attribut, $comment ) = @_;
     my $error_code = 10;
-    my $attribut   = $_[0];
-    my $comment    = $_[1];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
         if (
@@ -4125,11 +4228,18 @@ sub error_010_count_square_breaks {
             #print "\t". $error_code."\t".$title."\n";
         }
     }
+
+    return ();
 }
 
+###########################################################################
+## ERROR 11
+###########################################################################
+
 sub error_011_html_names_entities {
+    my ($attribut) = @_;
     my $error_code = 11;
-    my $attribut   = $_[0];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
         if (   $page_namespace == 0
@@ -4193,15 +4303,22 @@ sub error_011_html_names_entities {
             }
         }
     }
+
+    return ();
 }
 
+###########################################################################
+## ERROR 12
+###########################################################################
+
 sub error_012_html_list_elements {
+    my ($attribut) = @_;
     my $error_code = 12;
-    my $attribut   = $_[0];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
         my $test      = 'no found';
-        my $test_line = '';
+        my $test_line = q{};
         my $test_text = lc($text);
         if (   index( $test_text, '<ol' ) > -1
             or index( $test_text, '<ul' ) > -1
@@ -4241,12 +4358,18 @@ sub error_012_html_list_elements {
             #print "\t". $error_code."\t".$title."\t".$test_line."\n";
         }
     }
+
+    return ();
 }
+
+###########################################################################
+## ERROR 13
+###########################################################################
 
 sub error_013_Math_no_correct_end {
+    my ( $attribut, $comment ) = @_;
     my $error_code = 13;
-    my $attribut   = $_[0];
-    my $comment    = $_[1];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
         if ( $comment ne '' ) {
@@ -4255,12 +4378,18 @@ sub error_013_Math_no_correct_end {
             #print "\t". $error_code."\t".$title."\n";
         }
     }
+
+    return ();
 }
+
+###########################################################################
+## ERROR 14
+###########################################################################
 
 sub error_014_Source_no_correct_end {
+    my ( $attribut, $comment ) = @_;
     my $error_code = 14;
-    my $attribut   = $_[0];
-    my $comment    = $_[1];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
         if ( $comment ne '' ) {
@@ -4269,12 +4398,18 @@ sub error_014_Source_no_correct_end {
             #print "\t". $error_code."\t".$title."\n";
         }
     }
+
+    return ();
 }
+
+###########################################################################
+## ERROR 16
+###########################################################################
 
 sub error_015_Code_no_correct_end {
+    my ( $attribut, $comment ) = @_;
     my $error_code = 15;
-    my $attribut   = $_[0];
-    my $comment    = $_[1];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
         if ( $comment ne '' ) {
@@ -4283,11 +4418,18 @@ sub error_015_Code_no_correct_end {
             #print "\t". $error_code."\t".$title."\n";
         }
     }
+
+    return ();
 }
 
+###########################################################################
+## ERROR 17
+###########################################################################
+
 sub error_016_unicode_control_characters {
+    my ($attribut) = @_;
     my $error_code = 16;
-    my $attribut   = $_[0];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
         if (   $page_namespace == 0
@@ -4318,12 +4460,18 @@ sub error_016_unicode_control_characters {
             }
         }
     }
+
+    return ();
 }
 
+###########################################################################
+## ERROR 17
+###########################################################################
+
 sub error_017_category_double {
+    my ( $attribut, $comment ) = @_;
     my $error_code = 17;
-    my $attribut   = $_[0];
-    my $comment    = $_[1];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
 
@@ -4370,11 +4518,18 @@ sub error_017_category_double {
         }
 
     }
+
+    return ();
 }
 
+###########################################################################
+## ERROR 18
+###########################################################################
+
 sub error_018_category_first_letter_small {
+    my ($attribut) = @_;
     my $error_code = 18;
-    my $attribut   = $_[0];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
         if ( $project ne 'commonswiki' ) {
@@ -4389,11 +4544,18 @@ sub error_018_category_first_letter_small {
             }
         }
     }
+
+    return ();
 }
 
+###########################################################################
+## ERROR 19
+###########################################################################
+
 sub error_019_headline_only_one {
+    my ($attribut) = @_;
     my $error_code = 19;
-    my $attribut   = $_[0];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
         if ( $headlines[0]
@@ -4407,11 +4569,18 @@ sub error_019_headline_only_one {
             }
         }
     }
+
+    return ();
 }
 
+###########################################################################
+## ERROR 20
+###########################################################################
+
 sub error_020_symbol_for_dead {
+    my ($attribut) = @_;
     my $error_code = 20;
-    my $attribut   = $_[0];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
         my $pos = index( $text, '&dagger;' );
@@ -4426,11 +4595,18 @@ sub error_020_symbol_for_dead {
 #print "\t". $error_code."\t".$title."\t".'<nowiki>…'.$test_text.'…</nowiki>'."\n";
         }
     }
+
+    return ();
 }
 
+###########################################################################
+## ERROR 21
+###########################################################################
+
 sub error_021_category_is_english {
+    my ($attribut) = @_;
     my $error_code = 21;
-    my $attribut   = $_[0];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
         if (    $project ne 'enwiki'
@@ -4450,11 +4626,18 @@ sub error_021_category_is_english {
             }
         }
     }
+
+    return ();
 }
 
+###########################################################################
+## ERROR 22
+###########################################################################
+
 sub error_022_category_with_space {
+    my ($attribut) = @_;
     my $error_code = 22;
-    my $attribut   = $_[0];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
         if (   $page_namespace == 0
@@ -4479,12 +4662,18 @@ sub error_022_category_with_space {
             }
         }
     }
+
+    return ();
 }
+
+###########################################################################
+## ERROR 23
+###########################################################################
 
 sub error_023_nowiki_no_correct_end {
+    my ( $attribut, $comment ) = @_;
     my $error_code = 23;
-    my $attribut   = $_[0];
-    my $comment    = $_[1];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
         if (
@@ -4499,12 +4688,18 @@ sub error_023_nowiki_no_correct_end {
             #print "\t". $error_code."\t".$title."\n";
         }
     }
+
+    return ();
 }
+
+###########################################################################
+## ERROR 24
+###########################################################################
 
 sub error_024_pre_no_correct_end {
+    my ( $attribut, $comment ) = @_;
     my $error_code = 24;
-    my $attribut   = $_[0];
-    my $comment    = $_[1];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
         if (
@@ -4519,17 +4714,23 @@ sub error_024_pre_no_correct_end {
             #print "\t". $error_code."\t".$title."\n";
         }
     }
+
+    return ();
 }
 
+###########################################################################
+## ERROR 25
+###########################################################################
+
 sub error_025_headline_hierarchy {
+    my ( $attribut, $comment ) = @_;
     my $error_code = 25;
-    my $attribut   = $_[0];
-    my $comment    = $_[1];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
         my $number_headline = -1;
-        my $old_headline    = '';
-        my $new_headline    = '';
+        my $old_headline    = q{};
+        my $new_headline    = q{};
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             foreach (@headlines) {
                 $number_headline = $number_headline + 1;
@@ -4566,15 +4767,22 @@ sub error_025_headline_hierarchy {
             }
         }
     }
+
+    return ();
 }
 
+###########################################################################
+## ERROR 26
+###########################################################################
+
 sub error_026_html_text_style_elements {
+    my ($attribut) = @_;
     my $error_code = 26;
-    my $attribut   = $_[0];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
         my $test      = 'no found';
-        my $test_line = '';
+        my $test_line = q{};
         my $test_text = lc($text);
         if ( index( $test_text, '<b>' ) > -1 ) {
             foreach (@lines) {
@@ -4599,11 +4807,18 @@ sub error_026_html_text_style_elements {
             #print "\t". $error_code."\t".$title."\t".$test_line."\n";
         }
     }
+
+    return ();
 }
 
+###########################################################################
+## ERROR 27
+###########################################################################
+
 sub error_027_unicode_syntax {
+    my ($attribut) = @_;
     my $error_code = 27;
-    my $attribut   = $_[0];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
         if (   $page_namespace == 0
@@ -4627,12 +4842,18 @@ sub error_027_unicode_syntax {
             }
         }
     }
+
+    return ();
 }
 
+###########################################################################
+## ERROR 28
+###########################################################################
+
 sub error_028_table_no_correct_end {
+    my ( $attribut, $comment ) = @_;
     my $error_code = 28;
-    my $attribut   = $_[0];
-    my $comment    = $_[1];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
         if (    $comment ne ''
@@ -4647,12 +4868,18 @@ sub error_028_table_no_correct_end {
             #print "\t". $error_code."\t".$title."\n";
         }
     }
+
+    return ();
 }
 
+###########################################################################
+## ERROR 29
+###########################################################################
+
 sub error_029_gallery_no_correct_end {
+    my ( $attribut, $comment ) = @_;
     my $error_code = 29;
-    my $attribut   = $_[0];
-    my $comment    = $_[1];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
         if (
@@ -4667,12 +4894,18 @@ sub error_029_gallery_no_correct_end {
             #print "\t". $error_code."\t".$title."\n";
         }
     }
+
+    return ();
 }
 
+###########################################################################
+## ERROR 30
+###########################################################################
+
 sub error_030_image_without_description {
+    my ( $attribut, $comment ) = @_;
     my $error_code = 30;
-    my $attribut   = $_[0];
-    my $comment    = $_[1];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
         if ( $comment ne '' ) {
@@ -4687,15 +4920,22 @@ sub error_030_image_without_description {
             }
         }
     }
+
+    return ();
 }
 
+###########################################################################
+## ERROR 31
+###########################################################################
+
 sub error_031_html_table_elements {
+    my ($attribut) = @_;
     my $error_code = 31;
-    my $attribut   = $_[0];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
         my $test      = 'no found';
-        my $test_line = '';
+        my $test_line = q{};
         my $test_text = lc($text);
         if (   $page_namespace == 0
             or $page_namespace == 6
@@ -4741,11 +4981,18 @@ sub error_031_html_table_elements {
             }
         }
     }
+
+    return ();
 }
 
+###########################################################################
+## ERROR 32
+###########################################################################
+
 sub error_032_double_pipe_in_link {
+    my ($attribut) = @_;
     my $error_code = 32;
-    my $attribut   = $_[0];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
         if (   $page_namespace == 0
@@ -4773,15 +5020,22 @@ sub error_032_double_pipe_in_link {
             }
         }
     }
+
+    return ();
 }
 
+###########################################################################
+## ERROR 33
+###########################################################################
+
 sub error_033_html_text_style_elements_underline {
+    my ($attribut) = @_;
     my $error_code = 33;
-    my $attribut   = $_[0];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
         my $test      = 'no found';
-        my $test_line = '';
+        my $test_line = q{};
         my $test_text = lc($text);
         if ( index( $test_text, '<u>' ) > -1 ) {
             foreach (@lines) {
@@ -4805,15 +5059,22 @@ sub error_033_html_text_style_elements_underline {
             #print "\t". $error_code."\t".$title."\t".$test_line."\n";
         }
     }
+
+    return ();
 }
 
+###########################################################################
+## ERROR 34
+###########################################################################
+
 sub error_034_template_programming_elements {
+    my ($attribut) = @_;
     my $error_code = 34;
-    my $attribut   = $_[0];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
         my $test      = 'no found';
-        my $test_line = '';
+        my $test_line = q{};
         foreach (@lines) {
             my $current_line    = $_;
             my $current_line_lc = lc($current_line);
@@ -4862,16 +5123,22 @@ sub error_034_template_programming_elements {
             #print "\t". $error_code."\t".$title."\t".$test_line."\n";
         }
     }
+
+    return ();
 }
 
+###########################################################################
+## ERROR 35
+###########################################################################
+
 sub error_035_gallery_without_description {
+    my ( $attribut, $text_gallery ) = @_;
     my $error_code = 35;
-    my $attribut   = $_[0];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
-        my $text_gallery = $_[0];
 
-        my $test = '';
+        my $test = q{};
         if (
             $text_gallery ne ''
             and (  $page_namespace == 0
@@ -4881,7 +5148,7 @@ sub error_035_gallery_without_description {
         {
             #print $text_gallery."\n";
             my @split_gallery = split( /\n/, $text_gallery );
-            my $test_line = '';
+            my $test_line = q{};
             foreach (@split_gallery) {
                 my $current_line = $_;
 
@@ -4904,11 +5171,18 @@ sub error_035_gallery_without_description {
             }
         }
     }
+
+    return ();
 }
 
+###########################################################################
+## ERROR 36
+###########################################################################
+
 sub error_036_redirect_not_correct {
+    my ($attribut) = @_;
     my $error_code = 36;
-    my $attribut   = $_[0];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
         if ( $page_is_redirect eq 'yes' ) {
@@ -4923,11 +5197,18 @@ sub error_036_redirect_not_correct {
             }
         }
     }
+
+    return ();
 }
 
+###########################################################################
+## ERROR 37
+###########################################################################
+
 sub error_037_title_with_special_letters_and_no_defaultsort {
+    my ($attribut) = @_;
     my $error_code = 37;
-    my $attribut   = $_[0];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
         if (    ( $page_namespace == 0 or $page_namespace == 104 )
@@ -5020,15 +5301,22 @@ s/[АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЬЫЪЭЮЯабвгде�
             }
         }
     }
+
+    return ();
 }
 
+###########################################################################
+## ERROR 38
+###########################################################################
+
 sub error_038_html_text_style_elements_italic {
+    my ($attribut) = @_;
     my $error_code = 38;
-    my $attribut   = $_[0];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
         my $test      = 'no found';
-        my $test_line = '';
+        my $test_line = q{};
         my $test_text = lc($text);
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             if ( index( $test_text, '<i>' ) > -1 ) {
@@ -5055,15 +5343,22 @@ sub error_038_html_text_style_elements_italic {
             }
         }
     }
+
+    return ();
 }
 
+###########################################################################
+## ERROR 39
+###########################################################################
+
 sub error_039_html_text_style_elements_paragraph {
+    my ($attribut) = @_;
     my $error_code = 39;
-    my $attribut   = $_[0];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
         my $test      = 'no found';
-        my $test_line = '';
+        my $test_line = q{};
         my $test_text = lc($text);
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             if ( index( $test_text, '<p>' ) > -1 ) {
@@ -5088,15 +5383,22 @@ sub error_039_html_text_style_elements_paragraph {
             }
         }
     }
+
+    return ();
 }
 
+###########################################################################
+## ERROR 40
+###########################################################################
+
 sub error_040_html_text_style_elements_font {
+    my ($attribut) = @_;
     my $error_code = 40;
-    my $attribut   = $_[0];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
         my $test      = 'no found';
-        my $test_line = '';
+        my $test_line = q{};
         my $test_text = lc($text);
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             if ( index( $test_text, '<font' ) > -1 ) {
@@ -5123,15 +5425,22 @@ sub error_040_html_text_style_elements_font {
             }
         }
     }
+
+    return ();
 }
 
+###########################################################################
+## ERROR 41
+###########################################################################
+
 sub error_041_html_text_style_elements_big {
+    my ($attribut) = @_;
     my $error_code = 41;
-    my $attribut   = $_[0];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
         my $test      = 'no found';
-        my $test_line = '';
+        my $test_line = q{};
         my $test_text = lc($text);
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             if ( index( $test_text, '<big>' ) > -1 ) {
@@ -5155,15 +5464,22 @@ sub error_041_html_text_style_elements_big {
             }
         }
     }
+
+    return ();
 }
 
+###########################################################################
+## ERROR 42
+###########################################################################
+
 sub error_042_html_text_style_elements_small {
+    my ($attribut) = @_;
     my $error_code = 42;
-    my $attribut   = $_[0];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
         my $test      = 'no found';
-        my $test_line = '';
+        my $test_line = q{};
         my $test_text = lc($text);
 
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
@@ -5188,12 +5504,18 @@ sub error_042_html_text_style_elements_small {
             }
         }
     }
+
+    return ();
 }
 
+###########################################################################
+## ERROR 43
+###########################################################################
+
 sub error_043_template_no_correct_end {
+    my ( $attribut, $comment ) = @_;
     my $error_code = 43;
-    my $attribut   = $_[0];
-    my $comment    = $_[1];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
         if (
@@ -5208,11 +5530,18 @@ sub error_043_template_no_correct_end {
             #print "\t". $error_code."\t".$title."\n";
         }
     }
+
+    return ();
 }
 
+###########################################################################
+## ERROR 44
+###########################################################################
+
 sub error_044_headline_with_bold {
+    my ($attribut) = @_;
     my $error_code = 44;
-    my $attribut   = $_[0];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
@@ -5252,17 +5581,24 @@ sub error_044_headline_with_bold {
             }
         }
     }
+
+    return ();
 }
 
+###########################################################################
+## ERROR 45
+###########################################################################
+
 sub error_045_interwiki_double {
+    my ($attribut) = @_;
     my $error_code = 45;
-    my $attribut   = $_[0];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
 
         #print $title."\n";
         #print 'Interwikis='.$interwiki_counter."\n";
-        my $found_double = '';
+        my $found_double = q{};
 
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             for ( my $i = 0 ; $i <= $interwiki_counter ; $i++ ) {
@@ -5296,14 +5632,21 @@ sub error_045_interwiki_double {
             #print "\t". $error_code."\t".$title."\t".$found_double."\n";
         }
     }
+
+    return ();
 }
 
+###########################################################################
+## ERROR 46
+###########################################################################
+
 sub error_046_count_square_breaks_begin {
+    my ($attribut) = @_;
     my $error_code = 46;
-    my $attribut   = $_[0];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
-        my $text_test = '';
+        my $text_test = q{};
 
 #$text_test = 'abc[[Kartographie]], Bild:abd|[[Globus]]]] ohne [[Gradnetz]] weiterer Text
 #aber hier [[Link234|sdsdlfk]]  [[Test]]';
@@ -5321,14 +5664,14 @@ sub error_046_count_square_breaks_begin {
             if ( ( $text_test_1_a =~ s/\[\[//g ) !=
                 ( $text_test_1_b =~ s/\]\]//g ) )
             {
-                my $found_text = '';
+                my $found_text = q{};
                 my $begin_time = time();
                 while ( $text_test =~ /\]\]/g ) {
 
                     #Begin of link
                     my $pos_end     = pos($text_test) - 2;
                     my $link_text   = substr( $text_test, 0, $pos_end );
-                    my $link_text_2 = '';
+                    my $link_text_2 = q{};
                     my $beginn_square_brackets = 0;
                     my $end_square_brackets    = 1;
                     while ( $link_text =~ /\[\[/g ) {
@@ -5380,18 +5723,23 @@ sub error_046_count_square_breaks_begin {
                 }
             }
         }
-
-        #print 'End 46'."\n";
     }
+
+    return ();
 }
 
+###########################################################################
+## ERROR 47
+###########################################################################
+
 sub error_047_template_no_correct_begin {
+    my ($attribut) = @_;
     my $error_code = 47;
-    my $attribut   = $_[0];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
 
-        my $text_test = '';
+        my $text_test = q{};
 
 #$text_test = 'abc[[Kartographie]], [[Bild:abd|[[Globus]]]] ohne {{xyz}} [[Gradnetz]] weiterer Text {{oder}} wer}} warum
         ##aber hier [[Link234|sdsdlfk]] {{abc}} [[Test]]';
@@ -5416,7 +5764,7 @@ sub error_047_template_no_correct_begin {
                     #Begin of link
                     my $pos_end     = pos($text_test) - 2;
                     my $link_text   = substr( $text_test, 0, $pos_end );
-                    my $link_text_2 = '';
+                    my $link_text_2 = q{};
                     my $beginn_square_brackets = 0;
                     my $end_square_brackets    = 1;
                     while ( $link_text =~ /\{\{/g ) {
@@ -5459,11 +5807,18 @@ sub error_047_template_no_correct_begin {
             }
         }
     }
+
+    return ();
 }
 
+###########################################################################
+## ERROR 48
+###########################################################################
+
 sub error_048_title_in_text {
+    my ($attribut) = @_;
     my $error_code = 48;
-    my $attribut   = $_[0];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
 
@@ -5491,11 +5846,18 @@ sub error_048_title_in_text {
             }
         }
     }
+
+    return ();
 }
 
+###########################################################################
+## ERROR 49
+###########################################################################
+
 sub error_049_headline_with_html {
+    my ($attribut) = @_;
     my $error_code = 49;
-    my $attribut   = $_[0];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
 
@@ -5527,11 +5889,18 @@ sub error_049_headline_with_html {
             }
         }
     }
+
+    return ();
 }
 
+###########################################################################
+## ERROR 50
+###########################################################################
+
 sub error_050_dash {
+    my ($attribut) = @_;
     my $error_code = 50;
-    my $attribut   = $_[0];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
         my $pos = -1;
@@ -5551,11 +5920,18 @@ sub error_050_dash {
             #print "\t". $error_code."\t".$title."\t".$found_text."\n";
         }
     }
+
+    return ();
 }
 
+###########################################################################
+## ERROR 51
+###########################################################################
+
 sub error_051_interwiki_before_last_headline {
+    my ($attribut) = @_;
     my $error_code = 51;
-    my $attribut   = $_[0];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
         my $number_of_headlines = @headlines;
@@ -5575,7 +5951,7 @@ sub error_051_interwiki_before_last_headline {
             and ( $page_namespace == 0 or $page_namespace == 104 ) )
         {
 
-            my $found_text = '';
+            my $found_text = q{};
             for ( my $i = 0 ; $i <= $interwiki_counter ; $i++ ) {
 
                 if ( $pos > $interwiki[$i][0] ) {
@@ -5595,11 +5971,18 @@ sub error_051_interwiki_before_last_headline {
             }
         }
     }
+
+    return ();
 }
 
+###########################################################################
+## ERROR 52
+###########################################################################
+
 sub error_052_category_before_last_headline {
+    my ($attribut) = @_;
     my $error_code = 52;
-    my $attribut   = $_[0];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
         my $number_of_headlines = @headlines;
@@ -5619,7 +6002,7 @@ sub error_052_category_before_last_headline {
             and ( $page_namespace == 0 or $page_namespace == 104 ) )
         {
 
-            my $found_text = '';
+            my $found_text = q{};
             for ( my $i = 0 ; $i <= $category_counter ; $i++ ) {
                 if ( $pos > $category[$i][0] ) {
                     $found_text = $category[$i][4];
@@ -5636,11 +6019,18 @@ sub error_052_category_before_last_headline {
             }
         }
     }
+
+    return ();
 }
 
+###########################################################################
+## ERROR 53
+###########################################################################
+
 sub error_053_interwiki_before_category {
+    my ($attribut) = @_;
     my $error_code = 53;
-    my $attribut   = $_[0];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
         if (    $category_counter > -1
@@ -5672,15 +6062,22 @@ sub error_053_interwiki_before_category {
 
         }
     }
+
+    return ();
 }
 
+###########################################################################
+## ERROR 54
+###########################################################################
+
 sub error_054_break_in_list {
+    my ($attribut) = @_;
     my $error_code = 54;
-    my $attribut   = $_[0];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
-            my $found_text = '';
+            my $found_text = q{};
             foreach (@lines) {
                 my $current_line    = $_;
                 my $current_line_lc = lc($current_line);
@@ -5714,21 +6111,28 @@ sub error_054_break_in_list {
             }
         }
     }
+
+    return ();
 }
 
+###########################################################################
+## ERROR 55
+###########################################################################
+
 sub error_055_html_text_style_elements_small_double {
+    my ($attribut) = @_;
     my $error_code = 55;
-    my $attribut   = $_[0];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
-        my $test_line = '';
+        my $test_line = q{};
         my $test_text = lc($text);
 
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
             #print 'a'."\n";
-            my $test_text = lc($text);
-            my $pos       = -1;
+            $test_text = lc($text);
+            my $pos = -1;
 
             #print $test_text."\n";
             if ( index( $test_text, '<small>' ) > -1 ) {
@@ -5763,11 +6167,18 @@ sub error_055_html_text_style_elements_small_double {
             }
         }
     }
+
+    return ();
 }
 
+###########################################################################
+## ERROR 56
+###########################################################################
+
 sub error_056_arrow_as_ASCII_art {
+    my ($attribut) = @_;
     my $error_code = 56;
-    my $attribut   = $_[0];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
@@ -5788,11 +6199,18 @@ sub error_056_arrow_as_ASCII_art {
             }
         }
     }
+
+    return ();
 }
 
+###########################################################################
+## ERROR 57
+###########################################################################
+
 sub error_057_headline_end_with_colon {
+    my ($attribut) = @_;
     my $error_code = 57;
-    my $attribut   = $_[0];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
@@ -5811,15 +6229,22 @@ sub error_057_headline_end_with_colon {
             }
         }
     }
+
+    return ();
 }
 
+###########################################################################
+## ERROR 58
+###########################################################################
+
 sub error_058_headline_with_capitalization {
+    my ($attribut) = @_;
     my $error_code = 58;
-    my $attribut   = $_[0];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
 
-        my $found_text = '';
+        my $found_text = q{};
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             foreach (@headlines) {
                 my $current_line        = $_;
@@ -5880,14 +6305,21 @@ sub error_058_headline_with_capitalization {
             }
         }
     }
+
+    return ();
 }
 
+###########################################################################
+## ERROR 59
+###########################################################################
+
 sub error_059_template_value_end_with_br {
+    my ($attribut) = @_;
     my $error_code = 59;
-    my $attribut   = $_[0];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
-        my $found_text = '';
+        my $found_text = q{};
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             for ( my $i = 0 ; $i <= $number_of_template_parts ; $i++ ) {
 
@@ -5911,14 +6343,21 @@ sub error_059_template_value_end_with_br {
             }
         }
     }
+
+    return ();
 }
 
+###########################################################################
+## ERROR 60
+###########################################################################
+
 sub error_060_template_parameter_with_problem {
+    my ($attribut) = @_;
     my $error_code = 60;
-    my $attribut   = $_[0];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
-        my $found_text = '';
+        my $found_text = q{};
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             for ( my $i = 0 ; $i <= $number_of_template_parts ; $i++ ) {
 
@@ -5938,14 +6377,21 @@ sub error_060_template_parameter_with_problem {
             }
         }
     }
+
+    return ();
 }
 
+###########################################################################
+## ERROR 61
+###########################################################################
+
 sub error_061_reference_with_punctuation {
+    my ($attribut) = @_;
     my $error_code = 61;
-    my $attribut   = $_[0];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
-        my $found_text = '';
+        my $found_txt = q{};
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             my $pos = -1;
             $pos = index( $text, '</ref>.' )    if ( $pos == -1 );
@@ -5971,19 +6417,25 @@ sub error_061_reference_with_punctuation {
             }
         }
     }
+
+    return ();
 }
 
+###########################################################################
+## ERROR 62
+###########################################################################
+
 sub error_062_headline_alone {
+    my ( $attribut, $comment ) = @_;
     my $error_code = 62;
-    my $attribut   = $_[0];
-    my $comment    = $_[1];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
             my $number_of_headlines = @headlines;
             my $old_level           = 2;
-            my $found_text          = '';
+            my $found_txt           = q{};
             if ( $number_of_headlines >= 5 ) {
                 for ( my $i = 0 ; $i < $number_of_headlines ; $i++ ) {
 
@@ -5997,7 +6449,7 @@ sub error_062_headline_alone {
                     if (    $current_level > 2
                         and $old_level < $current_level
                         and $i < $number_of_headlines - 1
-                        and $found_text eq '' )
+                        and $found_txt eq '' )
                     {
                         # first headline in this level
                         #print 'check: '.$headlines[$i]."\n";
@@ -6030,11 +6482,11 @@ sub error_062_headline_alone {
                             }
                         }
 
-                        if (    $found_text eq ''
+                        if (    $found_txt eq ''
                             and $found_same_level eq 'no' )
                         {
                             # found alone text
-                            $found_text = $headlines[$i];
+                            $found_txt = $headlines[$i];
 
                         }
 
@@ -6043,30 +6495,37 @@ sub error_062_headline_alone {
                     if (    $current_level > 2
                         and $old_level < $current_level
                         and $i == $number_of_headlines - 1
-                        and $found_text eq '' )
+                        and $found_txt eq '' )
                     {
                         #found a last headline stand alone
-                        $found_text = $headlines[$i];
+                        $found_txt = $headlines[$i];
                     }
                     $old_level = $current_level;
                 }
             }
-            if ( $found_text ne '' ) {
+            if ( $found_txt ne '' ) {
                 error_register( $error_code,
-                    '<nowiki>' . $found_text . '</nowiki>' );
+                    '<nowiki>' . $found_txt . '</nowiki>' );
 
-#print "\t". $error_code."\t".$title."\t".'<nowiki>'.$found_text.'</nowiki>'."\n";
+#print "\t". $error_code."\t".$title."\t".'<nowiki>'.$found_txt.'</nowiki>'."\n";
             }
         }
     }
+
+    return ();
 }
 
+###########################################################################
+## ERROR 63
+###########################################################################
+
 sub error_063_html_text_style_elements_small_ref_sub_sup {
+    my ($attribut) = @_;
     my $error_code = 63;
-    my $attribut   = $_[0];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
-        my $test_line = '';
+        my $test_line = q{};
         my $test_text = lc($text);
 
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
@@ -6116,16 +6575,23 @@ sub error_063_html_text_style_elements_small_ref_sub_sup {
             }
         }
     }
+
+    return ();
 }
 
+###########################################################################
+## ERROR 64
+###########################################################################
+
 sub error_064_link_equal_linktext {
+    my ($attribut) = @_;
     my $error_code = 64;
-    my $attribut   = $_[0];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
 
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
-            my $found_text = '';
+            my $found_text = q{};
             foreach (@links_all) {
 
                 # check all links
@@ -6183,15 +6649,22 @@ sub error_064_link_equal_linktext {
             }
         }
     }
+
+    return ();
 }
 
+###########################################################################
+## ERROR 65
+###########################################################################
+
 sub error_065_image_description_with_break {
+    my ($attribut) = @_;
     my $error_code = 65;
-    my $attribut   = $_[0];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
-            my $found_text = '';
+            my $found_text = q{};
             foreach (@images_all) {
                 my $current_image = $_;
                 if ( $found_text eq '' ) {
@@ -6213,15 +6686,22 @@ sub error_065_image_description_with_break {
             }
         }
     }
+
+    return ();
 }
 
+###########################################################################
+## ERROR 66
+###########################################################################
+
 sub error_066_image_description_with_full_small {
+    my ($attribut) = @_;
     my $error_code = 66;
-    my $attribut   = $_[0];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
-            my $found_text = '';
+            my $found_text = q{};
             foreach (@images_all) {
                 my $current_image = $_;
                 if ( $found_text eq '' ) {
@@ -6243,14 +6723,21 @@ sub error_066_image_description_with_full_small {
             }
         }
     }
+
+    return ();
 }
 
+###########################################################################
+## ERROR 67
+###########################################################################
+
 sub error_067_reference_after_punctuation {
+    my ($attribut) = @_;
     my $error_code = 67;
-    my $attribut   = $_[0];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
-        my $found_text = '';
+        my $found_text = q{};
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             my $pos = -1;
             $pos = index( $text, '.<ref' )    if ( $pos == -1 );
@@ -6267,7 +6754,7 @@ sub error_067_reference_after_punctuation {
             $pos = index( $text, '?   <ref' ) if ( $pos == -1 );
 
             if ( $pos > -1 ) {
-                my $found_text = substr( $text, $pos );
+                $found_text = substr( $text, $pos );
                 $found_text = text_reduce( $found_text, 50 );
                 error_register( $error_code,
                     '<nowiki>' . $found_text . '</nowiki>' );
@@ -6276,15 +6763,22 @@ sub error_067_reference_after_punctuation {
             }
         }
     }
+
+    return ();
 }
 
+###########################################################################
+## ERROR 68
+###########################################################################
+
 sub error_068_link_to_other_language {
+    my ($attribut) = @_;
     my $error_code = 68;
-    my $attribut   = $_[0];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
-            my $found_text = '';
+            my $found_text = q{};
             foreach (@links_all) {
 
                 # check all links
@@ -6308,12 +6802,18 @@ sub error_068_link_to_other_language {
             }
         }
     }
+
+    return ();
 }
+
+###########################################################################
+## ERROR 69
+###########################################################################
 
 sub error_069_isbn_wrong_syntax {
+    my ( $attribut, $found_text ) = @_;
     my $error_code = 69;
-    my $attribut   = $_[0];
-    my $found_text = $_[1];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
         if ( ( $page_namespace == 0 or $page_namespace == 104 )
@@ -6325,12 +6825,18 @@ sub error_069_isbn_wrong_syntax {
 #print "\t". $error_code."\t".$title."\t".'<nowiki>'.$found_text.'</nowiki>'."\n";
         }
     }
+
+    return ();
 }
+
+###########################################################################
+## ERROR 70
+###########################################################################
 
 sub error_070_isbn_wrong_length {
+    my ( $attribut, $found_text ) = @_;
     my $error_code = 70;
-    my $attribut   = $_[0];
-    my $found_text = $_[1];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
         if ( ( $page_namespace == 0 or $page_namespace == 104 )
@@ -6342,12 +6848,18 @@ sub error_070_isbn_wrong_length {
 #print "\t". $error_code."\t".$title."\t".'<nowiki>'.$found_text.'</nowiki>'."\n";
         }
     }
+
+    return ();
 }
+
+###########################################################################
+## ERROR 71
+###########################################################################
 
 sub error_071_isbn_wrong_pos_X {
+    my ( $attribut, $found_text ) = @_;
     my $error_code = 71;
-    my $attribut   = $_[0];
-    my $found_text = $_[1];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
 
@@ -6360,12 +6872,18 @@ sub error_071_isbn_wrong_pos_X {
 #print "\t". $error_code."\t".$title."\t".'<nowiki>'.$found_text.'</nowiki>'."\n";
         }
     }
+
+    return ();
 }
+
+###########################################################################
+## ERROR 71
+###########################################################################
 
 sub error_072_isbn_10_wrong_checksum {
+    my ( $attribut, $found_text ) = @_;
     my $error_code = 72;
-    my $attribut   = $_[0];
-    my $found_text = $_[1];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
         if ( ( $page_namespace == 0 or $page_namespace == 104 )
@@ -6377,12 +6895,18 @@ sub error_072_isbn_10_wrong_checksum {
 #print "\t". $error_code."\t".$title."\t".'<nowiki>'.$found_text.'</nowiki>'."\n";
         }
     }
+
+    return ();
 }
+
+###########################################################################
+## ERROR 73
+###########################################################################
 
 sub error_073_isbn_13_wrong_checksum {
+    my ( $attribut, $found_text ) = @_;
     my $error_code = 73;
-    my $attribut   = $_[0];
-    my $found_text = $_[1];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
         if ( ( $page_namespace == 0 or $page_namespace == 104 )
@@ -6394,15 +6918,22 @@ sub error_073_isbn_13_wrong_checksum {
 #print "\t". $error_code."\t".$title."\t".'<nowiki>'.$found_text.'</nowiki>'."\n";
         }
     }
+
+    return ();
 }
 
+###########################################################################
+## ERROR 74
+###########################################################################
+
 sub error_074_link_with_no_target {
+    my ($attribut) = @_;
     my $error_code = 74;
-    my $attribut   = $_[0];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
-            my $found_text = '';
+            my $found_text = q{};
             foreach (@links_all) {
 
                 # check all links
@@ -6421,15 +6952,22 @@ sub error_074_link_with_no_target {
             }
         }
     }
+
+    return ();
 }
 
+###########################################################################
+## ERROR 75
+###########################################################################
+
 sub error_075_indented_list {
+    my ($attribut) = @_;
     my $error_code = 75;
-    my $attribut   = $_[0];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
-            my $found_text = '';
+            my $found_text = q{};
             foreach (@lines) {
                 my $current_line = $_;
                 if (   substr( $current_line, 0, 2 ) eq ':*'
@@ -6452,15 +6990,22 @@ sub error_075_indented_list {
             }
         }
     }
+
+    return ();
 }
 
+###########################################################################
+## ERROR 76
+###########################################################################
+
 sub error_076_link_with_no_space {
+    my ($attribut) = @_;
     my $error_code = 76;
-    my $attribut   = $_[0];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
-            my $found_text = '';
+            my $found_text = q{};
             foreach (@links_all) {
 
                 # check all links
@@ -6479,15 +7024,22 @@ sub error_076_link_with_no_space {
             }
         }
     }
+
+    return ();
 }
 
+###########################################################################
+## ERROR 77
+###########################################################################
+
 sub error_077_image_description_with_partial_small {
+    my ($attribut) = @_;
     my $error_code = 77;
-    my $attribut   = $_[0];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
-            my $found_text = '';
+            my $found_text = q{};
             foreach (@images_all) {
                 my $current_image = $_;
                 if ( $found_text eq '' ) {
@@ -6509,11 +7061,18 @@ sub error_077_image_description_with_partial_small {
             }
         }
     }
+
+    return ();
 }
 
+###########################################################################
+## ERROR 78
+###########################################################################
+
 sub error_078_reference_double {
+    my ($attribut) = @_;
     my $error_code = 78;
-    my $attribut   = $_[0];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
@@ -6550,18 +7109,25 @@ sub error_078_reference_double {
             }
         }
     }
+
+    return ();
 }
 
+###########################################################################
+## ERROR 79
+###########################################################################
+
 sub error_079_external_link_without_description {
+    my ($attribut) = @_;
     my $error_code = 79;
-    my $attribut   = $_[0];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             my $test_text = lc($text);
 
             my $pos        = -1;
-            my $found_text = '';
+            my $found_text = q{};
             while (index( $test_text, '[http://', $pos + 1 ) > -1
                 or index( $test_text, '[ftp://',   $pos + 1 ) > -1
                 or index( $test_text, '[https://', $pos + 1 ) > -1 )
@@ -6607,18 +7173,25 @@ sub error_079_external_link_without_description {
             }
         }
     }
+
+    return ();
 }
 
+###########################################################################
+## ERROR 80
+###########################################################################
+
 sub error_080_external_link_with_line_break {
+    my ($attribut) = @_;
     my $error_code = 80;
-    my $attribut   = $_[0];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             my $test_text = lc($text);
 
             my $pos        = -1;
-            my $found_text = '';
+            my $found_text = q{};
             while (index( $test_text, '[http://', $pos + 1 ) > -1
                 or index( $test_text, '[ftp://',   $pos + 1 ) > -1
                 or index( $test_text, '[https://', $pos + 1 ) > -1 )
@@ -6660,16 +7233,23 @@ sub error_080_external_link_with_line_break {
             }
         }
     }
+
+    return ();
 }
 
+###########################################################################
+## ERROR 81
+###########################################################################
+
 sub error_081_ref_double {
+    my ($attribut) = @_;
     my $error_code = 81;
-    my $attribut   = $_[0];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             my $number_of_ref = @ref;
-            my $found_text    = '';
+            my $found_text    = q{};
             for ( my $i = 0 ; $i < $number_of_ref - 1 ; $i++ ) {
 
                 #print $i ."\t".$ref[$i]."\n";
@@ -6696,15 +7276,22 @@ sub error_081_ref_double {
             }
         }
     }
+
+    return ();
 }
 
+###########################################################################
+## ERROR 82
+###########################################################################
+
 sub error_082_link_to_other_wikiproject {
+    my ($attribut) = @_;
     my $error_code = 82;
-    my $attribut   = $_[0];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
-            my $found_text = '';
+            my $found_text = q{};
             foreach (@links_all) {
 
                 # check all links
@@ -6729,11 +7316,18 @@ sub error_082_link_to_other_wikiproject {
             }
         }
     }
+
+    return ();
 }
 
+###########################################################################
+## ERROR 83
+###########################################################################
+
 sub error_083_headline_only_three_and_later_level_two {
+    my ($attribut) = @_;
     my $error_code = 83;
-    my $attribut   = $_[0];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
         if ( $headlines[0]
@@ -6756,11 +7350,18 @@ sub error_083_headline_only_three_and_later_level_two {
             }
         }
     }
+
+    return ();
 }
 
+###########################################################################
+## ERROR 84
+###########################################################################
+
 sub error_084_section_without_text {
+    my ($attribut) = @_;
     my $error_code = 84;
-    my $attribut   = $_[0];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
         if ( $headlines[0]
@@ -6769,7 +7370,7 @@ sub error_084_section_without_text {
             # this article has headlines
 
             my $number_of_headlines = @headlines;
-            my $found_text          = '';
+            my $found_text          = q{};
 
             for ( my $i = 0 ; $i < $number_of_headlines - 1 ; $i++ ) {
 
@@ -6825,15 +7426,22 @@ sub error_084_section_without_text {
             }
         }
     }
+
+    return ();
 }
 
+###########################################################################
+## ERROR 85
+###########################################################################
+
 sub error_085_tag_without_content {
+    my ($attribut) = @_;
     my $error_code = 85;
-    my $attribut   = $_[0];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
-            my $found_text = '';
+            my $found_text = q{};
             my $found_pos  = -1;
 
             $found_pos = index( $text, '<noinclude></noinclude>' )
@@ -6866,15 +7474,22 @@ sub error_085_tag_without_content {
             }
         }
     }
+
+    return ();
 }
 
+###########################################################################
+## ERROR 86
+###########################################################################
+
 sub error_086_link_with_two_brackets_to_external_source {
+    my ($attribut) = @_;
     my $error_code = 86;
-    my $attribut   = $_[0];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
-            my $found_text = '';
+            my $found_text = q{};
             foreach (@links_all) {
 
                 # check all links
@@ -6897,11 +7512,18 @@ sub error_086_link_with_two_brackets_to_external_source {
             }
         }
     }
+
+    return ();
 }
 
+###########################################################################
+## ERROR 87
+###########################################################################
+
 sub error_087_html_names_entities_without_semicolon {
+    my ($attribut) = @_;
     my $error_code = 87;
-    my $attribut   = $_[0];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
         if (   $page_namespace == 0
@@ -6967,11 +7589,18 @@ sub error_087_html_names_entities_without_semicolon {
             }
         }
     }
+
+    return ();
 }
 
+###########################################################################
+## ERROR 88
+###########################################################################
+
 sub error_088_defaultsort_with_first_blank {
+    my ($attribut) = @_;
     my $error_code = 88;
-    my $attribut   = $_[0];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
 
@@ -6984,7 +7613,7 @@ sub error_088_defaultsort_with_first_blank {
             and $project ne 'zhwiki' )
         {
             my $pos1              = -1;
-            my $current_magicword = '';
+            my $current_magicword = q{};
             foreach (@magicword_defaultsort) {
                 if ( $pos1 == -1 and index( $text, $_ ) > -1 ) {
                     $pos1 = index( $text, $_ );
@@ -7012,11 +7641,18 @@ sub error_088_defaultsort_with_first_blank {
             }
         }
     }
+
+    return ();
 }
 
+###########################################################################
+## ERROR 89
+###########################################################################
+
 sub error_089_defaultsort_with_capitalization_in_the_middle_of_the_word {
+    my ($attribut) = @_;
     my $error_code = 89;
-    my $attribut   = $_[0];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
         if (    ( $page_namespace == 0 or $page_namespace == 104 )
@@ -7028,7 +7664,7 @@ sub error_089_defaultsort_with_capitalization_in_the_middle_of_the_word {
             and $project ne 'zhwiki' )
         {
             my $pos1              = -1;
-            my $current_magicword = '';
+            my $current_magicword = q{};
             foreach (@magicword_defaultsort) {
                 if ( $pos1 == -1 and index( $text, $_ ) > -1 ) {
                     $pos1 = index( $text, $_ );
@@ -7056,11 +7692,18 @@ sub error_089_defaultsort_with_capitalization_in_the_middle_of_the_word {
             }
         }
     }
+
+    return ();
 }
 
+###########################################################################
+## ERROR 90
+###########################################################################
+
 sub error_090_defaultsort_with_lowercase_letters {
+    my ($attribut) = @_;
     my $error_code = 90;
-    my $attribut   = $_[0];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
         if (    ( $page_namespace == 0 or $page_namespace == 104 )
@@ -7072,7 +7715,7 @@ sub error_090_defaultsort_with_lowercase_letters {
             and $project ne 'zhwiki' )
         {
             my $pos1              = -1;
-            my $current_magicword = '';
+            my $current_magicword = q{};
             foreach (@magicword_defaultsort) {
                 if ( $pos1 == -1 and index( $text, $_ ) > -1 ) {
                     $pos1 = index( $text, $_ );
@@ -7100,11 +7743,18 @@ sub error_090_defaultsort_with_lowercase_letters {
             }
         }
     }
+
+    return ();
 }
 
+###########################################################################
+## ERROR 91
+###########################################################################
+
 sub error_091_title_with_lowercase_letters_and_no_defaultsort {
+    my ($attribut) = @_;
     my $error_code = 91;
-    my $attribut   = $_[0];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
         if (    ( $page_namespace == 0 or $page_namespace == 104 )
@@ -7118,7 +7768,7 @@ sub error_091_title_with_lowercase_letters_and_no_defaultsort {
         {
 
             my $pos1              = -1;
-            my $current_magicword = '';
+            my $current_magicword = q{};
             foreach (@magicword_defaultsort) {
                 if ( $pos1 == -1 and index( $text, $_ ) > -1 ) {
                     $pos1 = index( $text, $_ );
@@ -7139,15 +7789,22 @@ sub error_091_title_with_lowercase_letters_and_no_defaultsort {
             }
         }
     }
+
+    return ();
 }
 
+###########################################################################
+## ERROR 92
+###########################################################################
+
 sub error_092_headline_double {
+    my ($attribut) = @_;
     my $error_code = 92;
-    my $attribut   = $_[0];
+
     print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
-            my $found_text          = '';
+            my $found_text          = q{};
             my $number_of_headlines = @headlines;
             for ( my $i = 0 ; $i < $number_of_headlines - 1 ; $i++ ) {
                 my $first_headline   = $headlines[$i];
@@ -7165,8 +7822,11 @@ sub error_092_headline_double {
             }
         }
     }
+
+    return ();
 }
 
+######################################################################
 ######################################################################
 ######################################################################
 
@@ -7194,7 +7854,10 @@ sub error_register {
 
     insert_into_db( $error_counter, $title, $error_code, $notice );
 
+    return ();
 }
+
+######################################################################
 
 # Insert error into database.
 sub insert_into_db {
@@ -7217,10 +7880,14 @@ sub insert_into_db {
       $dbh->prepare( 'INSERT INTO '
           . $TableName
           . ' (Project, Error_ID, Title, Error, Notice, Ok, Found) VALUES (?, ?, ?, ?, ?, ?, ?);'
-      ) or die( $dbh->errstr() );
+      ) || die "Can not prepare statement: $DBI::errstr\n";
     $sth->execute( $project, $page_id, $article, $code, $notice, 0, $Found )
-      or die( $dbh->errstr() );
+      or die "Cannot execute: " . $sth->errstr . "\n";
+
+    return ();
 }
+
+######################################################################
 
 # If an article was scanned live, then set this in the table
 # cw_dumpscan as true.
@@ -7234,16 +7901,20 @@ sub set_article_as_scan_live_in_db {
     # Update the tables cw_new and cw_change.
     my $sth = $dbh->prepare(
         'UPDATE cw_new SET Scan_Live = TRUE WHERE Project = ? AND Title = ?;')
-      or die( $dbh->errstr() );
+      or die( $dbh->errstr() . "\n" );
     $sth->execute( $project, $article )
-      or die( 'article:' . $article . "\n" . $dbh->errstr() );
+      or die( 'article:' . $article . "\n" . $dbh->errstr() . "\n" );
 
     $sth = $dbh->prepare(
         'UPDATE cw_change SET Scan_Live = TRUE WHERE Project = ? AND Title = ?;'
-    ) or die( $dbh->errstr() );
+    ) or die( $dbh->errstr() . "\n" );
     $sth->execute( $project, $article )
-      or die( 'article:' . $article . "\n" . $dbh->errstr() );
+      or die( 'article:' . $article . "\n" . $dbh->errstr() . "\n" );
+
+    return ();
 }
+
+######################################################################
 
 # If a new error was found in the dump, then write this into the
 # database table cw_dumpscan.
@@ -7254,10 +7925,15 @@ sub insert_into_db_table_tt {
 # Insert error into database (disabled for the moment).
 # my $sth = $dbh->prepare ('INSERT INTO tt (Project, ID, Title, Template, Name, Number, Parameter, Value) VALUES (?, ?, ?, ?, ?, ?, ?, ?);') or die ($dbh->errstr ());
 # $sth->execute ($project, $page_id, $article, $template, $name, $number, $parameter, $value) or die ($dbh->errstr ());
+
+    return ();
 }
 
 # Right trim string, but only to full words (result may be longer than
 # $Length characters).
+
+######################################################################
+
 sub text_reduce {
     my ( $s, $Length ) = @_;
 
@@ -7267,7 +7943,11 @@ sub text_reduce {
     else {
         return $s;
     }
+
+    return ();
 }
+
+######################################################################
 
 # Left trim string merciless, but only to full words (result will
 # never be longer than $Length characters).
@@ -7289,12 +7969,18 @@ sub text_reduce_to_end {
     }
 }
 
+######################################################################
+
 sub print_line {
 
     #prinnt a line for better structure of output
     print '-' x 80;
     print "\n";
+
+    return ();
 }
+
+######################################################################
 
 sub two_column_display {
 
@@ -7302,7 +7988,11 @@ sub two_column_display {
     my $text1 = shift;
     my $text2 = shift;
     printf "%-30s %-30s\n", $text1, $text2;
+
+    return ();
 }
+
+######################################################################
 
 sub usage {
     print STDERR "To scan a dump:\n"
@@ -7313,6 +8003,8 @@ sub usage {
       . "$0 -p dewiki\n"
       . "$0 -p dewiki --silent\n"
       . "$0 -p dewiki --load new/done/dump/last_change/old\n";
+
+    return ();
 }
 
 ###########################################################################
@@ -7342,7 +8034,7 @@ if (
     !GetOptions(
         'c=s' => sub {
             my $f = IO::File->new( $_[1], '<:encoding(UTF-8)' )
-              or die( "Can't open " . $_[1] );
+              or die( "Can't open " . $_[1] . "\n" );
             local ($/);
             my $s = <$f>;
             $f->close();
@@ -7362,7 +8054,7 @@ if (
 # Check that a project name is given.
 if ( !defined($project) ) {
     usage();
-    die("$0: No project name, for example: \"-p dewiki\"");
+    die("$0: No project name, for example: \"-p dewiki\"\n");
 }
 
 # Split load mode.
@@ -7415,21 +8107,14 @@ s/^(?:.*\/)?\Q$project\E-(\d{4})(\d{2})(\d{2})-pages-articles\.xml\.bz2$/$1-$2-$
   #    $dbh->do( 'DELETE FROM cw_dumpscan WHERE Project = ?;', undef, $project )
   #      or die( $dbh->errstr() );
 
-#$DumpFilename = '/public/datasets/public/enwiki/20130604/enwiki-20130604-pages-articles.xml.bz2';
-
     # GET DUMP FILE SIZE, UNCOMPRESS AND THEN OPEN VIA METAWIKI::DumpFile
-    #my $dump;
+    my $dump;
     $file_size = ( stat($DumpFilename) )[7];
 
-    #open( $dump, '-|', 'bzcat', '-q', $DumpFilename )
-    #      or die("Couldn't open dump file '$DumpFilename'");
+    open( $dump, '-|', 'bzcat', '-q', $DumpFilename )
+          or die("Couldn't open dump file '$DumpFilename'");
 
-    $DumpFilename =
-      '/home/bgwhite/windows/enwiki/enwiki-20130604-pages-articles.xml';
-    $dump_date_for_output = '20130604';
-    $pages                = $pmwd->pages($DumpFilename);
-
-    #    $pages = $pmwd->pages($dump);
+    $pages = $pmwd->pages($dump);
 
     # OPEN TEMPLATETIGER FILE
     if (
@@ -7464,20 +8149,21 @@ scan_pages();    # Scan articles.
 # UPDATE DATE OF LAST DUMP IN DATABASE FOR PROJECT GIVEN
 $dbh->do( 'UPDATE cw_project SET Last_Dump = ? WHERE Project = ?;',
     undef, $dump_date_for_output, $project )
-  or die( $dbh->errstr() );
+  or die( $dbh->errstr() . "\n" );
 
 # CLOSE FILES.  ONLY NEED TO DO Templatetiger FILE
 if ( defined($DumpFilename) ) {
 
     # Move Templatetiger file to spool.
-    $TTFile->close() or die($!);
+    $TTFile->close() or die( $! . "\n" );
     if ( !rename( $TTFile->filename(), $TTFilename ) ) {
         die(    "Couldn't rename temporary Templatetiger file from "
               . $TTFile->filename() . ' to '
-              . $TTFilename );
+              . $TTFilename
+              . "\n" );
     }
     if ( !chmod( 0664, $TTFilename ) ) {
-        die( "Couldn't chmod 664 Templatetiger file " . $TTFilename );
+        die( "Couldn't chmod 664 Templatetiger file " . $TTFilename . "\n" );
     }
     undef($TTFile);
 }
