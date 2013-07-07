@@ -34,15 +34,12 @@ use POSIX qw(strftime);
 use URI::Escape;
 use XML::LibXML;
 use Data::Dumper;
-use POSIX qw(strftime);
 
 binmode( STDOUT, ":encoding(UTF-8)" );  # PRINT OUTPUT IN UTF-8.  ARTICLE TITLES
                                         # ARE IN UTF-8
 
-our $output_directory = '/mnt/user-store/sk/data/checkwiki/';
-our $output_geo       = '/mnt/user-store/sk/data/geo/';
+our $output_geo = '/mnt/user-store/sk/data/geo/';
 
-our $dump;
 our $quit_program =
   'no';    # quit the program (yes,no), for quit the programm in an emergency
 our $quit_reason = q{};    # quit the program reason
@@ -60,14 +57,10 @@ our $load_modus_old         = 1;    # old article from db
 our $details_for_page =
   'no';   # yes/no  durring the scan you can get more details for a article scan
 
-our $time_start = time();    # start timer in secound
-my $time_end = time();       # end time in secound
-our $date = 0;               # date of dump "20060324"
-
-our $line_number = 0;        # number of line in dump
-our $project;                # name of the project 'dewiki'
-our $language    = q{};      # language of dump 'de', 'en';
-our $page_number = 0;        # number of pages in namesroom 0
+our $line_number = 0;    # number of line in dump
+our $project;            # name of the project 'dewiki'
+our $language    = q{};  # language of dump 'de', 'en';
+our $page_number = 0;    # number of pages in namesroom 0
 our $base = q{};    # base of article, 'http://de.wikipedia.org/wiki/Hauptseite'
 our $home = q{};    # base of article, 'http://de.wikipedia.org/wiki/'
 
@@ -109,24 +102,27 @@ our @magicword_img_middle;
 our @magicword_img_bottom;
 our @magicword_img_text_bottom;
 
-# Database configuration.
-our $DbName = 'u_sk_yarrow';
+# Database configuration
+our $DbName;
 our $DbServer;
 our $DbUsername;
 our $DbPassword;
+
+our $dbh;
 
 # MediaWiki::DumpFile variables
 our $pmwd      = Parse::MediaWikiDump->new;
 our $pages     = q{};
 our $file_size = 0;
 our $artcount  = 0;
-our $start     = time;
+
+# Time program starts
+our $time_start = time();    # start timer in secound
+our $time_end   = time();    # end time in secound
 
 # Wiki-special variables
-
-our @live_article;    # to-do-list for live (all articles to scan)
+our @live_article;           # to-do-list for live (all articles to scan)
 our $current_live_article = -1;    # line_number_of_current_live_article
-our $number_of_live_tests = -1;    # Number of articles for live test
 
 our $current_live_error_scan = -1; # for scan every 100 article of an error
 our @live_to_scan;    # article of one error number which should be scanned
@@ -165,9 +161,8 @@ our $for_statistic_last_change_article           = 0;
 our $for_statistic_geo_article                   = 0;
 our $for_statistic_number_of_articles_with_error = 0;
 
-# files
+# Files
 our $error_list_filename     = 'error_list.txt';
-our $translation_file        = 'translation.txt';
 our $error_geo_list_filename = 'error_geo_list.txt';
 my $TTFile;
 
@@ -199,8 +194,6 @@ our @foundation_projects = (
 our $top_priority_script    = 'Top priority';
 our $middle_priority_script = 'Middle priority';
 our $lowest_priority_script = 'Lowest priority';
-
-our $dbh;    # DatenbaaseHandler
 
 ###############################
 # variables for one article
@@ -608,7 +601,7 @@ sub scan_pages {
 ###########################################################################
 
 sub update_ui {
-    my $seconds = time - $start;
+    my $seconds = time - $time_start;
     my $bytes   = $pages->current_byte;
 
     print "  ", pretty_number($artcount), " articles; ";
@@ -7987,7 +7980,7 @@ sub text_reduce_to_end {
 
 sub print_line {
 
-    #prinnt a line for better structure of output
+    #print a line for better structure of output
     print '-' x 80;
     print "\n";
 
@@ -8071,6 +8064,9 @@ if ( !defined($project) ) {
     die("$0: No project name, for example: \"-p dewiki\"\n");
 }
 
+two_column_display( 'Start time:',
+    ( strftime "%a %b %e %H:%M:%S %Y", localtime ) );
+
 # Split load mode.
 if ( defined($load_mode) && !defined($DumpFilename) ) {
     my %LoadOptions = map { $_ => 1; } split( /\//, $load_mode );
@@ -8087,43 +8083,27 @@ $language = $project;
 $language =~ s/source$//;
 $language =~ s/wiki$//;
 
-if ( !$silent_modus ) {
-    print "$0, version $VERSION.\n";
-}
-
-two_column_display( 'Start time:',
-    ( strftime "%a %b %e %H:%M:%S %Y", localtime ) );
-
-open_db();    # Connect to database.
-
-my $dump_date_for_output;
 if ( defined($DumpFilename) ) {
     $dump_or_live = 'dump';
 
     # GET DATE FROM THE DUMP FILENAME
+    my $dump_date_for_output;
     $dump_date_for_output = $DumpFilename;
     $dump_date_for_output =~
 s/^(?:.*\/)?\Q$project\E-(\d{4})(\d{2})(\d{2})-pages-articles\.xml\.bz2$/$1-$2-$3/;
 
-  # DELETE OLD LIST OF ARTICLES FROM LAST DUMP SCAN IN TABLE cw_dumpscan
-  #    $dbh->do( 'DELETE FROM cw_dumpscan WHERE Project = ?;', undef, $project )
-  #      or die( $dbh->errstr() );
-
-#$DumpFilename = '/public/datasets/public/enwiki/20130604/enwiki-20130604-pages-articles.xml.bz2';
+    # DELETE OLD LIST OF ARTICLES FROM LAST DUMP SCAN IN TABLE cw_dumpscan
+    # $dbh->do( 'DELETE FROM cw_dumpscan WHERE Project = ?;', undef, $project )
+    #    or die( $dbh->errstr() );
 
     # GET DUMP FILE SIZE, UNCOMPRESS AND THEN OPEN VIA METAWIKI::DumpFile
-    #my $dump;
+    my $dump;
     $file_size = ( stat($DumpFilename) )[7];
 
-    #open( $dump, '-|', 'bzcat', '-q', $DumpFilename )
-    #      or die("Couldn't open dump file '$DumpFilename'");
+    open( $dump, '-|', 'bzcat', '-q', $DumpFilename )
+          or die("Couldn't open dump file '$DumpFilename'");
 
-    $DumpFilename =
-      '/home/bgwhite/windows/enwiki/enwiki-20130604-pages-articles.xml';
-    $dump_date_for_output = '20130604';
-    $pages                = $pmwd->pages($DumpFilename);
-
-    #    $pages = $pmwd->pages($dump);
+    $pages = $pmwd->pages($dump);
 
     # OPEN TEMPLATETIGER FILE
     if (
@@ -8139,19 +8119,21 @@ s/^(?:.*\/)?\Q$project\E-(\d{4})(\d{2})(\d{2})-pages-articles\.xml\.bz2$/$1-$2-$
     {
         die("Couldn't open temporary file for Templatetiger\n");
     }
-    binmode( $TTFile, ":encoding(UTF-8)" );    # Convert string ouput to UTF-8
+    binmode( $TTFile, ":encoding(UTF-8)" );
 }
 else {
     $dump_or_live = 'live';
     load_article_for_live_scan();
 }
 
-two_column_display( 'Project:',    $project );
-two_column_display( 'Scan typle:', $dump_or_live . " scan" );
+two_column_display( 'Project:',   $project );
+two_column_display( 'Scan type:', $dump_or_live . " scan" );
 
+open_db();
 getErrors();
 ReadMetadata();
 
+# for loop in here temperarily
 for ( my $i = 1 ; $i <= 150 ; $i++ ) {
     $error_description[$i][3] = 0;
 }
@@ -8160,12 +8142,22 @@ for ( my $i = 1 ; $i <= 150 ; $i++ ) {
 scan_pages();    # Scan articles.
 
 # UPDATE DATE OF LAST DUMP IN DATABASE FOR PROJECT GIVEN
-$dbh->do( 'UPDATE cw_project SET Last_Dump = ? WHERE Project = ?;',
-    undef, $dump_date_for_output, $project )
-  or die( $dbh->errstr() . "\n" );
+# $dbh->do( 'UPDATE cw_project SET Last_Dump = ? WHERE Project = ?;',
+#   undef, $dump_date_for_output, $project )
+#     or die( $dbh->errstr() . "\n" );
 
-# CLOSE FILES.  ONLY NEED TO DO Templatetiger FILE
-if ( defined($DumpFilename) ) {
+update_table_cw_error_from_dump();
+delete_deleted_article_from_db();
+delete_article_from_table_cw_new();
+delete_article_from_table_cw_change();
+update_table_cw_starter();
+
+output_little_statistic();
+
+close_db();
+
+# CLOSE TEMPLATETIGER FILE
+if ( defined($TTFile) ) {
 
     # Move Templatetiger file to spool.
     $TTFile->close() or die( $! . "\n" );
@@ -8181,21 +8173,7 @@ if ( defined($DumpFilename) ) {
     undef($TTFile);
 }
 
-update_table_cw_error_from_dump()     if ( $quit_program eq 'no' );
-delete_deleted_article_from_db()      if ( $quit_program eq 'no' );
-delete_article_from_table_cw_new()    if ( $quit_program eq 'no' );
-delete_article_from_table_cw_change() if ( $quit_program eq 'no' );
-update_table_cw_starter();
-
-output_little_statistic()
-  if ( $quit_program eq 'no' );    # print counter of found errors
-
 $time_end = time() - $time_start;
-printf "Program run time: %d hours, %d minutes and %d seconds\n",
+printf "Program run time: %d hours, %d minutes and %d seconds\n\n",
   ( gmtime $time_end )[ 2, 1, 0 ];
-
-print $quit_reason if ( $quit_reason ne '' );
-
-close_db();                        # Disconnect from database.
-
-print "Finish\n";
+print "PROGRAM FINISHED\n";
