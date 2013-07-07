@@ -34,6 +34,7 @@ use POSIX qw(strftime);
 use URI::Escape;
 use XML::LibXML;
 use Data::Dumper;
+use POSIX qw(strftime);
 
 binmode( STDOUT, ":encoding(UTF-8)" );  # PRINT OUTPUT IN UTF-8.  ARTICLE TITLES
                                         # ARE IN UTF-8
@@ -60,8 +61,8 @@ our $details_for_page =
   'no';   # yes/no  durring the scan you can get more details for a article scan
 
 our $time_start = time();    # start timer in secound
-our $time_end   = time();    # end time in secound
-our $date       = 0;         # date of dump "20060324"
+my $time_end = time();       # end time in secound
+our $date = 0;               # date of dump "20060324"
 
 our $line_number = 0;        # number of line in dump
 our $project;                # name of the project 'dewiki'
@@ -194,19 +195,6 @@ our @foundation_projects = (
     'mw',          'quality',       'bugzilla',   'mediazilla',
     'nost',        'testwiki'
 );
-
-# current time
-our (
-    $akSekunden, $akMinuten,   $akStunden,   $akMonatstag, $akMonat,
-    $akJahr,     $akWochentag, $akJahrestag, $akSommerzeit
-) = localtime(time);
-our $CTIME_String = localtime(time);
-$akMonat     = $akMonat + 1;
-$akJahr      = $akJahr + 1900;
-$akMonat     = "0" . $akMonat if ( $akMonat < 10 );
-$akMonatstag = "0" . $akMonatstag if ( $akMonatstag < 10 );
-$akStunden   = "0" . $akStunden if ( $akStunden < 10 );
-$akMinuten   = "0" . $akMinuten if ( $akMinuten < 10 );
 
 our $top_priority_script    = 'Top priority';
 our $middle_priority_script = 'Middle priority';
@@ -1544,28 +1532,6 @@ sub raw_text_more_articles {
 
 sub output_little_statistic {
     print 'errors found:' . "\t\t" . $error_counter . " (+1)\n";
-
-    return ();
-}
-
-###########################################################################
-##
-###########################################################################
-
-sub output_duration {
-    $time_end = time();
-    my $duration         = $time_end - $time_start;
-    my $duration_minutes = int( $duration / 60 );
-    my $duration_secounds =
-      int( ( ( int( 100 * ( $duration / 60 ) ) / 100 ) - $duration_minutes ) *
-          60 );
-
-    print 'Duration:' . "\t\t"
-      . $duration_minutes
-      . ' minutes '
-      . $duration_secounds
-      . ' secounds' . "\n";
-    print $project. ' ' . $dump_or_live . "\n" if ( !$silent_modus );
 
     return ();
 }
@@ -8125,22 +8091,8 @@ if ( !$silent_modus ) {
     print "$0, version $VERSION.\n";
 }
 
-two_column_display(
-    'Start time:',
-    $akJahr . '-'
-      . $akMonat . '-'
-      . $akMonatstag . ' '
-      . $akStunden . ':'
-      . $akMinuten
-);
-two_column_display( 'Project:', $project );
-
-if ( !$silent_modus ) {
-    two_column_display( 'Modus:',
-            $dump_or_live . ' ('
-          . ( $dump_or_live eq 'dump' ? 'scan a dump' : 'scan live' )
-          . ')' );
-}
+two_column_display( 'Start time:',
+    ( strftime "%a %b %e %H:%M:%S %Y", localtime ) );
 
 open_db();    # Connect to database.
 
@@ -8160,13 +8112,18 @@ s/^(?:.*\/)?\Q$project\E-(\d{4})(\d{2})(\d{2})-pages-articles\.xml\.bz2$/$1-$2-$
 #$DumpFilename = '/public/datasets/public/enwiki/20130604/enwiki-20130604-pages-articles.xml.bz2';
 
     # GET DUMP FILE SIZE, UNCOMPRESS AND THEN OPEN VIA METAWIKI::DumpFile
-    my $dump;
+    #my $dump;
     $file_size = ( stat($DumpFilename) )[7];
 
-    open( $dump, '-|', 'bzcat', '-q', $DumpFilename )
-          or die("Couldn't open dump file '$DumpFilename'");
+    #open( $dump, '-|', 'bzcat', '-q', $DumpFilename )
+    #      or die("Couldn't open dump file '$DumpFilename'");
 
-    $pages = $pmwd->pages($dump);
+    $DumpFilename =
+      '/home/bgwhite/windows/enwiki/enwiki-20130604-pages-articles.xml';
+    $dump_date_for_output = '20130604';
+    $pages                = $pmwd->pages($DumpFilename);
+
+    #    $pages = $pmwd->pages($dump);
 
     # OPEN TEMPLATETIGER FILE
     if (
@@ -8188,6 +8145,9 @@ else {
     $dump_or_live = 'live';
     load_article_for_live_scan();
 }
+
+two_column_display( 'Project:',    $project );
+two_column_display( 'Scan typle:', $dump_or_live . " scan" );
 
 getErrors();
 ReadMetadata();
@@ -8229,10 +8189,13 @@ update_table_cw_starter();
 
 output_little_statistic()
   if ( $quit_program eq 'no' );    # print counter of found errors
-output_duration() if ( $quit_program eq 'no' );    # print time at the end
+
+$time_end = time() - $time_start;
+printf "Program run time: %d hours, %d minutes and %d seconds\n",
+  ( gmtime $time_end )[ 2, 1, 0 ];
 
 print $quit_reason if ( $quit_reason ne '' );
 
-close_db();                                        # Disconnect from database.
+close_db();                        # Disconnect from database.
 
 print "Finish\n";
