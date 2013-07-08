@@ -34,6 +34,7 @@ use POSIX qw(strftime);
 use URI::Escape;
 use XML::LibXML;
 use Data::Dumper;
+use MediaWiki::API;
 
 binmode( STDOUT, ":encoding(UTF-8)" );  # PRINT OUTPUT IN UTF-8.  ARTICLE TITLES
                                         # ARE IN UTF-8
@@ -901,10 +902,9 @@ sub getErrors {
 }
 
 ###########################################################################
-##
+##  Read Metadata from API
 ###########################################################################
 
-# Read metadata from API.
 sub ReadMetadata {
 
     # Calculate server name.
@@ -924,49 +924,37 @@ sub ReadMetadata {
     }
 
     my $url = 'http://' . $ServerName . '/w/api.php';
+
     print_line();
-    two_column_display( 'load metadata from:', $url );
-    $url .=
-'?action=query&meta=siteinfo&siprop=general|namespaces|namespacealiases|statistics|magicwords&format=xml';
+    two_column_display( 'Load metadata from:', $url );
 
-    my $UA       = LWP::UserAgent->new();
-    my $Response = $UA->get($url);
+    # Setup MediaWiki::API
+    my $mw = MediaWiki::API->new();
+    $mw->{config}->{api_url} = $url;
 
-    if ( !$Response->is_success() ) {
-        die("Could not retrieve metadata\n");
-    }
+    # See https://www.mediawiki.org/wiki/API:Meta#siteinfo_/_si
+    my $res = $mw->api(
+        {
+            action => 'query',
+            meta   => 'siteinfo',
+            siprop =>
+              'general|namespaces|namespacealiases|statistics|magicwords',
+        }
+    ) || die $mw->{error}->{code} . ': ' . $mw->{error}->{details};
 
-    my $Content = $Response->decoded_content( raise_error => 1 );
-    if ( !defined($Content) ) {
-        die("Could not decode content\n");
-    }
-    my $metatext = $Content;
+    two_column_display( 'Sitename:', $res->{query}->{general}->{sitename} );
 
-    # Parse siteinfo to DOM.
-    my $XMLParser = XML::LibXML->new or die( $! . "\n" );
-    my $SiteInfo = $XMLParser->parse_string($Content) or die( $! . "\n" );
-
-    # Extract sitename.
-    my $sitename =
-      ( $SiteInfo->findnodes(q!//api/query/general/@sitename!) )[0]->getData();
-    two_column_display( 'Sitename:', $sitename ) if ( !$silent_modus );
-
-    # Extract base.
-    my $my_base =
-      ( $SiteInfo->findnodes(q!//api/query/general/@base!) )[0]->getData();
-    two_column_display( 'Base:', $my_base ) if ( !$silent_modus );
-    $home = $my_base;
+    $home = $res->{query}->{general}->{base};
+    two_column_display( 'Base:', $home );
     $home =~ s/[^\/]+$//;
 
-    # Get namespaces numbers and names (e. g., "6, Tabulator image").
-    foreach my $Node ( $SiteInfo->findnodes(q!//api/query/namespaces/ns!) ) {
-        my $id        = $Node->getAttribute('id');
-        my $canonical = $Node->getAttribute('canonical');
-        my $name      = $Node->textContent();
+    two_column_display( 'Pages online:', $res->{query}->{statistics}->{pages} );
+    two_column_display( 'Images online:',
+        $res->{query}->{statistics}->{images} );
 
-        $canonical = q{} if ( !defined($canonical) );
-
-        # Store namespace.
+    foreach my $id ( keys %{ $res->{query}->{namespaces} } ) {
+        my $name      = $res->{query}->{namespaces}->{$id}->{'*'};
+        my $canonical = $res->{query}->{namespaces}->{$id}->{'canonical'};
         push( @namespace, [ $id, $name, $canonical ] );
 
         # Store special namespaces in convenient variables.
@@ -983,80 +971,51 @@ sub ReadMetadata {
         }
     }
 
-    # Namespace aliases.
-    foreach
-      my $Node ( $SiteInfo->findnodes(q!//api/query/namespacealiases/ns!) )
-    {
-        my $id   = $Node->getAttribute('id');
-        my $name = $Node->textContent();
-
-        if ( $id == 6 ) {    # Alias for image?
+    foreach my $entry ( @{ $res->{query}->{namespacealiases} } ) {
+        my $name = $entry->{'*'};
+        if ( $entry->{id} == 6 ) {
             push( @namespace_image, $name );
         }
-        elsif ( $id == 10 ) {    # Alias for template?
+        elsif ( $entry->{id} == 10 ) {
             push( @namespace_templates, $name );
         }
-        elsif ( $id == 14 ) {    # Alias for category?
+        elsif ( $entry->{id} == 14 ) {
             push( @namespace_cat, $name );
         }
 
         # Store all aliases.
-        push( @namespacealiases, [ $id, $name ] );
+        push( @namespacealiases, [ $entry->{id}, $name ] );
     }
 
-    # Magicwords.
-    @magicword_defaultsort     = get_magicword( $SiteInfo, 'defaultsort' );
-    @magicword_img_thumbnail   = get_magicword( $SiteInfo, 'img_thumbnail' );
-    @magicword_img_manualthumb = get_magicword( $SiteInfo, 'img_manualthumb' );
-    @magicword_img_right       = get_magicword( $SiteInfo, 'img_right' );
-    @magicword_img_left        = get_magicword( $SiteInfo, 'img_left' );
-    @magicword_img_none        = get_magicword( $SiteInfo, 'img_none' );
-    @magicword_img_center      = get_magicword( $SiteInfo, 'img_center' );
-    @magicword_img_framed      = get_magicword( $SiteInfo, 'img_framed' );
-    @magicword_img_frameless   = get_magicword( $SiteInfo, 'img_frameless' );
-    @magicword_img_page        = get_magicword( $SiteInfo, 'img_page' );
-    @magicword_img_upright     = get_magicword( $SiteInfo, 'img_upright' );
-    @magicword_img_border      = get_magicword( $SiteInfo, 'img_border' );
-    @magicword_img_sub         = get_magicword( $SiteInfo, 'img_sub' );
-    @magicword_img_super       = get_magicword( $SiteInfo, 'img_super' );
-    @magicword_img_link        = get_magicword( $SiteInfo, 'img_link' );
-    @magicword_img_alt         = get_magicword( $SiteInfo, 'img_alt' );
-    @magicword_img_width       = get_magicword( $SiteInfo, 'img_width' );
-    @magicword_img_baseline    = get_magicword( $SiteInfo, 'img_baseline' );
-    @magicword_img_top         = get_magicword( $SiteInfo, 'img_top' );
-    @magicword_img_text_top    = get_magicword( $SiteInfo, 'img_text_top' );
-    @magicword_img_middle      = get_magicword( $SiteInfo, 'img_middle' );
-    @magicword_img_bottom      = get_magicword( $SiteInfo, 'img_bottom' );
-    @magicword_img_text_bottom = get_magicword( $SiteInfo, 'img_text_bottom' );
-
-    # Read statistics.
-    $statistic_online_page =
-      ( $SiteInfo->findnodes(q!//api/query/statistics/@pages!) )[0]->getData();
-    two_column_display( 'pages online:', $statistic_online_page );
+    foreach my $id ( @{ $res->{query}->{magicwords} } ) {
+        my $aliases = $id->{aliases};
+        my $name    = $id->{name};
+        @magicword_defaultsort     = $aliases if ( $name eq 'defaultsort' );
+        @magicword_img_thumbnail   = $aliases if ( $name eq 'img_thumbnail' );
+        @magicword_img_manualthumb = $aliases if ( $name eq 'img_manualthumb' );
+        @magicword_img_right       = $aliases if ( $name eq 'img_right' );
+        @magicword_img_left        = $aliases if ( $name eq 'img_left' );
+        @magicword_img_none        = $aliases if ( $name eq 'img_none' );
+        @magicword_img_center      = $aliases if ( $name eq 'img_center' );
+        @magicword_img_framed      = $aliases if ( $name eq 'img_framed' );
+        @magicword_img_frameless   = $aliases if ( $name eq 'img_frameless' );
+        @magicword_img_page        = $aliases if ( $name eq 'img_page' );
+        @magicword_img_upright     = $aliases if ( $name eq 'img_upright' );
+        @magicword_img_border      = $aliases if ( $name eq 'img_border' );
+        @magicword_img_sub         = $aliases if ( $name eq 'img_sub' );
+        @magicword_img_super       = $aliases if ( $name eq 'img_super' );
+        @magicword_img_link        = $aliases if ( $name eq 'img_link' );
+        @magicword_img_alt         = $aliases if ( $name eq 'img_alt' );
+        @magicword_img_width       = $aliases if ( $name eq 'img_width' );
+        @magicword_img_baseline    = $aliases if ( $name eq 'img_baseline' );
+        @magicword_img_top         = $aliases if ( $name eq 'img_top' );
+        @magicword_img_text_top    = $aliases if ( $name eq 'img_text_top' );
+        @magicword_img_middle      = $aliases if ( $name eq 'img_middle' );
+        @magicword_img_bottom      = $aliases if ( $name eq 'img_bottom' );
+        @magicword_img_text_bottom = $aliases if ( $name eq 'img_text_bottom' );
+    }
 
     return ();
-}
-
-###########################################################################
-##
-###########################################################################
-
-sub get_magicword {
-    my ( $SiteInfo, $key ) = @_;
-    my @result;
-
-    foreach my $Node (
-        $SiteInfo->findnodes(
-                q!//api/query/magicwords/magicword[@name = '!
-              . $key
-              . q!']/aliases/alias!
-        )
-      )
-    {
-        push( @result, $Node->textContent() );
-    }
-
-    return @result;
 }
 
 ###########################################################################
@@ -7759,6 +7718,8 @@ if ( !defined($project) ) {
     die("$0: No project name, for example: \"-p dewiki\"\n");
 }
 
+print "\n\n";
+print_line();
 two_column_display( 'Start time:',
     ( strftime "%a %b %e %H:%M:%S %Y", localtime ) );
 
@@ -7792,13 +7753,18 @@ s/^(?:.*\/)?\Q$project\E-(\d{4})(\d{2})(\d{2})-pages-articles\.xml\.bz2$/$1-$2-$
     #    or die( $dbh->errstr() );
 
     # GET DUMP FILE SIZE, UNCOMPRESS AND THEN OPEN VIA METAWIKI::DumpFile
-    my $dump;
+    #my $dump;
     $file_size = ( stat($DumpFilename) )[7];
 
-    open( $dump, '-|', 'bzcat', '-q', $DumpFilename )
-          or die("Couldn't open dump file '$DumpFilename'");
+    #open( $dump, '-|', 'bzcat', '-q', $DumpFilename )
+    #      or die("Couldn't open dump file '$DumpFilename'");
 
-    $pages = $pmwd->pages($dump);
+    $DumpFilename =
+      '/home/bgwhite/windows/enwiki/enwiki-20130604-pages-articles.xml';
+    $dump_date_for_output = '20130604';
+    $pages                = $pmwd->pages($DumpFilename);
+
+    # $pages = $pmwd->pages($dump);
 
     # OPEN TEMPLATETIGER FILE
     if (
