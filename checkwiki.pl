@@ -47,6 +47,7 @@ our $quit_reason = q{};    # quit the program reason
 our $dump_or_live = q{};   # scan modus (dump, live)
 our $silent_modus = 0;     # silent modus (very low output at screen) for batch
 
+our $CheckOnlyOne    = 0;  # Check only one error or all errors
 our $starter_modus   = 0;  # to update in the loadmodus the cw_starter table
 our $load_modus_done = 1;  # done article from db
 our $load_modus_new  = 1;  # new article from db
@@ -216,46 +217,43 @@ our $page_is_disambiguation = 'no';
 our $page_categories = q{};
 our $page_interwikis = q{};
 
-our $page_has_error    = 'no';    # yes/no  error in this page
-our $page_error_number = -1;      # number of all article for this page
+our @comments;          # 0 pos_start
+                        # 1 pos_end
+                        # 2 comment
+our $comment_counter = -1;    #number of comments in this page
 
-our @comments;                    # 0 pos_start
-                                  # 1 pos_end
-                                  # 2 comment
-our $comment_counter = -1;        #number of comments in this page
-
-our @category;                    # 0 pos_start
-                                  # 1 pos_end
-                                  # 2 category	Test
-                                  # 3 linkname	Linkname
-                                  # 4 original	[[Category:Test|Linkname]]
+our @category;                # 0 pos_start
+                              # 1 pos_end
+                              # 2 category	Test
+                              # 3 linkname	Linkname
+                              # 4 original	[[Category:Test|Linkname]]
 
 our $category_counter = -1;
-our $category_all     = q{};      # all categries
+our $category_all     = q{};    # all categries
 
-our @interwiki;                   # 0 pos_start
-                                  # 1 pos_end
-                                  # 2 interwiki	Test
-                                  # 3 linkname	Linkname
-                                  # 4 original	[[de:Test|Linkname]]
-                                  # 5 language
+our @interwiki;                 # 0 pos_start
+                                # 1 pos_end
+                                # 2 interwiki	Test
+                                # 3 linkname	Linkname
+                                # 4 original	[[de:Test|Linkname]]
+                                # 5 language
 
 our $interwiki_counter = -1;
 
-our @lines;                       # text seperated in lines
-our @headlines;                   # headlines
-our @section;                     # text between headlines
+our @lines;                     # text seperated in lines
+our @headlines;                 # headlines
+our @section;                   # text between headlines
 undef(@section);
 
-our @lines_first_blank;           # all lines where the first character is ' '
+our @lines_first_blank;         # all lines where the first character is ' '
 
-our @templates_all;               # all templates
-our @template;                    # templates with values
-                                  # 0 number of template
-                                  # 1 templatename
-                                  # 2 template_row
-                                  # 3 attribut
-                                  # 4 value
+our @templates_all;             # all templates
+our @template;                  # templates with values
+                                # 0 number of template
+                                # 1 templatename
+                                # 2 template_row
+                                # 3 attribut
+                                # 4 value
 our $number_of_template_parts = -1;    # number of all template parts
 
 our @links_all;                        # all links
@@ -696,45 +694,42 @@ sub set_variables_for_article {
     $page_categories = q{};
     $page_interwikis = q{};
 
-    $page_has_error    = 'no';    # yes/no  error in this page
-    $page_error_number = -1;      # number of all article for this page
+    undef(@comments);    # 0 pos_start
+                         # 1 pos_end
+                         # 2 comment
+    $comment_counter = -1;    #number of comments in this page
 
-    undef(@comments);             # 0 pos_start
-                                  # 1 pos_end
-                                  # 2 comment
-    $comment_counter = -1;        #number of comments in this page
-
-    undef(@category);             # 0 pos_start
-                                  # 1 pos_end
-                                  # 2 category	Test
-                                  # 3 linkname	Linkname
-                                  # 4 original	[[Category:Test|Linkname]]
+    undef(@category);         # 0 pos_start
+                              # 1 pos_end
+                              # 2 category	Test
+                              # 3 linkname	Linkname
+                              # 4 original	[[Category:Test|Linkname]]
 
     $category_counter = -1;
-    $category_all     = q{};      # all categries
+    $category_all     = q{};    # all categries
 
-    undef(@interwiki);            # 0 pos_start
-                                  # 1 pos_end
-                                  # 2 interwiki	Test
-                                  # 3 linkname	Linkname
-                                  # 4 original	[[de:Test|Linkname]]
-                                  # 5 language
+    undef(@interwiki);          # 0 pos_start
+                                # 1 pos_end
+                                # 2 interwiki	Test
+                                # 3 linkname	Linkname
+                                # 4 original	[[de:Test|Linkname]]
+                                # 5 language
 
     $interwiki_counter = -1;
 
-    undef(@lines);                # text seperated in lines
-    undef(@headlines);            # headlines
-    undef(@section);              # text between headlines
+    undef(@lines);              # text seperated in lines
+    undef(@headlines);          # headlines
+    undef(@section);            # text between headlines
 
-    undef(@lines_first_blank);    # all lines where the first character is ' '
+    undef(@lines_first_blank);  # all lines where the first character is ' '
 
-    undef(@templates_all);        # all templates
-    undef(@template);             # templates with values
-                                  # 0 number of template
-                                  # 1 templatename
-                                  # 2 template_row
-                                  # 3 attribut
-                                  # 4 value
+    undef(@templates_all);      # all templates
+    undef(@template);           # templates with values
+                                # 0 number of template
+                                # 1 templatename
+                                # 2 template_row
+                                # 3 attribut
+                                # 4 value
     $number_of_template_parts = -1;    # number of all template parts
 
     undef(@links_all);                 # all links
@@ -3597,114 +3592,106 @@ sub get_headlines {
 ##########################################################################
 
 sub error_check {
+    my $attribut = 'check';
 
-    print 'Start check error' . "\n" if ( $details_for_page eq 'yes' );
-
-    error_list('check');
-
-    return ();
-}
-
-###########################################################################
-##
-###########################################################################
-
-sub error_list {
-    my ($attribut) = @_;    # check / get_description
-
-    error_001_no_bold_title($attribut);    # don´t work - deactivated
-    error_002_have_br($attribut);
-    error_003_have_ref($attribut);
-    error_004_have_html_and_no_topic($attribut);
-    error_005_Comment_no_correct_end( $attribut, '' );
-    error_006_defaultsort_with_special_letters($attribut);
-    error_007_headline_only_three($attribut);
-    error_008_headline_start_end($attribut);
-    error_009_more_then_one_category_in_a_line($attribut);
-    error_010_count_square_breaks( $attribut, '' );
-    error_011_html_names_entities($attribut);
-    error_012_html_list_elements($attribut);
-    error_013_Math_no_correct_end( $attribut, '' );
-    error_014_Source_no_correct_end( $attribut, '' );
-    error_015_Code_no_correct_end( $attribut, '' );
-    error_016_unicode_control_characters($attribut);
-    error_017_category_double($attribut);
-    error_018_category_first_letter_small($attribut);
-    error_019_headline_only_one($attribut);
-    error_020_symbol_for_dead($attribut);
-    error_021_category_is_english($attribut);
-    error_022_category_with_space($attribut);
-    error_023_nowiki_no_correct_end( $attribut, '' );
-    error_024_pre_no_correct_end( $attribut, '' );
-    error_025_headline_hierarchy($attribut);
-    error_026_html_text_style_elements($attribut);
-    error_027_unicode_syntax($attribut);
-    error_028_table_no_correct_end( $attribut, '' );
-    error_029_gallery_no_correct_end( $attribut, '' );
-    error_030_image_without_description( $attribut, '' );
-    error_031_html_table_elements($attribut);
-    error_032_double_pipe_in_link($attribut);
-    error_033_html_text_style_elements_underline($attribut);
-    error_034_template_programming_elements($attribut);
-    error_035_gallery_without_description( $attribut, '' );
-    error_036_redirect_not_correct($attribut);
-    error_037_title_with_special_letters_and_no_defaultsort($attribut);
-    error_038_html_text_style_elements_italic($attribut);
-    error_039_html_text_style_elements_paragraph($attribut);
-    error_040_html_text_style_elements_font($attribut);
-    error_041_html_text_style_elements_big($attribut);
-    error_042_html_text_style_elements_small($attribut);
-    error_043_template_no_correct_end( $attribut, '' );
-    error_044_headline_with_bold($attribut);
-    error_045_interwiki_double($attribut);
-    error_046_count_square_breaks_begin($attribut);
-    error_047_template_no_correct_begin($attribut);
-    error_048_title_in_text($attribut);
-    error_049_headline_with_html($attribut);
-    error_050_dash($attribut);
-    error_051_interwiki_before_last_headline($attribut);
-    error_052_category_before_last_headline($attribut);
-    error_053_interwiki_before_category($attribut);
-    error_054_break_in_list($attribut);
-    error_055_html_text_style_elements_small_double($attribut);
-    error_056_arrow_as_ASCII_art($attribut);
-    error_057_headline_end_with_colon($attribut);
-    error_058_headline_with_capitalization($attribut);
-    error_059_template_value_end_with_br($attribut);
-    error_060_template_parameter_with_problem($attribut);
-    error_061_reference_with_punctuation($attribut);
-    error_062_headline_alone($attribut);
-    error_063_html_text_style_elements_small_ref_sub_sup($attribut);
-    error_064_link_equal_linktext($attribut);
-    error_065_image_description_with_break($attribut);
-    error_066_image_description_with_full_small($attribut);
-    error_067_reference_after_punctuation($attribut);
-    error_068_link_to_other_language($attribut);
-    error_069_isbn_wrong_syntax( $attribut, '' );
-    error_070_isbn_wrong_length( $attribut, '' );
-    error_071_isbn_wrong_pos_X( $attribut, '' );
-    error_072_isbn_10_wrong_checksum( $attribut, '' );
-    error_073_isbn_13_wrong_checksum( $attribut, '' );
-    error_074_link_with_no_target($attribut);
-    error_075_indented_list($attribut);
-    error_076_link_with_no_space($attribut);
-    error_077_image_description_with_partial_small($attribut);
-    error_078_reference_double($attribut);
-    error_079_external_link_without_description($attribut);
-    error_080_external_link_with_line_break($attribut);
-    error_081_ref_double($attribut);
-    error_082_link_to_other_wikiproject($attribut);
-    error_083_headline_only_three_and_later_level_two($attribut);
-    error_084_section_without_text($attribut);
-    error_085_tag_without_content($attribut);
-    error_086_link_with_two_brackets_to_external_source($attribut);
-    error_087_html_names_entities_without_semicolon($attribut);
-    error_088_defaultsort_with_first_blank($attribut);
-    error_089_defaultsort_with_capitalization_in_the_middle_of_the_word(
-        $attribut);
-    error_090_defaultsort_with_lowercase_letters($attribut);
-    error_091_title_with_lowercase_letters_and_no_defaultsort($attribut);
-    error_092_headline_double($attribut);
+    if ( $CheckOnlyOne > 0 ) {
+        error_061_reference_with_punctuation($attribut);
+    }
+    else {
+        #error_001_no_bold_title($attribut);    # don´t work - deactivated
+        error_002_have_br($attribut);
+        error_003_have_ref($attribut);
+        error_004_have_html_and_no_topic($attribut);
+        error_005_Comment_no_correct_end( $attribut, '' );
+        error_006_defaultsort_with_special_letters($attribut);
+        error_007_headline_only_three($attribut);
+        error_008_headline_start_end($attribut);
+        error_009_more_then_one_category_in_a_line($attribut);
+        error_010_count_square_breaks( $attribut, '' );
+        error_011_html_names_entities($attribut);
+        error_012_html_list_elements($attribut);
+        error_013_Math_no_correct_end( $attribut, '' );
+        error_014_Source_no_correct_end( $attribut, '' );
+        error_015_Code_no_correct_end( $attribut, '' );
+        error_016_unicode_control_characters($attribut);
+        error_017_category_double($attribut);
+        error_018_category_first_letter_small($attribut);
+        error_019_headline_only_one($attribut);
+        error_020_symbol_for_dead($attribut);
+        error_021_category_is_english($attribut);
+        error_022_category_with_space($attribut);
+        error_023_nowiki_no_correct_end( $attribut, '' );
+        error_024_pre_no_correct_end( $attribut, '' );
+        error_025_headline_hierarchy($attribut);
+        error_026_html_text_style_elements($attribut);
+        error_027_unicode_syntax($attribut);
+        error_028_table_no_correct_end( $attribut, '' );
+        error_029_gallery_no_correct_end( $attribut, '' );
+        error_030_image_without_description( $attribut, '' );
+        error_031_html_table_elements($attribut);
+        error_032_double_pipe_in_link($attribut);
+        error_033_html_text_style_elements_underline($attribut);
+        error_034_template_programming_elements($attribut);
+        error_035_gallery_without_description( $attribut, '' );
+        error_036_redirect_not_correct($attribut);
+        error_037_title_with_special_letters_and_no_defaultsort($attribut);
+        error_038_html_text_style_elements_italic($attribut);
+        error_039_html_text_style_elements_paragraph($attribut);
+        error_040_html_text_style_elements_font($attribut);
+        error_041_html_text_style_elements_big($attribut);
+        error_042_html_text_style_elements_small($attribut);
+        error_043_template_no_correct_end( $attribut, '' );
+        error_044_headline_with_bold($attribut);
+        error_045_interwiki_double($attribut);
+        error_046_count_square_breaks_begin($attribut);
+        error_047_template_no_correct_begin($attribut);
+        error_048_title_in_text($attribut);
+        error_049_headline_with_html($attribut);
+        error_050_dash($attribut);
+        error_051_interwiki_before_last_headline($attribut);
+        error_052_category_before_last_headline($attribut);
+        error_053_interwiki_before_category($attribut);
+        error_054_break_in_list($attribut);
+        error_055_html_text_style_elements_small_double($attribut);
+        error_056_arrow_as_ASCII_art($attribut);
+        error_057_headline_end_with_colon($attribut);
+        error_058_headline_with_capitalization($attribut);
+        error_059_template_value_end_with_br($attribut);
+        error_060_template_parameter_with_problem($attribut);
+        error_061_reference_with_punctuation($attribut);
+        error_062_headline_alone($attribut);
+        error_063_html_text_style_elements_small_ref_sub_sup($attribut);
+        error_064_link_equal_linktext($attribut);
+        error_065_image_description_with_break($attribut);
+        error_066_image_description_with_full_small($attribut);
+        error_067_reference_after_punctuation($attribut);
+        error_068_link_to_other_language($attribut);
+        error_069_isbn_wrong_syntax( $attribut, '' );
+        error_070_isbn_wrong_length( $attribut, '' );
+        error_071_isbn_wrong_pos_X( $attribut, '' );
+        error_072_isbn_10_wrong_checksum( $attribut, '' );
+        error_073_isbn_13_wrong_checksum( $attribut, '' );
+        error_074_link_with_no_target($attribut);
+        error_075_indented_list($attribut);
+        error_076_link_with_no_space($attribut);
+        error_077_image_description_with_partial_small($attribut);
+        error_078_reference_double($attribut);
+        error_079_external_link_without_description($attribut);
+        error_080_external_link_with_line_break($attribut);
+        error_081_ref_double($attribut);
+        error_082_link_to_other_wikiproject($attribut);
+        error_083_headline_only_three_and_later_level_two($attribut);
+        error_084_section_without_text($attribut);
+        error_085_tag_without_content($attribut);
+        error_086_link_with_two_brackets_to_external_source($attribut);
+        error_087_html_names_entities_without_semicolon($attribut);
+        error_088_defaultsort_with_first_blank($attribut);
+        error_089_defaultsort_with_capitalization_in_the_middle_of_the_word(
+            $attribut);
+        error_090_defaultsort_with_lowercase_letters($attribut);
+        error_091_title_with_lowercase_letters_and_no_defaultsort($attribut);
+        error_092_headline_double($attribut);
+    }
 
     return ();
 }
@@ -3723,8 +3710,6 @@ sub error_001_no_bold_title {
             and $page_is_redirect eq 'no' )
         {
             error_register( $error_code, '' );
-
-            #print "\t". $error_code."\t".$title."\n";
         }
     }
 
@@ -3739,85 +3724,78 @@ sub error_002_have_br {
     my $attribut   = @_;
     my $error_code = 2;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
-        my $test      = 'no found';
-        my $test_line = q{};
+    my $test      = 'no found';
+    my $test_line = q{};
 
-        if (   $page_namespace == 0
-            or $page_namespace == 104 )
+    if (   $page_namespace == 0
+        or $page_namespace == 104 )
+    {
+        my $test_text = lc($text);
+        if (   index( $test_text, '<br' ) > -1
+            or index( $test_text, 'br>' ) > -1 )
         {
-            my $test_text = lc($text);
-            if (   index( $test_text, '<br' ) > -1
-                or index( $test_text, 'br>' ) > -1 )
-            {
-                my $pos = -1;
-                foreach (@lines) {
-                    my $current_line    = $_;
-                    my $current_line_lc = lc($current_line);
+            my $pos = -1;
+            foreach (@lines) {
+                my $current_line    = $_;
+                my $current_line_lc = lc($current_line);
 
-                    #print $current_line_lc."\n";
+                #print $current_line_lc."\n";
 
-                    if ( $current_line_lc =~ /<br\/[^ ]>/g ) {
+                if ( $current_line_lc =~ /<br\/[^ ]>/g ) {
 
-                        # <br/1>
-                        $pos = pos($current_line_lc) if ( $pos == -1 );
-                    }
+                    # <br/1>
+                    $pos = pos($current_line_lc) if ( $pos == -1 );
+                }
 
-                    if ( $current_line_lc =~ /<br[^ ]\/>/g ) {
+                if ( $current_line_lc =~ /<br[^ ]\/>/g ) {
 
-                        # <br1/>
-                        $pos = pos($current_line_lc) if ( $pos == -1 );
-                    }
+                    # <br1/>
+                    $pos = pos($current_line_lc) if ( $pos == -1 );
+                }
 
-                    if ( $current_line_lc =~ /<br[^ \/]>/g ) {
+                if ( $current_line_lc =~ /<br[^ \/]>/g ) {
 
-                        # <br7>
-                        $pos = pos($current_line_lc) if ( $pos == -1 );
-                    }
+                    # <br7>
+                    $pos = pos($current_line_lc) if ( $pos == -1 );
+                }
 
-                    if ( $current_line_lc =~ /<[^ \/]br>/g ) {
+                if ( $current_line_lc =~ /<[^ \/]br>/g ) {
 
-                        # <\br>
-                        $pos = pos($current_line_lc) if ( $pos == -1 );
-                    }
+                    # <\br>
+                    $pos = pos($current_line_lc) if ( $pos == -1 );
+                }
 
-                    if (    $pos > -1
-                        and $test ne 'found' )
-                    {
-                        #print $pos."\n";
-                        $test = 'found';
-                        if ( $test_line eq '' ) {
-                            $test_line = substr( $current_line, 0, $pos );
-                            $test_line = text_reduce_to_end( $test_line, 50 );
+                if (    $pos > -1
+                    and $test ne 'found' )
+                {
+                    #print $pos."\n";
+                    $test = 'found';
+                    if ( $test_line eq '' ) {
+                        $test_line = substr( $current_line, 0, $pos );
+                        $test_line = text_reduce_to_end( $test_line, 50 );
 
-                            #print $test_line."\n";
-                        }
+                        #print $test_line."\n";
                     }
                 }
             }
         }
-        if ( $test eq 'found' ) {
-            $test_line = text_reduce( $test_line, 80 );
-            error_register( $error_code,
-                '<nowiki>' . $test_line . ' </nowiki>' );
-
-            #print "\t". $error_code."\t".$title."\t".$test_line."\n";
-        }
+    }
+    if ( $test eq 'found' ) {
+        $test_line = text_reduce( $test_line, 80 );
+        error_register( $error_code, '<nowiki>' . $test_line . ' </nowiki>' );
     }
 
     return ();
 }
 
 ###########################################################################
-## ERROR 02
+## ERROR 03
 ###########################################################################
 
 sub error_003_have_ref {
     my $attribut   = @_;
     my $error_code = 3;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if (   $page_namespace == 0
             or $page_namespace == 104 )
@@ -3937,8 +3915,6 @@ sub error_003_have_ref {
 
                 if ( $test eq "false" ) {
                     error_register( $error_code, '' );
-
-                    #print "\t". $error_code."\t".$title."\n";
                 }
             }
         }
@@ -3955,7 +3931,6 @@ sub error_004_have_html_and_no_topic {
     my ($attribut) = @_;
     my $error_code = 4;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if (    ( $page_namespace == 0 or $page_namespace == 104 )
             and index( $text, 'http://' ) > -1
@@ -3966,8 +3941,6 @@ sub error_004_have_html_and_no_topic {
             and index( $text, '<ref>' ) == -1 )
         {
             error_register( $error_code, '' );
-
-            #print "\t". $error_code."\t".$title."\n";
         }
     }
 
@@ -3982,7 +3955,6 @@ sub error_005_Comment_no_correct_end {
     my ( $attribut, $comment ) = @_;
     my $error_code = 5;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if (
             $comment ne ''
@@ -3992,8 +3964,6 @@ sub error_005_Comment_no_correct_end {
           )
         {
             error_register( $error_code, '<nowiki>' . $comment . '</nowiki>' );
-
-            #print "\t". $error_code."\t".$title."\n";
         }
     }
 
@@ -4007,8 +3977,6 @@ sub error_005_Comment_no_correct_end {
 sub error_006_defaultsort_with_special_letters {
     my ($attribut) = @_;
     my $error_code = 6;
-
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
 
     #* in de: ä → a, ö → o, ü → u, ß → ss
     #* in fi: ü → y, é → e, ß → ss, etc.
@@ -4091,8 +4059,6 @@ s/[АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЬЫЪЭЮЯабвгде�
                           . '</nowiki> || <nowiki>'
                           . $testtext_2
                           . '</nowiki>' );
-
-                    #print "\t". $error_code."\t".$title."\t".$testtext."\n";
                 }
             }
         }
@@ -4109,7 +4075,6 @@ sub error_007_headline_only_three {
     my ($attribut) = @_;
     my $error_code = 7;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
 
         if ( $headlines[0]
@@ -4126,8 +4091,6 @@ sub error_007_headline_only_three {
                 if ( $found_level_two eq 'no' ) {
                     error_register( $error_code,
                         '<nowiki>' . $headlines[0] . '</nowiki>' );
-
-#print "\t". $error_code."\t".$title."\t".'<nowiki>'.$headlines[0].'</nowiki>'."\n";
                 }
             }
         }
@@ -4144,7 +4107,6 @@ sub error_008_headline_start_end {
     my ($attribut) = @_;
     my $error_code = 8;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         foreach (@headlines) {
             my $current_line  = $_;
@@ -4163,8 +4125,6 @@ sub error_008_headline_start_end {
                 $current_line = text_reduce( $current_line, 80 );
                 error_register( $error_code,
                     '<nowiki>' . $current_line . '</nowiki>' );
-
-#print "\t". $error_code."\t".$title."\t".'<nowiki>'.$current_line.'</nowiki>'."\n";
             }
         }
     }
@@ -4180,7 +4140,6 @@ sub error_009_more_then_one_category_in_a_line {
     my ($attribut) = @_;
     my $error_code = 9;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         my $error_line = q{};
 
@@ -4204,8 +4163,6 @@ sub error_009_more_then_one_category_in_a_line {
         if ( $error_line ne '' ) {
             error_register( $error_code,
                 '<nowiki>' . $error_line . '</nowiki>' );
-
-#print "\t". $error_code."\t".$title."\t".'<nowiki>'.$error_line.'</nowiki>'."\n";
         }
     }
 
@@ -4220,7 +4177,6 @@ sub error_010_count_square_breaks {
     my ( $attribut, $comment ) = @_;
     my $error_code = 10;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if (
             $comment ne ''
@@ -4231,8 +4187,6 @@ sub error_010_count_square_breaks {
         {
             $comment = text_reduce( $comment, 80 );
             error_register( $error_code, '<nowiki>' . $comment . '</nowiki>' );
-
-            #print "\t". $error_code."\t".$title."\n";
         }
     }
 
@@ -4247,7 +4201,6 @@ sub error_011_html_names_entities {
     my ($attribut) = @_;
     my $error_code = 11;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if (   $page_namespace == 0
             or $page_namespace == 6
@@ -4305,8 +4258,6 @@ sub error_011_html_names_entities {
                 $found_text =~ s/&/&amp;/g;
                 error_register( $error_code,
                     '<nowiki>' . $found_text . '</nowiki>' );
-
-                #print "\t". $error_code."\t".$title."\t".$found_text."\n";
             }
         }
     }
@@ -4322,7 +4273,6 @@ sub error_012_html_list_elements {
     my ($attribut) = @_;
     my $error_code = 12;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         my $test      = 'no found';
         my $test_line = q{};
@@ -4361,8 +4311,6 @@ sub error_012_html_list_elements {
             $test_line = text_reduce( $test_line, 80 );
             error_register( $error_code,
                 '<nowiki>' . $test_line . ' </nowiki>' );
-
-            #print "\t". $error_code."\t".$title."\t".$test_line."\n";
         }
     }
 
@@ -4377,12 +4325,9 @@ sub error_013_Math_no_correct_end {
     my ( $attribut, $comment ) = @_;
     my $error_code = 13;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $comment ne '' ) {
             error_register( $error_code, '<nowiki>' . $comment . '</nowiki>' );
-
-            #print "\t". $error_code."\t".$title."\n";
         }
     }
 
@@ -4397,12 +4342,9 @@ sub error_014_Source_no_correct_end {
     my ( $attribut, $comment ) = @_;
     my $error_code = 14;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $comment ne '' ) {
             error_register( $error_code, '<nowiki>' . $comment . '</nowiki>' );
-
-            #print "\t". $error_code."\t".$title."\n";
         }
     }
 
@@ -4417,12 +4359,9 @@ sub error_015_Code_no_correct_end {
     my ( $attribut, $comment ) = @_;
     my $error_code = 15;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $comment ne '' ) {
             error_register( $error_code, '<nowiki>' . $comment . '</nowiki>' );
-
-            #print "\t". $error_code."\t".$title."\n";
         }
     }
 
@@ -4437,7 +4376,6 @@ sub error_016_unicode_control_characters {
     my ($attribut) = @_;
     my $error_code = 16;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if (   $page_namespace == 0
             or $page_namespace == 6
@@ -4461,8 +4399,6 @@ sub error_016_unicode_control_characters {
                     $found_text = text_reduce( $found_text, 80 );
                     error_register( $error_code,
                         '<nowiki>' . $found_text . '</nowiki>' );
-
-                    #print "\t". $error_code."\t".$title."\t".$found_text."\n";
                 }
             }
         }
@@ -4479,7 +4415,6 @@ sub error_017_category_double {
     my ( $attribut, $comment ) = @_;
     my $error_code = 17;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
 
         #print $title."\n" if ($page_number > 25000);;
@@ -4515,8 +4450,6 @@ sub error_017_category_double {
                         {
                             error_register( $error_code,
                                 '<nowiki>' . $category[$i][2] . '</nowiki>' );
-
-                #print "\t". $error_code."\t".$title."\t".$category[$i][2]."\n";
                         }
                     }
                 }
@@ -4537,7 +4470,6 @@ sub error_018_category_first_letter_small {
     my ($attribut) = @_;
     my $error_code = 18;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $project ne 'commonswiki' ) {
             for ( my $i = 0 ; $i <= $category_counter ; $i++ ) {
@@ -4545,8 +4477,6 @@ sub error_018_category_first_letter_small {
                 if ( $test_letter =~ /([a-z]|ä|ö|ü)/ ) {
                     error_register( $error_code,
                         '<nowiki>' . $category[$i][2] . '</nowiki>' );
-
-                    #print "\t".$test_letter.' - '.$category[$i][2]."\n";
                 }
             }
         }
@@ -4563,7 +4493,6 @@ sub error_019_headline_only_one {
     my ($attribut) = @_;
     my $error_code = 19;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $headlines[0]
             and ( $page_namespace == 0 or $page_namespace == 104 ) )
@@ -4571,8 +4500,6 @@ sub error_019_headline_only_one {
             if ( $headlines[0] =~ /^=[^=]/ ) {
                 error_register( $error_code,
                     '<nowiki>' . $headlines[0] . '</nowiki>' );
-
-#print "\t". $error_code."\t".$title."\t".'<nowiki>'.$headlines[0].'</nowiki>'."\n";
             }
         }
     }
@@ -4588,7 +4515,6 @@ sub error_020_symbol_for_dead {
     my ($attribut) = @_;
     my $error_code = 20;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         my $pos = index( $text, '&dagger;' );
         if ( $pos > -1
@@ -4598,8 +4524,6 @@ sub error_020_symbol_for_dead {
             $test_text = text_reduce( $test_text, 50 );
             error_register( $error_code,
                 '<nowiki>…' . $test_text . '…</nowiki>' );
-
-#print "\t". $error_code."\t".$title."\t".'<nowiki>…'.$test_text.'…</nowiki>'."\n";
         }
     }
 
@@ -4614,7 +4538,6 @@ sub error_021_category_is_english {
     my ($attribut) = @_;
     my $error_code = 21;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if (    $project ne 'enwiki'
             and $project ne 'commonswiki'
@@ -4627,8 +4550,6 @@ sub error_021_category_is_english {
                 if ( index( $current_cat, lc( $namespace_cat[1] ) ) > -1 ) {
                     error_register( $error_code,
                         '<nowiki>' . $current_cat . '</nowiki>' );
-
-#print "\t". $error_code."\t".$title."\t".'<nowiki>'.$category[$i][4].'</nowiki>'."\n";
                 }
             }
         }
@@ -4645,7 +4566,6 @@ sub error_022_category_with_space {
     my ($attribut) = @_;
     my $error_code = 22;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if (   $page_namespace == 0
             or $page_namespace == 6
@@ -4663,8 +4583,6 @@ sub error_022_category_with_space {
                 {
                     error_register( $error_code,
                         '<nowiki>' . $category[$i][4] . '</nowiki>' );
-
-#print "\t". $error_code."\t".$title."\t".'<nowiki>'.$category[$i][4].'</nowiki>'."\n";
                 }
             }
         }
@@ -4681,7 +4599,6 @@ sub error_023_nowiki_no_correct_end {
     my ( $attribut, $comment ) = @_;
     my $error_code = 23;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if (
             $comment ne ''
@@ -4691,8 +4608,6 @@ sub error_023_nowiki_no_correct_end {
           )
         {
             error_register( $error_code, '<nowiki>' . $comment . '</nowiki>' );
-
-            #print "\t". $error_code."\t".$title."\n";
         }
     }
 
@@ -4707,7 +4622,6 @@ sub error_024_pre_no_correct_end {
     my ( $attribut, $comment ) = @_;
     my $error_code = 24;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if (
             $comment ne ''
@@ -4717,8 +4631,6 @@ sub error_024_pre_no_correct_end {
           )
         {
             error_register( $error_code, '<nowiki>' . $comment . '</nowiki>' );
-
-            #print "\t". $error_code."\t".$title."\n";
         }
     }
 
@@ -4733,7 +4645,6 @@ sub error_025_headline_hierarchy {
     my ( $attribut, $comment ) = @_;
     my $error_code = 25;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         my $number_headline = -1;
         my $old_headline    = q{};
@@ -4767,8 +4678,6 @@ sub error_025_headline_hierarchy {
                               . '</nowiki><br /><nowiki>'
                               . $new_headline
                               . '</nowiki>' );
-
-#print "\t". $error_code."\t".$title."\t".'<nowiki>'.$headlines[0].'</nowiki>'."\n";
                     }
                 }
             }
@@ -4786,7 +4695,6 @@ sub error_026_html_text_style_elements {
     my ($attribut) = @_;
     my $error_code = 26;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         my $test      = 'no found';
         my $test_line = q{};
@@ -4810,8 +4718,6 @@ sub error_026_html_text_style_elements {
             $test_line = $test_line . '…';
             error_register( $error_code,
                 '<nowiki>' . $test_line . ' </nowiki>' );
-
-            #print "\t". $error_code."\t".$title."\t".$test_line."\n";
         }
     }
 
@@ -4826,7 +4732,6 @@ sub error_027_unicode_syntax {
     my ($attribut) = @_;
     my $error_code = 27;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if (   $page_namespace == 0
             or $page_namespace == 6
@@ -4844,8 +4749,6 @@ sub error_027_unicode_syntax {
                 $found_text = text_reduce( $found_text, 80 );
                 error_register( $error_code,
                     '<nowiki>' . $found_text . '</nowiki>' );
-
-                #print "\t". $error_code."\t".$title."\t".$found_text."\n";
             }
         }
     }
@@ -4861,7 +4764,6 @@ sub error_028_table_no_correct_end {
     my ( $attribut, $comment ) = @_;
     my $error_code = 28;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if (    $comment ne ''
             and ( $page_namespace == 0 or $page_namespace == 104 )
@@ -4871,8 +4773,6 @@ sub error_028_table_no_correct_end {
         {
             error_register( $error_code,
                 '<nowiki> ' . $comment . '…  </nowiki>' );
-
-            #print "\t". $error_code."\t".$title."\n";
         }
     }
 
@@ -4887,7 +4787,6 @@ sub error_029_gallery_no_correct_end {
     my ( $attribut, $comment ) = @_;
     my $error_code = 29;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if (
             $comment ne ''
@@ -4897,8 +4796,6 @@ sub error_029_gallery_no_correct_end {
           )
         {
             error_register( $error_code, '<nowiki>' . $comment . '</nowiki>' );
-
-            #print "\t". $error_code."\t".$title."\n";
         }
     }
 
@@ -4913,7 +4810,6 @@ sub error_030_image_without_description {
     my ( $attribut, $comment ) = @_;
     my $error_code = 30;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $comment ne '' ) {
             if (   $page_namespace == 0
@@ -4922,8 +4818,6 @@ sub error_030_image_without_description {
             {
                 error_register( $error_code,
                     '<nowiki>' . $comment . '</nowiki>' );
-
-                #print "\t". $error_code."\t".$title."\t".$comment."\n";
             }
         }
     }
@@ -4939,7 +4833,6 @@ sub error_031_html_table_elements {
     my ($attribut) = @_;
     my $error_code = 31;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         my $test      = 'no found';
         my $test_line = q{};
@@ -4983,8 +4876,6 @@ sub error_031_html_table_elements {
 
                 error_register( $error_code,
                     '<nowiki>' . $test_line . ' </nowiki>' );
-
-                #print "\t". $error_code."\t".$title."\t".$test_line."\n";
             }
         }
     }
@@ -5000,7 +4891,6 @@ sub error_032_double_pipe_in_link {
     my ($attribut) = @_;
     my $error_code = 32;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if (   $page_namespace == 0
             or $page_namespace == 6
@@ -5021,8 +4911,6 @@ sub error_032_double_pipe_in_link {
                     $current_line = text_reduce( $current_line, 80 );
                     error_register( $error_code,
                         '<nowiki>' . $current_line . ' </nowiki>' );
-
-                   #print "\t". $error_code."\t".$title."\t".$current_line."\n";
                 }
             }
         }
@@ -5039,7 +4927,6 @@ sub error_033_html_text_style_elements_underline {
     my ($attribut) = @_;
     my $error_code = 33;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         my $test      = 'no found';
         my $test_line = q{};
@@ -5062,8 +4949,6 @@ sub error_033_html_text_style_elements_underline {
             $test_line = $test_line . '…';
             error_register( $error_code,
                 '<nowiki>' . $test_line . ' </nowiki>' );
-
-            #print "\t". $error_code."\t".$title."\t".$test_line."\n";
         }
     }
 
@@ -5078,7 +4963,6 @@ sub error_034_template_programming_elements {
     my ($attribut) = @_;
     my $error_code = 34;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         my $test      = 'no found';
         my $test_line = q{};
@@ -5126,8 +5010,6 @@ sub error_034_template_programming_elements {
             $test_line = text_reduce( $test_line, 50 );
             error_register( $error_code,
                 '<nowiki>' . $test_line . ' </nowiki>' );
-
-            #print "\t". $error_code."\t".$title."\t".$test_line."\n";
         }
     }
 
@@ -5142,7 +5024,6 @@ sub error_035_gallery_without_description {
     my ( $attribut, $text_gallery ) = @_;
     my $error_code = 35;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
 
         my $test = q{};
@@ -5173,8 +5054,6 @@ sub error_035_gallery_without_description {
             if ( $test eq 'found' ) {
                 error_register( $error_code,
                     '<nowiki>' . $test_line . ' </nowiki>' );
-
-                #print "\t". $error_code."\t".$title."\t".$test_line."\n";
             }
         }
     }
@@ -5190,7 +5069,6 @@ sub error_036_redirect_not_correct {
     my ($attribut) = @_;
     my $error_code = 36;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_is_redirect eq 'yes' ) {
             if ( lc($text) =~ /#redirect[ ]?+[^ :\[][ ]?+\[/ ) {
@@ -5198,9 +5076,6 @@ sub error_036_redirect_not_correct {
 
                 error_register( $error_code,
                     '<nowiki>' . $output_text . ' </nowiki>' );
-
-                #print "\t". $error_code."\t".$title."\n";
-                #print "\t\t".$text."\n";
             }
         }
     }
@@ -5216,7 +5091,6 @@ sub error_037_title_with_special_letters_and_no_defaultsort {
     my ($attribut) = @_;
     my $error_code = 37;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if (    ( $page_namespace == 0 or $page_namespace == 104 )
             and $category_counter > -1
@@ -5301,8 +5175,6 @@ s/[АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЬЫЪЭЮЯабвгде�
                         #	print $category[$i][4]."\n";
                         #}
                         error_register( $error_code, '' );
-
-                        #print "\t". $error_code."\t".$title."\n";
                     }
                 }
             }
@@ -5320,7 +5192,6 @@ sub error_038_html_text_style_elements_italic {
     my ($attribut) = @_;
     my $error_code = 38;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         my $test      = 'no found';
         my $test_line = q{};
@@ -5345,8 +5216,6 @@ sub error_038_html_text_style_elements_italic {
                 $test_line = $test_line . '…';
                 error_register( $error_code,
                     '<nowiki>' . $test_line . ' </nowiki>' );
-
-                #print "\t". $error_code."\t".$title."\t".$test_line."\n";
             }
         }
     }
@@ -5362,7 +5231,6 @@ sub error_039_html_text_style_elements_paragraph {
     my ($attribut) = @_;
     my $error_code = 39;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         my $test      = 'no found';
         my $test_line = q{};
@@ -5385,8 +5253,6 @@ sub error_039_html_text_style_elements_paragraph {
                 $test_line = $test_line . '…';
                 error_register( $error_code,
                     '<nowiki>' . $test_line . ' </nowiki>' );
-
-                #print "\t". $error_code."\t".$title."\t".$test_line."\n";
             }
         }
     }
@@ -5402,7 +5268,6 @@ sub error_040_html_text_style_elements_font {
     my ($attribut) = @_;
     my $error_code = 40;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         my $test      = 'no found';
         my $test_line = q{};
@@ -5427,8 +5292,6 @@ sub error_040_html_text_style_elements_font {
                 $test_line = $test_line . '…';
                 error_register( $error_code,
                     '<nowiki>' . $test_line . ' </nowiki>' );
-
-                #print "\t". $error_code."\t".$title."\t".$test_line."\n";
             }
         }
     }
@@ -5444,7 +5307,6 @@ sub error_041_html_text_style_elements_big {
     my ($attribut) = @_;
     my $error_code = 41;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         my $test      = 'no found';
         my $test_line = q{};
@@ -5466,8 +5328,6 @@ sub error_041_html_text_style_elements_big {
                 $test_line = $test_line . '…';
                 error_register( $error_code,
                     '<nowiki>' . $test_line . ' </nowiki>' );
-
-                #print "\t". $error_code."\t".$title."\t".$test_line."\n";
             }
         }
     }
@@ -5483,7 +5343,6 @@ sub error_042_html_text_style_elements_small {
     my ($attribut) = @_;
     my $error_code = 42;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         my $test      = 'no found';
         my $test_line = q{};
@@ -5506,8 +5365,6 @@ sub error_042_html_text_style_elements_small {
                 $test_line = $test_line . '…';
                 error_register( $error_code,
                     '<nowiki>' . $test_line . ' </nowiki>' );
-
-                #print "\t". $error_code."\t".$title."\t".$test_line."\n";
             }
         }
     }
@@ -5523,7 +5380,6 @@ sub error_043_template_no_correct_end {
     my ( $attribut, $comment ) = @_;
     my $error_code = 43;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if (
             $comment ne ''
@@ -5533,8 +5389,6 @@ sub error_043_template_no_correct_end {
           )
         {
             error_register( $error_code, '<nowiki>' . $comment . '</nowiki>' );
-
-            #print "\t". $error_code."\t".$title."\n";
         }
     }
 
@@ -5549,7 +5403,6 @@ sub error_044_headline_with_bold {
     my ($attribut) = @_;
     my $error_code = 44;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             foreach (@headlines) {
@@ -5581,8 +5434,6 @@ sub error_044_headline_with_bold {
                         $current_line = text_reduce( $current_line, 80 );
                         error_register( $error_code,
                             '<nowiki>' . $current_line . '</nowiki>' );
-
-                   #print "\t". $error_code."\t".$title."\t".$current_line."\n";
                     }
                 }
             }
@@ -5600,7 +5451,6 @@ sub error_045_interwiki_double {
     my ($attribut) = @_;
     my $error_code = 45;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
 
         #print $title."\n";
@@ -5635,8 +5485,6 @@ sub error_045_interwiki_double {
 
         if ( $found_double ne '' ) {
             error_register( $error_code, $found_double );
-
-            #print "\t". $error_code."\t".$title."\t".$found_double."\n";
         }
     }
 
@@ -5651,7 +5499,6 @@ sub error_046_count_square_breaks_begin {
     my ($attribut) = @_;
     my $error_code = 46;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         my $text_test = q{};
 
@@ -5724,9 +5571,6 @@ sub error_046_count_square_breaks_begin {
                 if ( $found_text ne '' ) {
                     error_register( $error_code,
                         '<nowiki>' . $found_text . '</nowiki>' );
-
-                    #print 'Error 46: '.$title.' '.$found_text."\n";
-                    #print $page_namespace."\n";
                 }
             }
         }
@@ -5743,7 +5587,6 @@ sub error_047_template_no_correct_begin {
     my ($attribut) = @_;
     my $error_code = 47;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
 
         my $text_test = q{};
@@ -5806,9 +5649,6 @@ sub error_047_template_no_correct_begin {
                           text_reduce_to_end( $link_text, 50 ) . '}}';
                         error_register( $error_code,
                             '<nowiki>' . $link_text . '</nowiki>' );
-
-                        #print 'Error 47: '.$title.' '.$link_text."\n";
-                        #print $page_namespace."\n";
                     }
                 }
             }
@@ -5826,7 +5666,6 @@ sub error_048_title_in_text {
     my ($attribut) = @_;
     my $error_code = 48;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
 
         my $text_test = $text;
@@ -5848,8 +5687,6 @@ sub error_048_title_in_text {
                 $found_text =~ s/\n//g;
                 error_register( $error_code,
                     '<nowiki>' . $found_text . '</nowiki>' );
-
-                #print 'Error 48: '.$title.' '.$found_text."\n";
             }
         }
     }
@@ -5865,7 +5702,6 @@ sub error_049_headline_with_html {
     my ($attribut) = @_;
     my $error_code = 49;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
 
         if (   $page_namespace == 0
@@ -5891,8 +5727,6 @@ sub error_049_headline_with_html {
                 $found_text =~ s/\n//g;
                 error_register( $error_code,
                     '<nowiki>' . $found_text . '</nowiki>' );
-
-                #print 'Error 49: '.$title.' '.$found_text."\n";
             }
         }
     }
@@ -5908,7 +5742,6 @@ sub error_050_dash {
     my ($attribut) = @_;
     my $error_code = 50;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         my $pos = -1;
         $pos = index( lc($text), '&ndash;' );
@@ -5923,8 +5756,6 @@ sub error_050_dash {
             $found_text =~ s/^&/&amp;/g;
             error_register( $error_code,
                 '<nowiki>…' . $found_text . '…</nowiki>' );
-
-            #print "\t". $error_code."\t".$title."\t".$found_text."\n";
         }
     }
 
@@ -5939,7 +5770,6 @@ sub error_051_interwiki_before_last_headline {
     my ($attribut) = @_;
     my $error_code = 51;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         my $number_of_headlines = @headlines;
         my $pos                 = -1;
@@ -5973,8 +5803,6 @@ sub error_051_interwiki_before_last_headline {
                 #$found_text = text_reduce($found_text, 50);
                 error_register( $error_code,
                     '<nowiki>' . $found_text . '</nowiki>' );
-
-                #print 'Error 51: '.$title.' '.$found_text."\n";
             }
         }
     }
@@ -5990,7 +5818,6 @@ sub error_052_category_before_last_headline {
     my ($attribut) = @_;
     my $error_code = 52;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         my $number_of_headlines = @headlines;
         my $pos                 = -1;
@@ -6021,8 +5848,6 @@ sub error_052_category_before_last_headline {
                 #$found_text = text_reduce($found_text, 50);
                 error_register( $error_code,
                     '<nowiki>' . $found_text . '</nowiki>' );
-
-                #print 'Error 52: '.$title.' '.$found_text."\n";
             }
         }
     }
@@ -6038,7 +5863,6 @@ sub error_053_interwiki_before_category {
     my ($attribut) = @_;
     my $error_code = 53;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if (    $category_counter > -1
             and $interwiki_counter > -1
@@ -6063,8 +5887,6 @@ sub error_053_interwiki_before_category {
             if ( $found eq 'true' ) {
                 error_register( $error_code,
                     '<nowiki>' . $found_text . '</nowiki>' );
-
-#print "\t". $error_code."\t".$title."\t".'<nowiki>'.$found_text.'</nowiki>'."\n";
             }
 
         }
@@ -6081,7 +5903,6 @@ sub error_054_break_in_list {
     my ($attribut) = @_;
     my $error_code = 54;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             my $found_text = q{};
@@ -6113,8 +5934,6 @@ sub error_054_break_in_list {
                 }
                 error_register( $error_code,
                     '<nowiki>' . $found_text . '</nowiki>' );
-
-#print "\t". $error_code."\t".$title."\t".'<nowiki>'.$found_text.'</nowiki>'."\n";
             }
         }
     }
@@ -6130,7 +5949,6 @@ sub error_055_html_text_style_elements_small_double {
     my ($attribut) = @_;
     my $error_code = 55;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         my $test_line = q{};
         my $test_text = lc($text);
@@ -6168,8 +5986,6 @@ sub error_055_html_text_style_elements_small_double {
                     $found_text = text_reduce( $found_text, 80 );
                     error_register( $error_code,
                         '<nowiki>' . $found_text . ' </nowiki>' );
-
-#print "\t". $error_code."\t".$title."\t".'<nowiki>'.$found_text.'</nowiki>'."\n";
                 }
             }
         }
@@ -6186,7 +6002,6 @@ sub error_056_arrow_as_ASCII_art {
     my ($attribut) = @_;
     my $error_code = 56;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             my $pos = -1;
@@ -6201,8 +6016,6 @@ sub error_056_arrow_as_ASCII_art {
                 $test_text = text_reduce( $test_text, 50 );
                 error_register( $error_code,
                     '<nowiki>…' . $test_text . '…</nowiki>' );
-
-                #print 'Error '.$error_code.': '.$title.' '.$test_text."\n";
             }
         }
     }
@@ -6218,7 +6031,6 @@ sub error_057_headline_end_with_colon {
     my ($attribut) = @_;
     my $error_code = 57;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             foreach (@headlines) {
@@ -6229,9 +6041,6 @@ sub error_057_headline_end_with_colon {
                     $current_line = text_reduce( $current_line, 80 );
                     error_register( $error_code,
                         '<nowiki>' . $current_line . '</nowiki>' );
-
-                   #print "\t". $error_code."\t".$title."\t".$current_line."\n";
-
                 }
             }
         }
@@ -6248,7 +6057,6 @@ sub error_058_headline_with_capitalization {
     my ($attribut) = @_;
     my $error_code = 58;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
 
         my $found_text = q{};
@@ -6307,8 +6115,6 @@ sub error_058_headline_with_capitalization {
                 $found_text = text_reduce( $found_text, 80 );
                 error_register( $error_code,
                     '<nowiki>' . $found_text . '</nowiki>' );
-
-                #print "\t". $error_code."\t".$title."\t".$found_text."\n";
             }
         }
     }
@@ -6324,7 +6130,6 @@ sub error_059_template_value_end_with_br {
     my ($attribut) = @_;
     my $error_code = 59;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         my $found_text = q{};
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
@@ -6345,8 +6150,6 @@ sub error_059_template_value_end_with_br {
             if ( $found_text ne '' ) {
                 error_register( $error_code,
                     '<nowiki>' . $found_text . '</nowiki>' );
-
-                #print "\t". $error_code."\t".$title."\t".$found_text."\n";
             }
         }
     }
@@ -6362,7 +6165,6 @@ sub error_060_template_parameter_with_problem {
     my ($attribut) = @_;
     my $error_code = 60;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         my $found_text = q{};
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
@@ -6379,8 +6181,6 @@ sub error_060_template_parameter_with_problem {
             if ( $found_text ne '' ) {
                 error_register( $error_code,
                     '<nowiki>' . $found_text . '</nowiki>' );
-
-                #print "\t". $error_code."\t".$title."\t".$found_text."\n";
             }
         }
     }
@@ -6395,12 +6195,11 @@ sub error_060_template_parameter_with_problem {
 sub error_061_reference_with_punctuation {
     my ($attribut) = @_;
     my $error_code = 61;
-    my $found_txt  = q{};
-    my $pos        = -1;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
+            my $found_txt = q{};
+            my $pos       = -1;
             $pos = index( $text, '</ref>.' )    if ( $pos == -1 );
             $pos = index( $text, '</ref> .' )   if ( $pos == -1 );
             $pos = index( $text, '</ref>  .' )  if ( $pos == -1 );
@@ -6419,8 +6218,6 @@ sub error_061_reference_with_punctuation {
                 $found_text = text_reduce( $found_text, 50 );
                 error_register( $error_code,
                     '<nowiki>' . $found_text . '</nowiki>' );
-
-                #print "\t". $error_code."\t".$title."\t".$found_text."\n";
             }
         }
     }
@@ -6436,7 +6233,6 @@ sub error_062_headline_alone {
     my ( $attribut, $comment ) = @_;
     my $error_code = 62;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
@@ -6513,8 +6309,6 @@ sub error_062_headline_alone {
             if ( $found_txt ne '' ) {
                 error_register( $error_code,
                     '<nowiki>' . $found_txt . '</nowiki>' );
-
-#print "\t". $error_code."\t".$title."\t".'<nowiki>'.$found_txt.'</nowiki>'."\n";
             }
         }
     }
@@ -6530,7 +6324,6 @@ sub error_063_html_text_style_elements_small_ref_sub_sup {
     my ($attribut) = @_;
     my $error_code = 63;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         my $test_line = q{};
         my $test_text = lc($text);
@@ -6576,8 +6369,6 @@ sub error_063_html_text_style_elements_small_ref_sub_sup {
                     $found_text = text_reduce( $found_text, 80 );
                     error_register( $error_code,
                         '<nowiki>' . $found_text . ' </nowiki>' );
-
-#print "\t". $error_code."\t".$title."\t".'<nowiki>'.$found_text.'</nowiki>'."\n";
                 }
             }
         }
@@ -6594,7 +6385,6 @@ sub error_064_link_equal_linktext {
     my ($attribut) = @_;
     my $error_code = 64;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
 
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
@@ -6651,8 +6441,6 @@ sub error_064_link_equal_linktext {
                 $found_text = text_reduce( $found_text, 80 );
                 error_register( $error_code,
                     '<nowiki>' . $found_text . ' </nowiki>' );
-
-#print "\t". $error_code."\t".$title."\t".'<nowiki>'.$found_text.'</nowiki>'."\n";
             }
         }
     }
@@ -6668,7 +6456,6 @@ sub error_065_image_description_with_break {
     my ($attribut) = @_;
     my $error_code = 65;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             my $found_text = q{};
@@ -6688,8 +6475,6 @@ sub error_065_image_description_with_break {
             if ( $found_text ne '' ) {
                 error_register( $error_code,
                     '<nowiki>' . $found_text . ' </nowiki>' );
-
-#print "\t". $error_code."\t".$title."\t".'<nowiki>'.$found_text.'</nowiki>'."\n";
             }
         }
     }
@@ -6705,7 +6490,6 @@ sub error_066_image_description_with_full_small {
     my ($attribut) = @_;
     my $error_code = 66;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             my $found_text = q{};
@@ -6725,8 +6509,6 @@ sub error_066_image_description_with_full_small {
             if ( $found_text ne '' ) {
                 error_register( $error_code,
                     '<nowiki>' . $found_text . ' </nowiki>' );
-
-#print "\t". $error_code."\t".$title."\t".'<nowiki>'.$found_text.'</nowiki>'."\n";
             }
         }
     }
@@ -6742,7 +6524,6 @@ sub error_067_reference_after_punctuation {
     my ($attribut) = @_;
     my $error_code = 67;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         my $found_text = q{};
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
@@ -6765,8 +6546,6 @@ sub error_067_reference_after_punctuation {
                 $found_text = text_reduce( $found_text, 50 );
                 error_register( $error_code,
                     '<nowiki>' . $found_text . '</nowiki>' );
-
-                #print "\t". $error_code."\t".$title."\t".$found_text."\n";
             }
         }
     }
@@ -6782,7 +6561,6 @@ sub error_068_link_to_other_language {
     my ($attribut) = @_;
     my $error_code = 68;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             my $found_text = q{};
@@ -6804,8 +6582,6 @@ sub error_068_link_to_other_language {
             if ( $found_text ne '' ) {
                 error_register( $error_code,
                     '<nowiki>' . $found_text . ' </nowiki>' );
-
-#print "\t". $error_code."\t".$title."\t".'<nowiki>'.$found_text.'</nowiki>'."\n";
             }
         }
     }
@@ -6821,15 +6597,12 @@ sub error_069_isbn_wrong_syntax {
     my ( $attribut, $found_text ) = @_;
     my $error_code = 69;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if ( ( $page_namespace == 0 or $page_namespace == 104 )
             and $found_text ne '' )
         {
             error_register( $error_code,
                 '<nowiki>' . $found_text . ' </nowiki>' );
-
-#print "\t". $error_code."\t".$title."\t".'<nowiki>'.$found_text.'</nowiki>'."\n";
         }
     }
 
@@ -6844,15 +6617,12 @@ sub error_070_isbn_wrong_length {
     my ( $attribut, $found_text ) = @_;
     my $error_code = 70;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if ( ( $page_namespace == 0 or $page_namespace == 104 )
             and $found_text ne '' )
         {
             error_register( $error_code,
                 '<nowiki>' . $found_text . ' </nowiki>' );
-
-#print "\t". $error_code."\t".$title."\t".'<nowiki>'.$found_text.'</nowiki>'."\n";
         }
     }
 
@@ -6867,7 +6637,6 @@ sub error_071_isbn_wrong_pos_X {
     my ( $attribut, $found_text ) = @_;
     my $error_code = 71;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
 
         if ( ( $page_namespace == 0 or $page_namespace == 104 )
@@ -6875,8 +6644,6 @@ sub error_071_isbn_wrong_pos_X {
         {
             error_register( $error_code,
                 '<nowiki>' . $found_text . ' </nowiki>' );
-
-#print "\t". $error_code."\t".$title."\t".'<nowiki>'.$found_text.'</nowiki>'."\n";
         }
     }
 
@@ -6891,15 +6658,12 @@ sub error_072_isbn_10_wrong_checksum {
     my ( $attribut, $found_text ) = @_;
     my $error_code = 72;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if ( ( $page_namespace == 0 or $page_namespace == 104 )
             and $found_text ne '' )
         {
             error_register( $error_code,
                 '<nowiki>' . $found_text . ' </nowiki>' );
-
-#print "\t". $error_code."\t".$title."\t".'<nowiki>'.$found_text.'</nowiki>'."\n";
         }
     }
 
@@ -6914,15 +6678,12 @@ sub error_073_isbn_13_wrong_checksum {
     my ( $attribut, $found_text ) = @_;
     my $error_code = 73;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if ( ( $page_namespace == 0 or $page_namespace == 104 )
             and $found_text ne '' )
         {
             error_register( $error_code,
                 '<nowiki>' . $found_text . ' </nowiki>' );
-
-#print "\t". $error_code."\t".$title."\t".'<nowiki>'.$found_text.'</nowiki>'."\n";
         }
     }
 
@@ -6937,7 +6698,6 @@ sub error_074_link_with_no_target {
     my ($attribut) = @_;
     my $error_code = 74;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             my $found_text = q{};
@@ -6954,8 +6714,6 @@ sub error_074_link_with_no_target {
             if ( $found_text ne '' ) {
                 error_register( $error_code,
                     '<nowiki>' . $found_text . ' </nowiki>' );
-
-#print "\t". $error_code."\t".$title."\t".'<nowiki>'.$found_text.'</nowiki>'."\n";
             }
         }
     }
@@ -6971,7 +6729,6 @@ sub error_075_indented_list {
     my ($attribut) = @_;
     my $error_code = 75;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             my $found_text = q{};
@@ -6992,8 +6749,6 @@ sub error_075_indented_list {
                 $found_text = text_reduce( $found_text, 50 );
                 error_register( $error_code,
                     '<nowiki>' . $found_text . '</nowiki>' );
-
-#print "\t". $error_code."\t".$title."\t".'<nowiki>'.$found_text.'</nowiki>'."\n";
             }
         }
     }
@@ -7009,7 +6764,6 @@ sub error_076_link_with_no_space {
     my ($attribut) = @_;
     my $error_code = 76;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             my $found_text = q{};
@@ -7026,8 +6780,6 @@ sub error_076_link_with_no_space {
             if ( $found_text ne '' ) {
                 error_register( $error_code,
                     '<nowiki>' . $found_text . ' </nowiki>' );
-
-#print "\t". $error_code."\t".$title."\t".'<nowiki>'.$found_text.'</nowiki>'."\n";
             }
         }
     }
@@ -7043,7 +6795,6 @@ sub error_077_image_description_with_partial_small {
     my ($attribut) = @_;
     my $error_code = 77;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             my $found_text = q{};
@@ -7063,8 +6814,6 @@ sub error_077_image_description_with_partial_small {
             if ( $found_text ne '' ) {
                 error_register( $error_code,
                     '<nowiki>' . $found_text . ' </nowiki>' );
-
-#print "\t". $error_code."\t".$title."\t".'<nowiki>'.$found_text.'</nowiki>'."\n";
             }
         }
     }
@@ -7080,7 +6829,6 @@ sub error_078_reference_double {
     my ($attribut) = @_;
     my $error_code = 78;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             my $test_text      = lc($text);
@@ -7111,8 +6859,6 @@ sub error_078_reference_double {
                   $found_text . "</nowiki><br /><nowiki>" . $found_text2;
                 error_register( $error_code,
                     '<nowiki>' . $found_text . ' </nowiki>' );
-
-#print "\t". $error_code."\t".$title."\t".'<nowiki>'.$found_text.'</nowiki>'."\n";
             }
         }
     }
@@ -7128,7 +6874,6 @@ sub error_079_external_link_without_description {
     my ($attribut) = @_;
     my $error_code = 79;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             my $test_text = lc($text);
@@ -7175,8 +6920,6 @@ sub error_079_external_link_without_description {
                 $found_text = text_reduce( $found_text, 80 );
                 error_register( $error_code,
                     '<nowiki>' . $found_text . ' </nowiki>' );
-
-#print "\t". $error_code."\t".$title."\t".'<nowiki>'.$found_text.'</nowiki>'."\n";
             }
         }
     }
@@ -7192,7 +6935,6 @@ sub error_080_external_link_with_line_break {
     my ($attribut) = @_;
     my $error_code = 80;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             my $test_text = lc($text);
@@ -7235,8 +6977,6 @@ sub error_080_external_link_with_line_break {
                 $found_text = text_reduce( $found_text, 80 );
                 error_register( $error_code,
                     '<nowiki>' . $found_text . ' </nowiki>' );
-
-#print "\t". $error_code."\t".$title."\t".'<nowiki>'.$found_text.'</nowiki>'."\n";
             }
         }
     }
@@ -7252,7 +6992,6 @@ sub error_081_ref_double {
     my ($attribut) = @_;
     my $error_code = 81;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             my $number_of_ref = @ref;
@@ -7278,8 +7017,6 @@ sub error_081_ref_double {
                 #$found_text   = text_reduce($found_text, 80);
                 error_register( $error_code,
                     '<nowiki>' . $found_text . ' </nowiki>' );
-
-#print "\t". $error_code."\t".$title."\t".'<nowiki>'.$found_text.'</nowiki>'."\n";
             }
         }
     }
@@ -7295,7 +7032,6 @@ sub error_082_link_to_other_wikiproject {
     my ($attribut) = @_;
     my $error_code = 82;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             my $found_text = q{};
@@ -7318,8 +7054,6 @@ sub error_082_link_to_other_wikiproject {
             if ( $found_text ne '' ) {
                 error_register( $error_code,
                     '<nowiki>' . $found_text . ' </nowiki>' );
-
-#print "\t". $error_code."\t".$title."\t".'<nowiki>'.$found_text.'</nowiki>'."\n";
             }
         }
     }
@@ -7335,7 +7069,6 @@ sub error_083_headline_only_three_and_later_level_two {
     my ($attribut) = @_;
     my $error_code = 83;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $headlines[0]
             and ( $page_namespace == 0 or $page_namespace == 104 ) )
@@ -7351,8 +7084,6 @@ sub error_083_headline_only_three_and_later_level_two {
                 if ( $found_level_two eq 'yes' ) {
                     error_register( $error_code,
                         '<nowiki>' . $headlines[0] . '</nowiki>' );
-
-#print "\t". $error_code."\t".$title."\t".'<nowiki>'.$headlines[0].'</nowiki>'."\n";
                 }
             }
         }
@@ -7369,7 +7100,6 @@ sub error_084_section_without_text {
     my ($attribut) = @_;
     my $error_code = 84;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $headlines[0]
             and ( $page_namespace == 0 or $page_namespace == 104 ) )
@@ -7445,7 +7175,6 @@ sub error_085_tag_without_content {
     my ($attribut) = @_;
     my $error_code = 85;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             my $found_text = q{};
@@ -7476,8 +7205,6 @@ sub error_085_tag_without_content {
                 $found_text =~ s/\n//g;
                 error_register( $error_code,
                     '<nowiki>' . $found_text . '</nowiki>' );
-
-#print "\t". $error_code."\t".$title."\t".'<nowiki>'.$found_text.'</nowiki>'."\n";
             }
         }
     }
@@ -7493,7 +7220,6 @@ sub error_086_link_with_two_brackets_to_external_source {
     my ($attribut) = @_;
     my $error_code = 86;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             my $found_text = q{};
@@ -7514,8 +7240,6 @@ sub error_086_link_with_two_brackets_to_external_source {
             if ( $found_text ne '' ) {
                 error_register( $error_code,
                     '<nowiki>' . $found_text . ' </nowiki>' );
-
-#print "\t". $error_code."\t".$title."\t".'<nowiki>'.$found_text.'</nowiki>'."\n";
             }
         }
     }
@@ -7531,7 +7255,6 @@ sub error_087_html_names_entities_without_semicolon {
     my ($attribut) = @_;
     my $error_code = 87;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if (   $page_namespace == 0
             or $page_namespace == 6
@@ -7591,8 +7314,6 @@ sub error_087_html_names_entities_without_semicolon {
 
                 error_register( $error_code,
                     '<nowiki>' . $found_text . '</nowiki>' );
-
-                #print "\t". $error_code."\t".$title."\t".$found_text."\n";
             }
         }
     }
@@ -7608,7 +7329,6 @@ sub error_088_defaultsort_with_first_blank {
     my ($attribut) = @_;
     my $error_code = 88;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
 
         if (    ( $page_namespace == 0 or $page_namespace == 104 )
@@ -7642,8 +7362,6 @@ sub error_088_defaultsort_with_first_blank {
                     my $found_text = $testtext;
                     error_register( $error_code,
                         '<nowiki>' . $found_text . '</nowiki>' );
-
-                    #print "\t". $error_code."\t".$title."\t".$found_text."\n";
                 }
             }
         }
@@ -7660,7 +7378,6 @@ sub error_089_defaultsort_with_capitalization_in_the_middle_of_the_word {
     my ($attribut) = @_;
     my $error_code = 89;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if (    ( $page_namespace == 0 or $page_namespace == 104 )
             and $project ne 'arwiki'
@@ -7693,8 +7410,6 @@ sub error_089_defaultsort_with_capitalization_in_the_middle_of_the_word {
                     my $found_text = $testtext;
                     error_register( $error_code,
                         '<nowiki>' . $found_text . '</nowiki>' );
-
-                    #print "\t". $error_code."\t".$title."\t".$found_text."\n";
                 }
             }
         }
@@ -7711,7 +7426,6 @@ sub error_090_defaultsort_with_lowercase_letters {
     my ($attribut) = @_;
     my $error_code = 90;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if (    ( $page_namespace == 0 or $page_namespace == 104 )
             and $project ne 'arwiki'
@@ -7744,8 +7458,6 @@ sub error_090_defaultsort_with_lowercase_letters {
                     my $found_text = $testtext;
                     error_register( $error_code,
                         '<nowiki>' . $found_text . '</nowiki>' );
-
-                    #print "\t". $error_code."\t".$title."\t".$found_text."\n";
                 }
             }
         }
@@ -7762,7 +7474,6 @@ sub error_091_title_with_lowercase_letters_and_no_defaultsort {
     my ($attribut) = @_;
     my $error_code = 91;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if (    ( $page_namespace == 0 or $page_namespace == 104 )
             and $category_counter > -1
@@ -7790,8 +7501,6 @@ sub error_091_title_with_lowercase_letters_and_no_defaultsort {
                   if ( length($subtitle) > 10 );
                 if ( $subtitle =~ /[ -][a-z]/ ) {
                     error_register( $error_code, '' );
-
-                    #print "\t". $error_code."\t".$title."\n";
                 }
             }
         }
@@ -7808,7 +7517,6 @@ sub error_092_headline_double {
     my ($attribut) = @_;
     my $error_code = 92;
 
-    print $error_code. "\n" if ( $details_for_page eq 'yes' );
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             my $found_text          = q{};
@@ -7824,8 +7532,6 @@ sub error_092_headline_double {
             if ( $found_text ne '' ) {
                 error_register( $error_code,
                     '<nowiki>' . $found_text . '</nowiki>' );
-
-#print "\t". $error_code."\t".$title."\t".'<nowiki>'.$found_text.'</nowiki>'."\n";
             }
         }
     }
@@ -7838,25 +7544,13 @@ sub error_092_headline_double {
 ######################################################################
 
 sub error_register {
-
-    my $error_code = shift;
-    my $notice     = shift;
-
-    # only register if in script higher than 0 and…
-    #	in project is unknown
-    #       or in project higher 0
+    my ( $error_code, $notice ) = @_;
 
     $notice =~ s/\n//g;
 
-    #print "\t". $error_code."\t".$title."\t".$notice."\n";
-    #print "\t". $error_code."\t".$title."\t".$notice."\n" ;
+    #print "\t" . $error_code . "\t" . $title . "\t" . $notice . "\n";
 
-    $page_has_error    = 'yes';
-    $page_error_number = $page_error_number + 1;
-
-    #print 'Page errir number: '.$page_error_number."\n";
     $error_description[$error_code][3] = $error_description[$error_code][3] + 1;
-
     $error_counter = $error_counter + 1;
 
     insert_into_db( $error_counter, $title, $error_code, $notice );
@@ -8034,7 +7728,8 @@ my @Options = (
     'dumpfile=s'   => \$DumpFilename,
     'tt-file=s'    => \$TTFilename,
     'silent'       => \$silent_modus,
-    'starter'      => \$starter_modus
+    'starter'      => \$starter_modus,
+    'check'        => \$CheckOnlyOne
 );
 
 if (
