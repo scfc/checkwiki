@@ -121,6 +121,7 @@ our $artcount  = 0;
 # Time program starts
 our $time_start = time();    # start timer in secound
 our $time_end   = time();    # end time in secound
+our $time_found = time();    # for column "Found" in cw_error
 
 # Wiki-special variables
 our @live_article;           # to-do-list for live (all articles to scan)
@@ -566,9 +567,9 @@ sub scan_pages {
             update_ui() if ++$artcount % 500 == 0;
             set_variables_for_article();
             $page_namespace = 0;
-
-            $title = case_fixer( $page->title );
-            $text  = ${ $page->text };
+            $title          = $page->title;
+            $title          = case_fixer($title);
+            $text           = ${ $page->text };
             check_article();
             $end_of_dump = 'yes' if ( $artcount > 10000 );
         }
@@ -600,19 +601,10 @@ sub scan_pages {
 sub update_ui {
     my $seconds = time - $time_start;
     my $bytes   = $pages->current_byte;
+    my $percent = int( $bytes / $file_size * 100 );
 
-    print "  ", pretty_number($artcount), " articles; ";
-    print pretty_bytes($bytes), " processed; ";
-
-    if ( defined($file_size) ) {
-        my $percent = int( $bytes / $file_size * 100 );
-
-        print "$percent% completed\n";
-    }
-    else {
-        my $bytes_per_second = int( $bytes / $seconds );
-        print pretty_bytes($bytes_per_second), " per second\n";
-    }
+    printf( "   %7d articles;%10s processed;%3d%% completed\n",
+        ( $artcount, pretty_bytes($bytes), $percent ) );
 
     return ();
 }
@@ -640,15 +632,15 @@ sub pretty_bytes {
     my $pretty = int($bytes) . ' bytes';
 
     if ( ( $bytes = $bytes / 1024 ) > 1 ) {
-        $pretty = int($bytes) . ' kilobytes';
+        $pretty = int($bytes) . ' KB';
     }
 
     if ( ( $bytes = $bytes / 1024 ) > 1 ) {
-        $pretty = sprintf( "%0.2f", $bytes ) . ' megabytes';
+        $pretty = sprintf( "%7.2f", $bytes ) . ' MB';
     }
 
     if ( ( $bytes = $bytes / 1024 ) > 1 ) {
-        $pretty = sprintf( "%0.4f", $bytes ) . ' gigabytes';
+        $pretty = sprintf( "%0.4f", $bytes ) . ' GB';
     }
 
     return ($pretty);
@@ -824,41 +816,6 @@ sub delete_article_from_table_cw_change {
       $dbh->prepare('DELETE FROM cw_change WHERE DATEDIFF(NOW(), Daytime) > 8;')
       || die "Can not prepare statement: $DBI::errstr\n";
     $sth->execute() or die "Cannot execute: " . $sth->errstr . "\n";
-
-    return ();
-}
-
-###########################################################################
-##
-###########################################################################
-
-sub update_table_cw_starter {
-    if ($starter_modus) {
-        print "update_table_cw_starter\n" if ( !$silent_modus );
-        if ( $error_counter > 0 ) {
-            my $sth =
-              $dbh->prepare( 'UPDATE cw_starter SET '
-                  . 'Errors_Done = Errors_Done + ?, '
-                  . 'Errors_New = Errors_New + ?, '
-                  . 'Errors_Dump = Errors_Dump + ?, '
-                  . 'Errors_Change = Errors_Change + ?, '
-                  . 'Errors_Old = Errors_Old + ?, '
-                  . 'Current_Run = ?, '
-                  . 'Last_Run_Change = IF(?, TRUE, Last_Run_Change) '
-                  . 'WHERE Project = ?);' )
-              or die( $dbh->errstr() . "\n" );
-            $sth->execute(
-                $load_modus_done        ? $error_counter : 0,
-                $load_modus_new         ? $error_counter : 0,
-                $load_modus_dump        ? $error_counter : 0,
-                $load_modus_last_change ? $error_counter : 0,
-                $load_modus_old         ? $error_counter : 0,
-                $error_counter,
-                !$load_modus_new && $load_modus_last_change,
-                $project
-            );
-        }
-    }
 
     return ();
 }
@@ -1643,10 +1600,22 @@ Verlag LANGEWIESCHE, ISBN-10: 3784551912 und ISBN-13: 9783784551913
     # REMOVE FROM $text ANY CONTENT BETWEEN <SYNTAXHIGHLIGHT> TAGS.
     get_syntaxhighlight();
 
+    # CALLS #29 and #25
+    get_gallery();
+
+    #------------------------------------------------------
+
+    # CALLS #28
+    get_tables();
+
     # CALLS #69, #70, #71, #72 ISBN CHECKS
     get_isbn();
 
-    # DOES TEMPLATETIGER.  CREATES @templates_all THAT IS USED IN #16
+    # CREATES @ref - USED IN #81
+    get_ref();
+
+    # DOES TEMPLATETIGER.
+    # CREATES @templates_all - USED IN #16
     # CALLS #43
     get_templates();
 
@@ -1657,18 +1626,6 @@ Verlag LANGEWIESCHE, ISBN-10: 3784551912 und ISBN-13: 9783784551913
     # CREATES @images_all - USED IN #65, #66, #67
     # CALLS #30
     get_images();
-
-    # CALLS #28
-    get_tables();
-
-    # CALLS #29 and #25
-    get_gallery();
-
-    # REMOVES FROM $text ANY CONTENT BETWEEN <hiero> TAGS.
-    #get_hiero();    #problem with <-- and --> (error 056)
-
-    # CREATES #ref - USED IN #81
-    get_ref();
 
     # SETS $page_is_redirect
     check_for_redirect();
@@ -7512,7 +7469,7 @@ sub error_register {
     $error_description[$error_code][3] = $error_description[$error_code][3] + 1;
     $error_counter = $error_counter + 1;
 
-    insert_into_db( $error_counter, $title, $error_code, $notice );
+    #insert_into_db( $error_counter, $error_code, $notice );
 
     return ();
 }
@@ -7521,28 +7478,43 @@ sub error_register {
 
 # Insert error into database.
 sub insert_into_db {
-    my ( $error_counter, $article, $code, $notice ) = @_;
-    my ( $TableName, $Found );
+    my ( $error_counter, $code, $notice ) = @_;
+    my ( $table_name, $date_found, $article_title );
 
     $notice = substr( $notice, 0, 100 );    # Truncate notice.
+    $article_title = $title;
+
+    # problem: sql-command insert, apostrophe ' or backslash \ in text
+    $article_title =~ s/\\/\\\\/g;
+    $article_title =~ s/'/\\'/g;
+    $notice        =~ s/\\/\\\\/g;
+    $notice        =~ s/'/\\'/g;
 
     if ( $dump_or_live eq 'live' ) {
-        $TableName = 'cw_error';
-        $Found = strftime( '%F %T', gmtime() );
+        $table_name = 'cw_error';
+        $date_found = strftime( '%F %T', gmtime() );
     }
     else {
-        $TableName = 'cw_dumpscan';
-        $Found     = $revision_time;
-        $Found =~ s/Z//;
-        $Found =~ s/T/ /;
+        $table_name = 'cw_dumpscan';
+        $date_found = $time_found;
     }
-    my $sth =
-      $dbh->prepare( 'INSERT INTO '
-          . $TableName
-          . ' (Project, Error_ID, Title, Error, Notice, Ok, Found) VALUES (?, ?, ?, ?, ?, ?, ?);'
-      ) || die "Can not prepare statement: $DBI::errstr\n";
-    $sth->execute( $project, $page_id, $article, $code, $notice, 0, $Found )
-      or die "Cannot execute: " . $sth->errstr . "\n";
+
+    my $sql_text =
+        "INSERT INTO "
+      . $table_name
+      . " VALUES ( '"
+      . $project . "', "
+      . $page_id . ", '"
+      . $article_title . "', "
+      . $code . ", '"
+      . $notice
+      . "', 0, '"
+      . $time_found . "' );";
+
+    print $sql_text . "\n\n\n";
+    my $sth = $dbh->prepare($sql_text)
+      || die "Can not prepare statement: $DBI::errstr\n";
+    $sth->execute or die "Cannot execute: " . $sth->errstr . "\n";
 
     return ();
 }
@@ -7722,6 +7694,7 @@ print "\n\n";
 print_line();
 two_column_display( 'Start time:',
     ( strftime "%a %b %e %H:%M:%S %Y", localtime ) );
+$time_found = strftime( '%F %T', gmtime() );
 
 # Split load mode.
 if ( defined($load_mode) && !defined($DumpFilename) ) {
@@ -7806,7 +7779,6 @@ update_table_cw_error_from_dump();
 delete_deleted_article_from_db();
 delete_article_from_table_cw_new();
 delete_article_from_table_cw_change();
-update_table_cw_starter();
 
 close_db();
 
