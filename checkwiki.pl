@@ -471,6 +471,40 @@ sub geo_error_article {
 }
 
 ###########################################################################
+## DELETE OLD LIST OF ARTICLES FROM LAST DUMP SCAN IN TABLE cw_dumpscan
+###########################################################################
+
+sub clearDumpscanTable {
+    my $sql_text =
+      "DELETE FROM cw_dumpscan WHERE Project = '" . $project . "';";
+    my $sth = $dbh->prepare($sql_text)
+      || die "Can not prepare statement: $DBI::errstr\n";
+    $sth->execute or die "Cannot execute: " . $sth->errstr . "\n";
+
+    return ();
+}
+
+###########################################################################
+## UPDATE DATE OF LAST DUMP IN DATABASE FOR PROJECT GIVEN
+###########################################################################
+
+sub updateDumpDate {
+    my ($date) = @_;
+
+    my $sql_text =
+        "UPDATE cw_project SET Last_Dump = '"
+      . $date
+      . "' WHERE Project = '"
+      . $project . "';";
+
+    my $sth = $dbh->prepare($sql_text)
+      || die "Can not prepare statement: $DBI::errstr\n";
+    $sth->execute or die "Cannot execute: " . $sth->errstr . "\n";
+
+    return ();
+}
+
+###########################################################################
 ##
 ###########################################################################
 
@@ -571,7 +605,7 @@ sub scan_pages {
             $title          = case_fixer($title);
             $text           = ${ $page->text };
             check_article();
-            $end_of_dump = 'yes' if ( $artcount > 10000 );
+            $end_of_dump = 'yes' if ( $artcount > 500 );
         }
     }
     elsif ( $dump_or_live eq 'live' ) {
@@ -7712,18 +7746,15 @@ $language = $project;
 $language =~ s/source$//;
 $language =~ s/wiki$//;
 
+my $dump_date_for_output;
+
 if ( defined($DumpFilename) ) {
     $dump_or_live = 'dump';
 
     # GET DATE FROM THE DUMP FILENAME
-    my $dump_date_for_output;
     $dump_date_for_output = $DumpFilename;
     $dump_date_for_output =~
 s/^(?:.*\/)?\Q$project\E-(\d{4})(\d{2})(\d{2})-pages-articles\.xml\.bz2$/$1-$2-$3/;
-
-    # DELETE OLD LIST OF ARTICLES FROM LAST DUMP SCAN IN TABLE cw_dumpscan
-    # $dbh->do( 'DELETE FROM cw_dumpscan WHERE Project = ?;', undef, $project )
-    #    or die( $dbh->errstr() );
 
     # GET DUMP FILE SIZE, UNCOMPRESS AND THEN OPEN VIA METAWIKI::DumpFile
     my $dump;
@@ -7759,6 +7790,7 @@ two_column_display( 'Project:',   $project );
 two_column_display( 'Scan type:', $dump_or_live . " scan" );
 
 open_db();
+clearDumpscanTable() if ( $dump_or_live eq 'dump' );
 getErrors();
 ReadMetadata();
 
@@ -7770,11 +7802,7 @@ for ( my $i = 1 ; $i <= 150 ; $i++ ) {
 # MAIN ROUTINE - SCAN PAGES FOR ERRORS
 scan_pages();    # Scan articles.
 
-# UPDATE DATE OF LAST DUMP IN DATABASE FOR PROJECT GIVEN
-# $dbh->do( 'UPDATE cw_project SET Last_Dump = ? WHERE Project = ?;',
-#   undef, $dump_date_for_output, $project )
-#     or die( $dbh->errstr() . "\n" );
-
+updateDumpDate($dump_date_for_output);
 update_table_cw_error_from_dump();
 delete_deleted_article_from_db();
 delete_article_from_table_cw_new();
