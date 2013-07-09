@@ -246,8 +246,6 @@ our @headlines;                 # headlines
 our @section;                   # text between headlines
 undef(@section);
 
-our @lines_first_blank;         # all lines where the first character is ' '
-
 our @templates_all;             # all templates
 our @template;                  # templates with values
                                 # 0 number of template
@@ -563,7 +561,7 @@ sub scan_pages {
     my $page = q{};
 
     if ( $dump_or_live eq 'dump' ) {
-        while ( defined( $page = $pages->next ) || $end_of_dump eq 'no' ) {
+        while ( defined( $page = $pages->next ) && $end_of_dump eq 'no' ) {
             next unless $page->namespace eq '';
             update_ui() if ++$artcount % 500 == 0;
             set_variables_for_article();
@@ -721,8 +719,6 @@ sub set_variables_for_article {
     undef(@lines);              # text seperated in lines
     undef(@headlines);          # headlines
     undef(@section);            # text between headlines
-
-    undef(@lines_first_blank);  # all lines where the first character is ' '
 
     undef(@templates_all);      # all templates
     undef(@template);           # templates with values
@@ -1477,16 +1473,6 @@ sub raw_text_more_articles {
 ##
 ###########################################################################
 
-sub output_little_statistic {
-    print 'errors found:' . "\t\t" . $error_counter . " (+1)\n";
-
-    return ();
-}
-
-###########################################################################
-##
-###########################################################################
-
 sub check_article {
     my $steps = 1;
     $steps = 5000 if ( $silent_modus eq 'silent' );
@@ -1638,31 +1624,72 @@ Verlag LANGEWIESCHE, ISBN-10: 3784551912 und ISBN-13: 9783784551913
 
     delete_old_errors_in_db();
 
+    # REMOVES FROM $text ANY CONTENT BETWEEN <SOURCE> AND <PRE> TAGS.
+    # CALLS #005 AND #023
     get_comments_nowiki_pre();
 
+    # REMOVES FROM $text ANY CONTENT BETWEEN <MATH> TAGS.
+    # CALLS #013
     get_math();
+
+    # REMOVES FROM $text ANY CONTENT BETWEEN <SOURCE> TAGS.
+    # CALLS #014
     get_source();
+
+    # REMOVES FROM $text ANY CONTENT BETWEEN <CODE> TAGS.
+    # CALLS #15
     get_code();
+
+    # REMOVE FROM $text ANY CONTENT BETWEEN <SYNTAXHIGHLIGHT> TAGS.
     get_syntaxhighlight();
+
+    # CALLS #69, #70, #71, #72 ISBN CHECKS
     get_isbn();
+
+    # DOES TEMPLATETIGER.  CREATES @templates_all THAT IS USED IN #16
+    # CALLS #43
     get_templates();
+
+    # CREATES @links_all - USED IN get_images(), #64, #68, #74, #76, #82, #86
+    # CALLS #10
     get_links();
+
+    # CREATES @images_all - USED IN #65, #66, #67
+    # CALLS #30
     get_images();
+
+    # CALLS #28
     get_tables();
+
+    # CALLS #29 and #25
     get_gallery();
 
+    # REMOVES FROM $text ANY CONTENT BETWEEN <hiero> TAGS.
     #get_hiero();    #problem with <-- and --> (error 056)
+
+    # CREATES #ref - USED IN #81
     get_ref();
 
+    # SETS $page_is_redirect
     check_for_redirect();
+
+    # CREATES @category - USED IN #17, #18, #21, #22, #37, #53, #91
     get_categories();
+
+    # CREATES @interwiki - USED IN #45, #51, #53
     get_interwikis();
 
+    # CREATES @lines - ARRAY CONTAINING INDIVIDUAL LINES FROM $text
+    # USED IN #02, #09, #12, #26, #31, #32, #34, #38, #39, #40-#42, #54 and #75
     create_line_array();
 
-    #get_line_first_blank();
+    # CREATES @headlines
+    # USED IN #07, #08, #25, #44, #51, #52, #57, #58, #62, #83, #84 and #92
     get_headlines();
 
+    # EXCEPT FOR get_* THAT REMOVES TAGS FROM $text, FOLLOWING DON'T NEED
+    # TO BE PROCESSED BY ANY get_* ROUTINES: 3-6, 11, 13-16, 19, 20, 23, 24,
+    # 27, 35, 36, 43, 46-50, 54-56, 59-61, 63-74, 76-80, 82, 84-90
     error_check();
 
     set_article_as_scan_live_in_db( $title, $page_id )
@@ -3490,33 +3517,6 @@ sub create_line_array {
 ##
 ###########################################################################
 
-sub get_line_first_blank {
-    undef(@lines_first_blank);
-
-    #my $yes_blank = 'no';
-
-    foreach (@lines) {
-        my $current_line = $_;
-        if (
-                $current_line =~ /^ [^ ]/
-            and $current_line =~ /^ [^\|]/    # no table
-            and $current_line =~ /^ [^\!]/    #no table
-          )
-        {
-            push( @lines_first_blank, $current_line );
-
-            #$yes_blank = 'yes';
-
-        }
-    }
-
-    return ();
-}
-
-###########################################################################
-##
-###########################################################################
-
 sub get_headlines {
     undef(@headlines);
 
@@ -4328,7 +4328,7 @@ sub error_015_Code_no_correct_end {
 }
 
 ###########################################################################
-## ERROR 17
+## ERROR 16
 ###########################################################################
 
 sub error_016_unicode_control_characters {
@@ -7753,18 +7753,13 @@ s/^(?:.*\/)?\Q$project\E-(\d{4})(\d{2})(\d{2})-pages-articles\.xml\.bz2$/$1-$2-$
     #    or die( $dbh->errstr() );
 
     # GET DUMP FILE SIZE, UNCOMPRESS AND THEN OPEN VIA METAWIKI::DumpFile
-    #my $dump;
+    my $dump;
     $file_size = ( stat($DumpFilename) )[7];
 
-    #open( $dump, '-|', 'bzcat', '-q', $DumpFilename )
-    #      or die("Couldn't open dump file '$DumpFilename'");
+    open( $dump, '-|', 'bzcat', '-q', $DumpFilename )
+          or die("Couldn't open dump file '$DumpFilename'");
 
-    $DumpFilename =
-      '/home/bgwhite/windows/enwiki/enwiki-20130604-pages-articles.xml';
-    $dump_date_for_output = '20130604';
-    $pages                = $pmwd->pages($DumpFilename);
-
-    # $pages = $pmwd->pages($dump);
+    $pages = $pmwd->pages($dump);
 
     # OPEN TEMPLATETIGER FILE
     if (
@@ -7813,8 +7808,6 @@ delete_article_from_table_cw_new();
 delete_article_from_table_cw_change();
 update_table_cw_starter();
 
-output_little_statistic();
-
 close_db();
 
 # CLOSE TEMPLATETIGER FILE
@@ -7834,7 +7827,10 @@ if ( defined($TTFile) ) {
     undef($TTFile);
 }
 
+print_line();
+two_column_display( 'Found errors:', $error_counter );
 $time_end = time() - $time_start;
-printf "Program run time: %d hours, %d minutes and %d seconds\n\n",
+printf "Program run time:              %d hours, %d minutes and %d seconds\n\n",
   ( gmtime $time_end )[ 2, 1, 0 ];
 print "PROGRAM FINISHED\n";
+print_line();
