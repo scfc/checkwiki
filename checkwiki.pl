@@ -767,62 +767,63 @@ sub set_variables_for_article {
 }
 
 ###########################################################################
-##
+## MOVE ARTICLES FROM cw_dumpscan INTO cw_error
 ###########################################################################
 
 sub update_table_cw_error_from_dump {
 
     if ( $dump_or_live eq 'dump' ) {
-        print 'move all article from cw_dumpscan into cw_error' . "\n";
-        my $sth = $dbh->prepare('DELETE FROM cw_error WHERE Project = ?;')
+        my $sql_text =
+          "DELETE FROM cw_error WHERE Project = '" . $project . "';";
+        my $sth = $dbh->prepare($sql_text)
           || die "Can not prepare statement: $DBI::errstr\n";
-        $sth->execute($project) or die "Cannot execute: " . $sth->errstr . "\n";
+        $sth->execute or die "Cannot execute: " . $sth->errstr . "\n";
 
-        $sth = $dbh->prepare(
-"INSERT INTO cw_error (SELECT * FROM cw_dumpscan WHERE Project = ?);"
-        ) || die "Can not prepare statement: $DBI::errstr\n";
-        $sth->execute($project) or die "Cannot execute: " . $sth->errstr . "\n";
-
-        print 'delete all article from this project in cw_dumpscan' . "\n";
-        $sth = $dbh->prepare("DELETE FROM cw_dumpscan WHERE Project = ?;")
+        $sql_text =
+          "INSERT INTO cw_error (SELECT * FROM cw_dumpscan WHERE Project = '"
+          . $project . "');";
+        $sth = $dbh->prepare($sql_text)
           || die "Can not prepare statement: $DBI::errstr\n";
-        $sth->execute($project) or die "Cannot execute: " . $sth->errstr . "\n";
+        $sth->execute or die "Cannot execute: " . $sth->errstr . "\n";
+
     }
 
     return ();
 }
 
 ###########################################################################
-##
+## DELETE ANY ARTICLES FIXED IN PAST 7 DAYS.  DUMP DATA CAN BE OLDER
 ###########################################################################
 
-sub delete_deleted_article_from_db {
+sub deleteFixedArticles {
 
-    # Delete all deleted articles from database.
+    my $sql_text =
+        "DELETE FROM cw_error WHERE ok = 1 AND Project = '"
+      . $project
+      . "' AND FOUND NOT LIKE '%"
+      . substr( get_time_string(), 0, 7 ) . "%';";
 
-    # FIXME: This doesn't look right.  This deletes all rows where
-    # Found is not in the same 10-day group as the current date.
-    # --tl, 2013-06-01
-    my $sth = $dbh->prepare(
-"DELETE FROM cw_error WHERE Ok = 1 AND Project = ? AND Found NOT LIKE CONCAT('%', ?, '%');"
-    ) || die "Can not prepare statement: $DBI::errstr\n";
-    $sth->execute( $project, substr( get_time_string(), 0, 7 ) )
-      or die "Cannot execute: " . $sth->errstr . "\n";
+    my $sth = $dbh->prepare($sql_text)
+      || die "Can not prepare statement: $DBI::errstr\n";
+    $sth->execute or die "Cannot execute: " . $sth->errstr . "\n";
 
     return ();
 }
 
 ###########################################################################
-##
+## DELETE ALL SCANNED OR OLD (7 DAYS) ARTICLES
 ###########################################################################
 
-sub delete_article_from_table_cw_new {
+sub deleteArticleFrom_cw_new {
 
-    # Delete all scanned or older than 7 days from this project.
-    my $sth = $dbh->prepare(
-'DELETE FROM cw_new WHERE Project = ? AND (Scan_Live = 1 OR DATEDIFF(NOW(), Daytime) > 7);'
-    ) || die "Can not prepare statement: $DBI::errstr\n";
-    $sth->execute($project) or die "Cannot execute: " . $sth->errstr . "\n";
+    my $sql_text =
+        "DELETE FROM cw_new WHERE Project = '"
+      . $project
+      . "' AND (Scan_Live = 1 OR DATEDIFF(NOW(), Daytime) > 7);";
+
+    my $sth = $dbh->prepare($sql_text)
+      || die "Can not prepare statement: $DBI::errstr\n";
+    $sth->execute or die "Cannot execute: " . $sth->errstr . "\n";
 
     # Delete all articles from don't scan projects.
     $sth =
@@ -834,16 +835,19 @@ sub delete_article_from_table_cw_new {
 }
 
 ###########################################################################
-##
+## DELETE ARTICLES THAT ARE SCANNED AND OLDER THAN THREE DAYS
 ###########################################################################
 
-sub delete_article_from_table_cw_change {
+sub deleteArticleFrom_cw_change {
 
-    # Delete all scanned or older than three days from this project.
-    my $sth = $dbh->prepare(
-'DELETE FROM cw_change WHERE Project = ? AND (Scan_Live = 1 OR DATEDIFF(NOW(), Daytime) > 3);'
-    ) || die "Can not prepare statement: $DBI::errstr\n";
-    $sth->execute($project) or die "Cannot execute: " . $sth->errstr . "\n";
+    my $sql_text =
+        "DELETE FROM cw_change WHERE Project = '"
+      . $project
+      . "' AND (Scan_Live = 1 OR DATEDIFF(NOW(), Daytime) > 3);";
+
+    my $sth = $dbh->prepare($sql_text)
+      || die "Can not prepare statement: $DBI::errstr\n";
+    $sth->execute or die "Cannot execute: " . $sth->errstr . "\n";
 
     # Delete all articles from don't scan projects.
     $sth =
@@ -892,7 +896,7 @@ sub getErrors {
 ##  Read Metadata from API
 ###########################################################################
 
-sub ReadMetadata {
+sub readMetadata {
 
     # Calculate server name.
     my $ServerName = $project;
@@ -7503,7 +7507,7 @@ sub error_register {
     $error_description[$error_code][3] = $error_description[$error_code][3] + 1;
     $error_counter = $error_counter + 1;
 
-    #insert_into_db( $error_counter, $error_code, $notice );
+    insert_into_db( $error_counter, $error_code, $notice );
 
     return ();
 }
@@ -7545,7 +7549,6 @@ sub insert_into_db {
       . "', 0, '"
       . $time_found . "' );";
 
-    print $sql_text . "\n\n\n";
     my $sth = $dbh->prepare($sql_text)
       || die "Can not prepare statement: $DBI::errstr\n";
     $sth->execute or die "Cannot execute: " . $sth->errstr . "\n";
@@ -7792,7 +7795,7 @@ two_column_display( 'Scan type:', $dump_or_live . " scan" );
 open_db();
 clearDumpscanTable() if ( $dump_or_live eq 'dump' );
 getErrors();
-ReadMetadata();
+readMetadata();
 
 # for loop in here temperarily
 for ( my $i = 1 ; $i <= 150 ; $i++ ) {
@@ -7804,9 +7807,9 @@ scan_pages();    # Scan articles.
 
 updateDumpDate($dump_date_for_output);
 update_table_cw_error_from_dump();
-delete_deleted_article_from_db();
-delete_article_from_table_cw_new();
-delete_article_from_table_cw_change();
+deleteFixedArticles();
+deleteArticleFrom_cw_new();
+deleteArticleFrom_cw_change();
 
 close_db();
 
