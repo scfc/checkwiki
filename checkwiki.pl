@@ -35,11 +35,7 @@ use URI::Escape;
 use XML::LibXML;
 use Data::Dumper;
 use MediaWiki::API;
-
-binmode( STDOUT, ":encoding(UTF-8)" );  # PRINT OUTPUT IN UTF-8.  ARTICLE TITLES
-                                        # ARE IN UTF-8
-
-our $output_geo = '/mnt/user-store/sk/data/geo/';
+use Encode;
 
 our $quit_program =
   'no';    # quit the program (yes,no), for quit the programm in an emergency
@@ -138,18 +134,7 @@ our $xml_text_from_api =
 our $error_counter = -1;     # number of found errors in all article
 our @ErrorPriorityValue;     # Priority value each error has
 
-our @error_description;   # Error Description
-                          # 0 priority in script
-                          # 1 title in English
-                          # 2 description in English
-                          # 3 number of found (only live scanned)
-                          # 4 priority of foreign language
-                          # 5 title in foreign language
-                          # 6 description in foreign language
-                          # 7 number of found in last scan (from statistic file)
-                          # 8 all known errors (from statistic file + live)
-                          # 9  XHTML translation title
-                          # 10 XHTML translation description
+our @Error_number_counter = (0) x 150;    # Error counter for individual errors
 
 our $number_of_error_description = -1;    # number of error_description
 
@@ -161,12 +146,10 @@ our $number_of_all_errors_in_all_articles = 0;     #all errors
 
 our $for_statistic_new_article                   = 0;
 our $for_statistic_last_change_article           = 0;
-our $for_statistic_geo_article                   = 0;
 our $for_statistic_number_of_articles_with_error = 0;
 
 # Files
-our $error_list_filename     = 'error_list.txt';
-our $error_geo_list_filename = 'error_geo_list.txt';
+our $error_list_filename = 'error_list.txt';
 my $TTFile;
 
 our @inter_list = (
@@ -260,9 +243,6 @@ our @links_all;                        # all links
 our @images_all;                       # all images
 our @isbn;                             # all ibsn of books
 our @ref;                              # all ref
-
-our $page_has_geo_error    = 'no';     # yes/no   geo error in this page
-our $page_geo_error_number = -1;       # number of all article for this page
 
 our $end_of_dump =
   'no';    # when last article from dump scan then 'yes', else 'no'
@@ -426,46 +406,6 @@ sub last_change_article {
     }
     two_column_display( 'from db articles changed:',
         $for_statistic_last_change_article );
-
-    return ();
-}
-
-###########################################################################
-##
-###########################################################################
-
-sub geo_error_article {
-
-    # get all last_change article last days
-    # Load last change articles
-    my $file_geo       = $project . '_' . $error_geo_list_filename;
-    my $file_input_geo = $output_geo . $project . '/' . $file_geo;
-
-    #print $file_input_new."\n";
-    my $geo_counter = 0;
-    if ( -e $file_input_geo ) {
-
-        #if existing
-        #print 'file exist'."\n";
-        open( my $input_geo, "<", $file_input_geo );
-        do {
-            my $line = <$input_geo>;
-            if ($line) {
-                $line =~ s/\n$//g;
-                my @split_line = split( /\t/, $line );
-                my $number_of_parts = @split_line;
-                if ( $number_of_parts > 0 ) {
-                    push( @live_article, $split_line[0] . "\t" . '0' );
-                    $geo_counter++;
-                }
-            }
-        } until ( eof($input_geo) == 1 );
-        close($input_geo);
-    }
-    two_column_display( 'from file articles geo:', $geo_counter );
-    print ' (no file: ' . $file_geo . ' )' if not( -e $file_input_geo );
-    print "\n";
-    $for_statistic_geo_article = $geo_counter;
 
     return ();
 }
@@ -760,9 +700,6 @@ sub set_variables_for_article {
     undef(@isbn);                      # all ibsn of books
     undef(@ref);                       # all ref
 
-    $page_has_geo_error    = 'no';     # yes/no  geo error in this page
-    $page_geo_error_number = -1;       # number of all article for this page
-
     return ();
 }
 
@@ -1025,18 +962,18 @@ sub get_next_page_from_live {
         {
 # set number higher if not all 50 errors  found
 #print 'Nr.'.$current_live_error_scan."\n";
-#print 'Found at moment :'.$error_description[$current_live_error_scan][3]."\n";
+#print 'Found at moment :'.$Error_number_counter[$current_live_error_scan]."\n";
 #print 'Max allowed:'.$max_error_count."\n";
 #print 'Max possible:'.$number_article_live_to_scan."\n";
 
-            if ( $error_description[$current_live_error_scan][3] <
+            if ( $Error_number_counter[$current_live_error_scan] <
                 $max_error_count )
             {
                 # set higer maximum
                 $maximum_current_error_scan =
                   $maximum_current_error_scan +
                   ( $max_error_count -
-                      $error_description[$current_live_error_scan][3] );
+                      $Error_number_counter[$current_live_error_scan] );
 
                 #print 'Set higher maximum: '.$maximum_current_error_scan."\n";
             }
@@ -1064,7 +1001,7 @@ sub get_next_page_from_live {
 
                 #print $current_live_error_scan."\n";
                 @live_to_scan = ();
-                if ( $error_description[$current_live_error_scan][3] <
+                if ( $Error_number_counter[$current_live_error_scan] <
                     $max_error_count )
                 {
                     # only if not all found with new/change/last
@@ -1084,13 +1021,13 @@ sub get_next_page_from_live {
               );
 
             $maximum_current_error_scan = $max_error_count;
-            if ( $error_description[$current_live_error_scan][3] > 0 ) {
+            if ( $Error_number_counter[$current_live_error_scan] > 0 ) {
 
  #print 'More errors for error'.$current_live_error_scan."\n";
- #print 'At moment only :'.$error_description[$current_live_error_scan][3]."\n";
+ #print 'At moment only :'.$Error_number_Counter[$current_live_error_scan]."\n";
                 $maximum_current_error_scan =
                   $max_error_count -
-                  $error_description[$current_live_error_scan][3];
+                  $Error_number_counter[$current_live_error_scan];
 
                 #print 'Search now for more :'.$maximum_current_error_scan."\n";
             }
@@ -3549,7 +3486,7 @@ sub error_check {
     my $attribut = 'check';
 
     if ( $CheckOnlyOne > 0 ) {
-        error_061_reference_with_punctuation($attribut);
+        error_034_template_programming_elements($attribut);
     }
     else {
         #error_001_no_bold_title($attribut);    # don´t work - deactivated
@@ -4723,7 +4660,24 @@ sub error_028_table_no_correct_end {
             and ( $page_namespace == 0 or $page_namespace == 104 )
             and index( $text, '{{end}}' ) == -1
             and index( $text, '{{End box}}' ) == -1
-            and index( $text, '{{end box}}' ) == -1 )
+            and index( $text, '{{end box}}' ) == -1
+            and index( $text, '{{Fb cs footer' ) == -1
+            and index( $text, '{{Fb cl footer' ) == -1
+            and index( $text, '{{Fb disc footer' ) == -1
+            and index( $text, '{{Fb footer' ) == -1
+            and index( $text, '{{Fb kit footer' ) == -1
+            and index( $text, '{{Fb match footer' ) == -1
+            and index( $text, '{{Fb oi footer' ) == -1
+            and index( $text, '{{Fb r footer' ) == -1
+            and index( $text, '{{Fb rbr pos footer' ) == -1
+            and index( $text, '{{Ig footer' ) == -1
+            and index( $text, '{{Jctbtm' ) == -1
+            and index( $text, '{{jctbtm' ) == -1
+            and index( $text, '{{LegendRJL' ) == -1
+            and index( $text, '{{legendRJL' ) == -1
+            and index( $text, '{{PHL sports results footer' ) == -1
+            and index( $text, '{{WNBA roster footer' ) == -1
+            and index( $text, '{{NBA roster footer' ) == -1 )
         {
             error_register( $error_code,
                 '<nowiki> ' . $comment . '…  </nowiki>' );
@@ -4918,52 +4872,58 @@ sub error_034_template_programming_elements {
     my $error_code = 34;
 
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
-        my $test      = 'no found';
-        my $test_line = q{};
-        foreach (@lines) {
-            my $current_line    = $_;
-            my $current_line_lc = lc($current_line);
+        if ( $page_namespace == 0 or $page_namespace == 104 ) {
+            my $test      = 'no found';
+            my $test_line = q{};
 
-            my $pos = -1;
-            if ( $page_namespace == 0 or $page_namespace == 104 ) {
+            my $text_lc = lc($text);
+            if ( $text_lc =~
+/{{{|#if:|#ifeq:|#switch:|#ifexist:|{{fullpagename}}|{{sitename}}|{{namespace}}/
+              )
+            {
 
-                $pos = index( $current_line_lc, '#if:' )
-                  if ( index( $current_line_lc, '#if:' ) > -1 );
-                $pos = index( $current_line_lc, '#ifeq:' )
-                  if ( index( $current_line_lc, '#ifeq:' ) > -1 );
-                $pos = index( $current_line_lc, '#ifeq:' )
-                  if ( index( $current_line_lc, '#ifeq:' ) > -1 );
-                $pos = index( $current_line_lc, '#switch:' )
-                  if ( index( $current_line_lc, '#switch:' ) > -1 );
-                $pos = index( $current_line_lc, '{{namespace}}' )
-                  if ( index( $current_line_lc, '{{namespace}}' ) > -1 );
-                $pos = index( $current_line_lc, '{{sitename}}' )
-                  if ( index( $current_line_lc, '{{sitename}}' ) > -1 );
-                $pos = index( $current_line_lc, '{{fullpagename}}' )
-                  if ( index( $current_line_lc, '{{fullpagename}}' ) > -1 );
-                $pos = index( $current_line_lc, '#ifexist:' )
-                  if ( index( $current_line_lc, '#ifexist:' ) > -1 );
-                $pos = index( $current_line_lc, '{{{' )
-                  if ( index( $current_line_lc, '{{{' ) > -1 );
-                $pos = index( $current_line_lc, '#tag:' )
-                  if (  index( $current_line_lc, '#tag:' ) > -1
-                    and index( $current_line_lc, '#tag:ref' ) == -1 )
-                  ; # http://en.wikipedia.org/wiki/Wikipedia:Footnotes#Known_bugs
+                foreach (@lines) {
+                    my $current_line    = $_;
+                    my $current_line_lc = lc($current_line);
 
-                if ( $pos > -1 ) {
-                    $test = 'found';
-                    if ( $test_line eq '' ) {
-                        $test_line = $current_line;
-                        $test_line = substr( $test_line, $pos );
+                    my $pos = -1;
+
+                    $pos = index( $current_line_lc, '#if:' )
+                      if ( index( $current_line_lc, '#if:' ) > -1 );
+                    $pos = index( $current_line_lc, '#ifeq:' )
+                      if ( index( $current_line_lc, '#ifeq:' ) > -1 );
+                    $pos = index( $current_line_lc, '#ifeq:' )
+                      if ( index( $current_line_lc, '#ifeq:' ) > -1 );
+                    $pos = index( $current_line_lc, '#switch:' )
+                      if ( index( $current_line_lc, '#switch:' ) > -1 );
+                    $pos = index( $current_line_lc, '{{namespace}}' )
+                      if ( index( $current_line_lc, '{{namespace}}' ) > -1 );
+                    $pos = index( $current_line_lc, '{{sitename}}' )
+                      if ( index( $current_line_lc, '{{sitename}}' ) > -1 );
+                    $pos = index( $current_line_lc, '{{fullpagename}}' )
+                      if ( index( $current_line_lc, '{{fullpagename}}' ) > -1 );
+                    $pos = index( $current_line_lc, '#ifexist:' )
+                      if ( index( $current_line_lc, '#ifexist:' ) > -1 );
+                    $pos = index( $current_line_lc, '{{{' )
+                      if ( index( $current_line_lc, '{{{' ) > -1 );
+                    $pos = index( $current_line_lc, '#tag:' )
+                      if (  index( $current_line_lc, '#tag:' ) > -1
+                        and index( $current_line_lc, '#tag:ref' ) == -1 );
+
+                   # http://en.wikipedia.org/wiki/Wikipedia:Footnotes#Known_bugs
+
+                    if ( $pos > -1 ) {
+                        $test = 'found';
+                        if ( $test_line eq '' ) {
+                            $test_line = $current_line;
+                            $test_line = substr( $test_line, $pos );
+                            $test_line = text_reduce( $test_line, 50 );
+                            error_register( $error_code,
+                                '<nowiki>' . $test_line . ' </nowiki>' );
+                        }
                     }
                 }
             }
-        }
-
-        if ( $test eq 'found' ) {
-            $test_line = text_reduce( $test_line, 50 );
-            error_register( $error_code,
-                '<nowiki>' . $test_line . ' </nowiki>' );
         }
     }
 
@@ -5544,9 +5504,6 @@ sub error_047_template_no_correct_begin {
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
 
         my $text_test = q{};
-
-#$text_test = 'abc[[Kartographie]], [[Bild:abd|[[Globus]]]] ohne {{xyz}} [[Gradnetz]] weiterer Text {{oder}} wer}} warum
-        ##aber hier [[Link234|sdsdlfk]] {{abc}} [[Test]]';
 
         if (   $page_namespace == 0
             or $page_namespace == 6
@@ -7504,7 +7461,7 @@ sub error_register {
 
     #print "\t" . $error_code . "\t" . $title . "\t" . $notice . "\n";
 
-    $error_description[$error_code][3] = $error_description[$error_code][3] + 1;
+    $Error_number_counter[$error_code] = $Error_number_counter[$error_code] + 1;
     $error_counter = $error_counter + 1;
 
     insert_into_db( $error_counter, $error_code, $notice );
@@ -7760,13 +7717,18 @@ if ( defined($DumpFilename) ) {
 s/^(?:.*\/)?\Q$project\E-(\d{4})(\d{2})(\d{2})-pages-articles\.xml\.bz2$/$1-$2-$3/;
 
     # GET DUMP FILE SIZE, UNCOMPRESS AND THEN OPEN VIA METAWIKI::DumpFile
-    my $dump;
+    #my $dump;
     $file_size = ( stat($DumpFilename) )[7];
 
-    open( $dump, '-|', 'bzcat', '-q', $DumpFilename )
-          or die("Couldn't open dump file '$DumpFilename'");
+    #open( $dump, '-|', 'bzcat', '-q', $DumpFilename )
+    #      or die("Couldn't open dump file '$DumpFilename'");
 
-    $pages = $pmwd->pages($dump);
+    $DumpFilename =
+      '/home/bgwhite/windows/enwiki/enwiki-20130708-pages-articles.xml';
+    $dump_date_for_output = '2013-07-08';
+    $pages                = $pmwd->pages($DumpFilename);
+
+    # $pages = $pmwd->pages($dump);
 
     # OPEN TEMPLATETIGER FILE
     if (
@@ -7796,11 +7758,6 @@ open_db();
 clearDumpscanTable() if ( $dump_or_live eq 'dump' );
 getErrors();
 readMetadata();
-
-# for loop in here temperarily
-for ( my $i = 1 ; $i <= 150 ; $i++ ) {
-    $error_description[$i][3] = 0;
-}
 
 # MAIN ROUTINE - SCAN PAGES FOR ERRORS
 scan_pages();    # Scan articles.
