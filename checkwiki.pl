@@ -6299,57 +6299,10 @@ sub error_064_link_equal_linktext {
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
 
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
-            my $found_text = q{};
-            foreach (@links_all) {
 
-                # check all links
-                if ( $found_text eq '' ) {
-
-                    # if nothing found
-                    my $current_link = $_;
-                    if ( index( $current_link, '|' ) > -1 ) {
-
-                        # only [[Link|Linktext]]
-                        #print "\t".$current_link."\n";
-                        my $test_link = $current_link;
-                        $test_link =~ s/\[\[//;
-                        $test_link =~ s/\]\]//;
-
-                        if (
-                            length($test_link) < 2    #  link like [[|]]
-                          )
-                        {
-                            $found_text = $current_link;
-                        }
-                        else {
-                            #print '1:'.$test_link."\n";
-                            if (
-                                substr( $test_link, length($test_link) - 1, 1 )
-                                ne '|'                #  link like [[link|]]
-                                and index( $test_link, '||' ) ==
-                                -1    # link like [ link||linktest]]
-                                and index( $test_link, '|' ) !=
-                                0     # link [[|linktext]]
-                              )
-                            {
-                                my @split_link = split( /\|/, $test_link );
-
-                                #print "\t".'0:'."\t".$split_link[0]."\n";
-                                #print "\t".'1:'."\t".$split_link[1]."\n";
-                                #print '2:'.$test_link."\n";
-                                if ( $split_link[0] eq $split_link[1] ) {
-
-                                    # [[link|link]]
-                                    #print "\t".$current_link."\n";
-                                    $found_text = $current_link;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            if ( $found_text ne '' ) {
-                $found_text = text_reduce( $found_text, 80 );
+            my $temp_text = $text;
+            if ( $temp_text =~ /\[\[([^|:]*)\|\1\]\]/ ) {
+                my $found_text = '[[' . $1 . '|' . $1 . ']]';
                 error_register( $error_code,
                     '<nowiki>' . $found_text . ' </nowiki>' );
             }
