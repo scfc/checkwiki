@@ -1746,7 +1746,7 @@ sub get_comments_nowiki_pre {
             #print 'comment no end'."\n";
             my $text_output = substr( $text, $pos_comment );
             $text_output = text_reduce( $text_output, 80 );
-            error_005_Comment_no_correct_end( 'check', $text_output );
+            error_005_Comment_no_correct_end($text_output);
 
             #print $text_output."\n";
         }
@@ -1769,7 +1769,7 @@ sub get_comments_nowiki_pre {
             #print 'nowiki no end'."\n";
             my $text_output = substr( $text, $pos_nowiki );
             $text_output = text_reduce( $text_output, 80 );
-            error_023_nowiki_no_correct_end( 'check', $text_output );
+            error_023_nowiki_no_correct_end($text_output);
         }
 
         #pre
@@ -1791,7 +1791,7 @@ sub get_comments_nowiki_pre {
             #print 'pre no end'."\n";
             my $text_output = substr( $text, $pos_pre );
             $text_output = text_reduce( $text_output, 80 );
-            error_024_pre_no_correct_end( 'check', $text_output );
+            error_024_pre_no_correct_end($text_output);
         }
 
         #end
@@ -1981,8 +1981,7 @@ sub get_math {
             $text = $text_before . $filler . $text_after;
         }
         if ( $pos_start > -1 and $pos_end == -1 ) {
-            error_013_Math_no_correct_end( 'check',
-                substr( $text, $pos_start, 50 ) );
+            error_013_Math_no_correct_end( substr( $text, $pos_start, 50 ) );
 
             #print 'Math:'.substr( $text, $pos_start, 50)."\n";
             $end_search = 'yes';
@@ -2035,8 +2034,7 @@ sub get_source {
             $text = $text_before . $filler . $text_after;
         }
         if ( $pos_start > -1 and $pos_end == -1 ) {
-            error_014_Source_no_correct_end( 'check',
-                substr( $text, $pos_start, 50 ) );
+            error_014_Source_no_correct_end( substr( $text, $pos_start, 50 ) );
 
             #print 'Source:'.substr( $text, $pos_start, 50)."\n";
             $end_search = 'yes';
@@ -2092,8 +2090,6 @@ sub get_syntaxhighlight {
         }
         if ( $pos_start > -1 and $pos_end == -1 ) {
 
-    #error_014_Source_no_correct_end ('check', substr( $text, $pos_start, 50) );
-    #print 'Source:'.substr( $text, $pos_start, 50)."\n";
             $end_search = 'yes';
         }
 
@@ -2139,8 +2135,7 @@ sub get_code {
             $text = $text_before . $filler . $text_after;
         }
         if ( $pos_start > -1 and $pos_end == -1 ) {
-            error_015_Code_no_correct_end( 'check',
-                substr( $text, $pos_start, 50 ) );
+            error_015_Code_no_correct_end( substr( $text, $pos_start, 50 ) );
 
             #print 'Code:'.substr( $text, $pos_start, 50)."\n";
             $end_search = 'yes';
@@ -2304,7 +2299,7 @@ sub check_isbn {
             or index( $test_isbn, '-13' ) == 0 )
         {
             $result = 'no';
-            error_069_isbn_wrong_syntax( 'check', $current_isbn );
+            error_069_isbn_wrong_syntax($current_isbn);
         }
     }
 
@@ -2323,7 +2318,7 @@ sub check_isbn {
 
                 # ISBN 123456X890
                 $result = 'no';
-                error_071_isbn_wrong_pos_X( 'check', $current_isbn );
+                error_071_isbn_wrong_pos_X($current_isbn);
             }
             if ( index( $test_isbn, 'X' ) == 9
                 and ( length($test_isbn) != 10 ) )
@@ -2427,7 +2422,7 @@ sub check_isbn {
             and length($test_isbn) == 10 )
         {
             $result = 'no';
-            error_072_isbn_10_wrong_checksum( 'check', $found_text_10 );
+            error_072_isbn_10_wrong_checksum($found_text_10);
         }
 
         if (    $check_10 eq 'no ok'
@@ -2435,7 +2430,7 @@ sub check_isbn {
             and length($test_isbn) == 13 )
         {
             $result = 'no';
-            error_073_isbn_13_wrong_checksum( 'check', $found_text_13 );
+            error_073_isbn_13_wrong_checksum($found_text_13);
         }
 
         if (    $check_10 eq 'no ok'
@@ -2444,7 +2439,7 @@ sub check_isbn {
             and length($test_isbn) != 0 )
         {
             $result = 'no';
-            error_070_isbn_wrong_length( 'check',
+            error_070_isbn_wrong_length(
                 $current_isbn . '</nowiki> || <nowiki>' . length($test_isbn) );
         }
     }
@@ -2518,7 +2513,7 @@ sub get_templates {
         else {
             # template has no correct end
             $temp_text = text_reduce( $temp_text, 80 );
-            error_043_template_no_correct_end( 'check', $temp_text );
+            error_043_template_no_correct_end($temp_text);
 
             #print 'Error: '.$title.' '.$temp_text."\n";
         }
@@ -2812,7 +2807,7 @@ sub get_links {
         else {
             # template has no correct end
             $link_text = text_reduce( $link_text, 80 );
-            error_010_count_square_breaks( 'check', $link_text );
+            error_010_count_square_breaks($link_text);
 
             #print 'Error: '.$title.' '.$link_text."\n";
         }
@@ -3014,7 +3009,7 @@ sub get_images {
     }
 
     if ( $found_error_text ne '' ) {
-        error_030_image_without_description( 'check', $found_error_text );
+        error_030_image_without_description($found_error_text);
     }
 
     return ();
@@ -3072,8 +3067,7 @@ sub get_tables {
             $text = $text_before . $filler . $text_after;
         }
         if ( $pos_start > -1 and $pos_end == -1 ) {
-            error_028_table_no_correct_end( 'check',
-                substr( $text, $pos_start, 50 ) );
+            error_028_table_no_correct_end( substr( $text, $pos_start, 50 ) );
             $end_search = 'yes';
         }
 
@@ -3106,7 +3100,7 @@ sub get_gallery {
             my $text_after = substr( $text, $pos_end );
             my $text_gallery =
               substr( $text, $pos_start, $pos_end - $pos_start );
-            error_035_gallery_without_description( 'check', $text_gallery );
+            error_035_gallery_without_description($text_gallery);
 
             my $filler = q{};
             for ( my $i = 0 ; $i < ( $pos_end - $pos_start ) ; $i++ ) {
@@ -3116,8 +3110,7 @@ sub get_gallery {
 
         }
         if ( $pos_start > -1 and $pos_end == -1 ) {
-            error_029_gallery_no_correct_end( 'check',
-                substr( $text, $pos_start, 50 ) );
+            error_029_gallery_no_correct_end( substr( $text, $pos_start, 50 ) );
             $end_search = 'yes';
         }
     } until ( $end_search eq 'yes' );
@@ -3165,8 +3158,8 @@ sub get_hiero {
         }
         if ( $pos_start > -1 and $pos_end == -1 ) {
 
-     #error_015_Code_no_correct_end ( 'check', substr( $text, $pos_start, 50) );
-     #print 'Code:'.substr( $text, $pos_start, 50)."\n";
+            #error_015_Code_no_correct_end ( substr( $text, $pos_start, 50) );
+            #print 'Code:'.substr( $text, $pos_start, 50)."\n";
             $end_search = 'yes';
         }
 
@@ -3485,105 +3478,110 @@ sub get_headlines {
 ##########################################################################
 
 sub error_check {
-    my $attribut = 'check';
-
     if ( $CheckOnlyOne > 0 ) {
-        error_034_template_programming_elements($attribut);
+        error_034_template_programming_elements();
     }
     else {
-        #error_001_no_bold_title($attribut);    # don´t work - deactivated
-        error_002_have_br($attribut);
-        error_003_have_ref($attribut);
-        error_004_have_html_and_no_topic($attribut);
-        error_005_Comment_no_correct_end( $attribut, '' );
-        error_006_defaultsort_with_special_letters($attribut);
-        error_007_headline_only_three($attribut);
-        error_008_headline_start_end($attribut);
-        error_009_more_then_one_category_in_a_line($attribut);
-        error_010_count_square_breaks( $attribut, '' );
-        error_011_html_names_entities($attribut);
-        error_012_html_list_elements($attribut);
-        error_013_Math_no_correct_end( $attribut, '' );
-        error_014_Source_no_correct_end( $attribut, '' );
-        error_015_Code_no_correct_end( $attribut, '' );
-        error_016_unicode_control_characters($attribut);
-        error_017_category_double($attribut);
-        error_018_category_first_letter_small($attribut);
-        error_019_headline_only_one($attribut);
-        error_020_symbol_for_dead($attribut);
-        error_021_category_is_english($attribut);
-        error_022_category_with_space($attribut);
-        error_023_nowiki_no_correct_end( $attribut, '' );
-        error_024_pre_no_correct_end( $attribut, '' );
-        error_025_headline_hierarchy($attribut);
-        error_026_html_text_style_elements($attribut);
-        error_027_unicode_syntax($attribut);
-        error_028_table_no_correct_end( $attribut, '' );
-        error_029_gallery_no_correct_end( $attribut, '' );
-        error_030_image_without_description( $attribut, '' );
-        error_031_html_table_elements($attribut);
-        error_032_double_pipe_in_link($attribut);
-        error_033_html_text_style_elements_underline($attribut);
-        error_034_template_programming_elements($attribut);
-        error_035_gallery_without_description( $attribut, '' );
-        error_036_redirect_not_correct($attribut);
-        error_037_title_with_special_letters_and_no_defaultsort($attribut);
-        error_038_html_text_style_elements_italic($attribut);
-        error_039_html_text_style_elements_paragraph($attribut);
-        error_040_html_text_style_elements_font($attribut);
-        error_041_html_text_style_elements_big($attribut);
-        error_042_html_text_style_elements_small($attribut);
-        error_043_template_no_correct_end( $attribut, '' );
-        error_044_headline_with_bold($attribut);
-        error_045_interwiki_double($attribut);
-        error_046_count_square_breaks_begin($attribut);
-        error_047_template_no_correct_begin($attribut);
-        error_048_title_in_text($attribut);
-        error_049_headline_with_html($attribut);
-        error_050_dash($attribut);
-        error_051_interwiki_before_last_headline($attribut);
-        error_052_category_before_last_headline($attribut);
-        error_053_interwiki_before_category($attribut);
-        error_054_break_in_list($attribut);
-        error_055_html_text_style_elements_small_double($attribut);
-        error_056_arrow_as_ASCII_art($attribut);
-        error_057_headline_end_with_colon($attribut);
-        error_058_headline_with_capitalization($attribut);
-        error_059_template_value_end_with_br($attribut);
-        error_060_template_parameter_with_problem($attribut);
-        error_061_reference_with_punctuation($attribut);
-        error_062_headline_alone($attribut);
-        error_063_html_text_style_elements_small_ref_sub_sup($attribut);
-        error_064_link_equal_linktext($attribut);
-        error_065_image_description_with_break($attribut);
-        error_066_image_description_with_full_small($attribut);
-        error_067_reference_after_punctuation($attribut);
-        error_068_link_to_other_language($attribut);
-        error_069_isbn_wrong_syntax( $attribut, '' );
-        error_070_isbn_wrong_length( $attribut, '' );
-        error_071_isbn_wrong_pos_X( $attribut, '' );
-        error_072_isbn_10_wrong_checksum( $attribut, '' );
-        error_073_isbn_13_wrong_checksum( $attribut, '' );
-        error_074_link_with_no_target($attribut);
-        error_075_indented_list($attribut);
-        error_076_link_with_no_space($attribut);
-        error_077_image_description_with_partial_small($attribut);
-        error_078_reference_double($attribut);
-        error_079_external_link_without_description($attribut);
-        error_080_external_link_with_line_break($attribut);
-        error_081_ref_double($attribut);
-        error_082_link_to_other_wikiproject($attribut);
-        error_083_headline_only_three_and_later_level_two($attribut);
-        error_084_section_without_text($attribut);
-        error_085_tag_without_content($attribut);
-        error_086_link_with_two_brackets_to_external_source($attribut);
-        error_087_html_names_entities_without_semicolon($attribut);
-        error_088_defaultsort_with_first_blank($attribut);
-        error_089_defaultsort_with_capitalization_in_the_middle_of_the_word(
-            $attribut);
-        error_090_defaultsort_with_lowercase_letters($attribut);
-        error_091_title_with_lowercase_letters_and_no_defaultsort($attribut);
-        error_092_headline_double($attribut);
+        #error_001_no_bold_title();        # does´t work - deactivated
+        error_002_have_br();
+        error_003_have_ref();
+        error_004_have_html_and_no_topic();
+
+        #error_005_Comment_no_correct_end('');i     # get_comments_nowiki_pre()
+        error_006_defaultsort_with_special_letters();
+        error_007_headline_only_three();
+        error_008_headline_start_end();
+        error_009_more_then_one_category_in_a_line();
+
+        #error_010_count_square_breaks('');         # get_links()
+        error_011_html_names_entities();
+        error_012_html_list_elements();
+
+        #error_013_Math_no_correct_end('');         # get_math
+        #error_014_Source_no_correct_end('');       # get_source()
+        #error_015_Code_no_correct_end('');         # get_code()
+        error_016_unicode_control_characters();
+        error_017_category_double();
+        error_018_category_first_letter_small();
+        error_019_headline_only_one();
+        error_020_symbol_for_dead();
+        error_021_category_is_english();
+        error_022_category_with_space();
+
+        #error_023_nowiki_no_correct_end('');       # get_comments_nowiki_pre()
+        #error_024_pre_no_correct_end('');          # get_comments_nowiki_pre()
+        error_025_headline_hierarchy();
+        error_026_html_text_style_elements();
+        error_027_unicode_syntax();
+
+        #error_028_table_no_correct_end('');        # get_tables()
+        #error_029_gallery_no_correct_end('');      # get_gallery()
+        #error_030_image_without_description('');   # get_images()
+        error_031_html_table_elements();
+        error_032_double_pipe_in_link();
+        error_033_html_text_style_elements_underline();
+        error_034_template_programming_elements();
+
+        #error_035_gallery_without_description(''); # get_gallery()
+        error_036_redirect_not_correct();
+        error_037_title_with_special_letters_and_no_defaultsort();
+        error_038_html_text_style_elements_italic();
+        error_039_html_text_style_elements_paragraph();
+        error_040_html_text_style_elements_font();
+        error_041_html_text_style_elements_big();
+        error_042_html_text_style_elements_small();
+
+        #error_043_template_no_correct_end('');     # get_templates()
+        error_044_headline_with_bold();
+        error_045_interwiki_double();
+        error_046_count_square_breaks_begin();
+        error_047_template_no_correct_begin();
+        error_048_title_in_text();
+        error_049_headline_with_html();
+        error_050_dash();
+        error_051_interwiki_before_last_headline();
+        error_052_category_before_last_headline();
+        error_053_interwiki_before_category();
+        error_054_break_in_list();
+        error_055_html_text_style_elements_small_double();
+        error_056_arrow_as_ASCII_art();
+        error_057_headline_end_with_colon();
+        error_058_headline_with_capitalization();
+        error_059_template_value_end_with_br();
+        error_060_template_parameter_with_problem();
+        error_061_reference_with_punctuation();
+        error_062_headline_alone();
+        error_063_html_text_style_elements_small_ref_sub_sup();
+        error_064_link_equal_linktext();
+        error_065_image_description_with_break();
+        error_066_image_description_with_full_small();
+        error_067_reference_after_punctuation();
+        error_068_link_to_other_language();
+
+        #error_069_isbn_wrong_syntax('');           # get_isbn()
+        #error_070_isbn_wrong_length('');           # get_isbn()
+        #error_071_isbn_wrong_pos_X('');            # get_isbn()
+        #error_072_isbn_10_wrong_checksum('');      # get_isbn()
+        #error_073_isbn_13_wrong_checksum('');      # get_isbn()
+        error_074_link_with_no_target();
+        error_075_indented_list();
+        error_076_link_with_no_space();
+        error_077_image_description_with_partial_small();
+        error_078_reference_double();
+        error_079_external_link_without_description();
+        error_080_external_link_with_line_break();
+        error_081_ref_double();
+        error_082_link_to_other_wikiproject();
+        error_083_headline_only_three_and_later_level_two();
+        error_084_section_without_text();
+        error_085_tag_without_content();
+        error_086_link_with_two_brackets_to_external_source();
+        error_087_html_names_entities_without_semicolon();
+        error_088_defaultsort_with_first_blank();
+        error_089_defaultsort_with_capitalization_in_the_middle_of_the_word();
+        error_090_defaultsort_with_lowercase_letters();
+        error_091_title_with_lowercase_letters_and_no_defaultsort();
+        error_092_headline_double();
     }
 
     return ();
@@ -3594,10 +3592,9 @@ sub error_check {
 ###########################################################################
 
 sub error_001_no_bold_title {
-    my ($attribut) = @_;
     my $error_code = 1;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if (    $page_namespace == 0
             and index( $text, "'''" ) == -1
             and $page_is_redirect eq 'no' )
@@ -3614,7 +3611,6 @@ sub error_001_no_bold_title {
 ###########################################################################
 
 sub error_002_have_br {
-    my $attribut   = @_;
     my $error_code = 2;
 
     my $test      = 'no found';
@@ -3686,10 +3682,9 @@ sub error_002_have_br {
 ###########################################################################
 
 sub error_003_have_ref {
-    my $attribut   = @_;
     my $error_code = 3;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if (   $page_namespace == 0
             or $page_namespace == 104 )
         {
@@ -3821,10 +3816,9 @@ sub error_003_have_ref {
 ###########################################################################
 
 sub error_004_have_html_and_no_topic {
-    my ($attribut) = @_;
     my $error_code = 4;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if (    ( $page_namespace == 0 or $page_namespace == 104 )
             and index( $text, 'http://' ) > -1
             and index( $text, '==' ) == -1
@@ -3845,10 +3839,10 @@ sub error_004_have_html_and_no_topic {
 ###########################################################################
 
 sub error_005_Comment_no_correct_end {
-    my ( $attribut, $comment ) = @_;
+    my ($comment) = @_;
     my $error_code = 5;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if (
             $comment ne ''
             and (  $page_namespace == 0
@@ -3868,7 +3862,6 @@ sub error_005_Comment_no_correct_end {
 ###########################################################################
 
 sub error_006_defaultsort_with_special_letters {
-    my ($attribut) = @_;
     my $error_code = 6;
 
     #* in de: ä → a, ö → o, ü → u, ß → ss
@@ -3878,7 +3871,7 @@ sub error_006_defaultsort_with_special_letters {
     #* in da, no, nn is allowed ÆØÅæøå
     #* in ro is allowed ăîâşţ
     #* in ru: Ё → Е, ё → е
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
 
         # {{DEFAULTSORT:Mueller, Kai}}
         # {{ORDENA:Alfons I}}
@@ -3965,10 +3958,9 @@ s/[АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЬЫЪЭЮЯабвгде�
 ###########################################################################
 
 sub error_007_headline_only_three {
-    my ($attribut) = @_;
     my $error_code = 7;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
 
         if ( $headlines[0]
             and ( $page_namespace == 0 or $page_namespace == 104 ) )
@@ -3997,10 +3989,9 @@ sub error_007_headline_only_three {
 ###########################################################################
 
 sub error_008_headline_start_end {
-    my ($attribut) = @_;
     my $error_code = 8;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
         foreach (@headlines) {
             my $current_line  = $_;
             my $current_line1 = $current_line;
@@ -4030,10 +4021,9 @@ sub error_008_headline_start_end {
 ###########################################################################
 
 sub error_009_more_then_one_category_in_a_line {
-    my ($attribut) = @_;
     my $error_code = 9;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
         my $error_line = q{};
 
         foreach (@lines) {
@@ -4067,10 +4057,10 @@ sub error_009_more_then_one_category_in_a_line {
 ###########################################################################
 
 sub error_010_count_square_breaks {
-    my ( $attribut, $comment ) = @_;
+    my ($comment) = @_;
     my $error_code = 10;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if (
             $comment ne ''
             and (  $page_namespace == 0
@@ -4091,10 +4081,9 @@ sub error_010_count_square_breaks {
 ###########################################################################
 
 sub error_011_html_names_entities {
-    my ($attribut) = @_;
     my $error_code = 11;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if (   $page_namespace == 0
             or $page_namespace == 6
             or $page_namespace == 104 )
@@ -4163,10 +4152,9 @@ sub error_011_html_names_entities {
 ###########################################################################
 
 sub error_012_html_list_elements {
-    my ($attribut) = @_;
     my $error_code = 12;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
         my $test      = 'no found';
         my $test_line = q{};
         my $test_text = lc($text);
@@ -4215,10 +4203,10 @@ sub error_012_html_list_elements {
 ###########################################################################
 
 sub error_013_Math_no_correct_end {
-    my ( $attribut, $comment ) = @_;
+    my ($comment) = @_;
     my $error_code = 13;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $comment ne '' ) {
             error_register( $error_code, '<nowiki>' . $comment . '</nowiki>' );
         }
@@ -4232,10 +4220,10 @@ sub error_013_Math_no_correct_end {
 ###########################################################################
 
 sub error_014_Source_no_correct_end {
-    my ( $attribut, $comment ) = @_;
+    my ($comment) = @_;
     my $error_code = 14;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $comment ne '' ) {
             error_register( $error_code, '<nowiki>' . $comment . '</nowiki>' );
         }
@@ -4249,10 +4237,10 @@ sub error_014_Source_no_correct_end {
 ###########################################################################
 
 sub error_015_Code_no_correct_end {
-    my ( $attribut, $comment ) = @_;
+    my ($comment) = @_;
     my $error_code = 15;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $comment ne '' ) {
             error_register( $error_code, '<nowiki>' . $comment . '</nowiki>' );
         }
@@ -4266,10 +4254,9 @@ sub error_015_Code_no_correct_end {
 ###########################################################################
 
 sub error_016_unicode_control_characters {
-    my ($attribut) = @_;
     my $error_code = 16;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if (   $page_namespace == 0
             or $page_namespace == 6
             or $page_namespace == 104 )
@@ -4305,10 +4292,10 @@ sub error_016_unicode_control_characters {
 ###########################################################################
 
 sub error_017_category_double {
-    my ( $attribut, $comment ) = @_;
+    my ($comment) = @_;
     my $error_code = 17;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
 
         #print $title."\n" if ($page_number > 25000);;
         for ( my $i = 0 ; $i <= $category_counter - 1 ; $i++ ) {
@@ -4360,10 +4347,9 @@ sub error_017_category_double {
 ###########################################################################
 
 sub error_018_category_first_letter_small {
-    my ($attribut) = @_;
     my $error_code = 18;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $project ne 'commonswiki' ) {
             for ( my $i = 0 ; $i <= $category_counter ; $i++ ) {
                 my $test_letter = substr( $category[$i][2], 0, 1 );
@@ -4383,10 +4369,9 @@ sub error_018_category_first_letter_small {
 ###########################################################################
 
 sub error_019_headline_only_one {
-    my ($attribut) = @_;
     my $error_code = 19;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $headlines[0]
             and ( $page_namespace == 0 or $page_namespace == 104 ) )
         {
@@ -4405,10 +4390,9 @@ sub error_019_headline_only_one {
 ###########################################################################
 
 sub error_020_symbol_for_dead {
-    my ($attribut) = @_;
     my $error_code = 20;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
         my $pos = index( $text, '&dagger;' );
         if ( $pos > -1
             and ( $page_namespace == 0 or $page_namespace == 104 ) )
@@ -4428,10 +4412,9 @@ sub error_020_symbol_for_dead {
 ###########################################################################
 
 sub error_021_category_is_english {
-    my ($attribut) = @_;
     my $error_code = 21;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if (    $project ne 'enwiki'
             and $project ne 'commonswiki'
             and ( $page_namespace == 0 or $page_namespace == 104 )
@@ -4456,10 +4439,9 @@ sub error_021_category_is_english {
 ###########################################################################
 
 sub error_022_category_with_space {
-    my ($attribut) = @_;
     my $error_code = 22;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if (   $page_namespace == 0
             or $page_namespace == 6
             or $page_namespace == 104 )
@@ -4489,10 +4471,10 @@ sub error_022_category_with_space {
 ###########################################################################
 
 sub error_023_nowiki_no_correct_end {
-    my ( $attribut, $comment ) = @_;
+    my ($comment) = @_;
     my $error_code = 23;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if (
             $comment ne ''
             and (  $page_namespace == 0
@@ -4512,10 +4494,10 @@ sub error_023_nowiki_no_correct_end {
 ###########################################################################
 
 sub error_024_pre_no_correct_end {
-    my ( $attribut, $comment ) = @_;
+    my ($comment) = @_;
     my $error_code = 24;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if (
             $comment ne ''
             and (  $page_namespace == 0
@@ -4535,10 +4517,10 @@ sub error_024_pre_no_correct_end {
 ###########################################################################
 
 sub error_025_headline_hierarchy {
-    my ( $attribut, $comment ) = @_;
+    my ($comment) = @_;
     my $error_code = 25;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
         my $number_headline = -1;
         my $old_headline    = q{};
         my $new_headline    = q{};
@@ -4585,10 +4567,9 @@ sub error_025_headline_hierarchy {
 ###########################################################################
 
 sub error_026_html_text_style_elements {
-    my ($attribut) = @_;
     my $error_code = 26;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
         my $test      = 'no found';
         my $test_line = q{};
         my $test_text = lc($text);
@@ -4622,10 +4603,9 @@ sub error_026_html_text_style_elements {
 ###########################################################################
 
 sub error_027_unicode_syntax {
-    my ($attribut) = @_;
     my $error_code = 27;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if (   $page_namespace == 0
             or $page_namespace == 6
             or $page_namespace == 104 )
@@ -4654,10 +4634,10 @@ sub error_027_unicode_syntax {
 ###########################################################################
 
 sub error_028_table_no_correct_end {
-    my ( $attribut, $comment ) = @_;
+    my ($comment) = @_;
     my $error_code = 28;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if (    $comment ne ''
             and ( $page_namespace == 0 or $page_namespace == 104 )
             and index( $text, '{{end}}' ) == -1
@@ -4694,10 +4674,10 @@ sub error_028_table_no_correct_end {
 ###########################################################################
 
 sub error_029_gallery_no_correct_end {
-    my ( $attribut, $comment ) = @_;
+    my ($comment) = @_;
     my $error_code = 29;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if (
             $comment ne ''
             and (  $page_namespace == 0
@@ -4717,10 +4697,10 @@ sub error_029_gallery_no_correct_end {
 ###########################################################################
 
 sub error_030_image_without_description {
-    my ( $attribut, $comment ) = @_;
+    my ($comment) = @_;
     my $error_code = 30;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $comment ne '' ) {
             if (   $page_namespace == 0
                 or $page_namespace == 6
@@ -4740,10 +4720,9 @@ sub error_030_image_without_description {
 ###########################################################################
 
 sub error_031_html_table_elements {
-    my ($attribut) = @_;
     my $error_code = 31;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
         my $test      = 'no found';
         my $test_line = q{};
         my $test_text = lc($text);
@@ -4798,10 +4777,9 @@ sub error_031_html_table_elements {
 ###########################################################################
 
 sub error_032_double_pipe_in_link {
-    my ($attribut) = @_;
     my $error_code = 32;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if (   $page_namespace == 0
             or $page_namespace == 6
             or $page_namespace == 104 )
@@ -4834,10 +4812,9 @@ sub error_032_double_pipe_in_link {
 ###########################################################################
 
 sub error_033_html_text_style_elements_underline {
-    my ($attribut) = @_;
     my $error_code = 33;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
         my $test      = 'no found';
         my $test_line = q{};
         my $test_text = lc($text);
@@ -4870,10 +4847,9 @@ sub error_033_html_text_style_elements_underline {
 ###########################################################################
 
 sub error_034_template_programming_elements {
-    my ($attribut) = @_;
     my $error_code = 34;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             my $test      = 'no found';
             my $test_line = q{};
@@ -4937,10 +4913,10 @@ sub error_034_template_programming_elements {
 ###########################################################################
 
 sub error_035_gallery_without_description {
-    my ( $attribut, $text_gallery ) = @_;
+    my ($text_gallery) = @_;
     my $error_code = 35;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
 
         my $test = q{};
         if (
@@ -4982,10 +4958,9 @@ sub error_035_gallery_without_description {
 ###########################################################################
 
 sub error_036_redirect_not_correct {
-    my ($attribut) = @_;
     my $error_code = 36;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_is_redirect eq 'yes' ) {
             if ( lc($text) =~ /#redirect[ ]?+[^ :\[][ ]?+\[/ ) {
                 my $output_text = text_reduce( $text, 80 );
@@ -5004,10 +4979,9 @@ sub error_036_redirect_not_correct {
 ###########################################################################
 
 sub error_037_title_with_special_letters_and_no_defaultsort {
-    my ($attribut) = @_;
     my $error_code = 37;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if (    ( $page_namespace == 0 or $page_namespace == 104 )
             and $category_counter > -1
             and $project ne 'arwiki'
@@ -5105,10 +5079,9 @@ s/[АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЬЫЪЭЮЯабвгде�
 ###########################################################################
 
 sub error_038_html_text_style_elements_italic {
-    my ($attribut) = @_;
     my $error_code = 38;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
         my $test      = 'no found';
         my $test_line = q{};
         my $test_text = lc($text);
@@ -5144,10 +5117,9 @@ sub error_038_html_text_style_elements_italic {
 ###########################################################################
 
 sub error_039_html_text_style_elements_paragraph {
-    my ($attribut) = @_;
     my $error_code = 39;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
         my $test      = 'no found';
         my $test_line = q{};
         my $test_text = lc($text);
@@ -5181,10 +5153,9 @@ sub error_039_html_text_style_elements_paragraph {
 ###########################################################################
 
 sub error_040_html_text_style_elements_font {
-    my ($attribut) = @_;
     my $error_code = 40;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
         my $test      = 'no found';
         my $test_line = q{};
         my $test_text = lc($text);
@@ -5220,10 +5191,9 @@ sub error_040_html_text_style_elements_font {
 ###########################################################################
 
 sub error_041_html_text_style_elements_big {
-    my ($attribut) = @_;
     my $error_code = 41;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
         my $test      = 'no found';
         my $test_line = q{};
         my $test_text = lc($text);
@@ -5256,10 +5226,9 @@ sub error_041_html_text_style_elements_big {
 ###########################################################################
 
 sub error_042_html_text_style_elements_small {
-    my ($attribut) = @_;
     my $error_code = 42;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
         my $test      = 'no found';
         my $test_line = q{};
         my $test_text = lc($text);
@@ -5293,10 +5262,10 @@ sub error_042_html_text_style_elements_small {
 ###########################################################################
 
 sub error_043_template_no_correct_end {
-    my ( $attribut, $comment ) = @_;
+    my ($comment) = @_;
     my $error_code = 43;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if (
             $comment ne ''
             and (  $page_namespace == 0
@@ -5316,10 +5285,9 @@ sub error_043_template_no_correct_end {
 ###########################################################################
 
 sub error_044_headline_with_bold {
-    my ($attribut) = @_;
     my $error_code = 44;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             foreach (@headlines) {
                 my $current_line = $_;
@@ -5364,10 +5332,9 @@ sub error_044_headline_with_bold {
 ###########################################################################
 
 sub error_045_interwiki_double {
-    my ($attribut) = @_;
     my $error_code = 45;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
 
         #print $title."\n";
         #print 'Interwikis='.$interwiki_counter."\n";
@@ -5412,10 +5379,9 @@ sub error_045_interwiki_double {
 ###########################################################################
 
 sub error_046_count_square_breaks_begin {
-    my ($attribut) = @_;
     my $error_code = 46;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
         my $text_test = q{};
 
 #$text_test = 'abc[[Kartographie]], Bild:abd|[[Globus]]]] ohne [[Gradnetz]] weiterer Text
@@ -5500,10 +5466,9 @@ sub error_046_count_square_breaks_begin {
 ###########################################################################
 
 sub error_047_template_no_correct_begin {
-    my ($attribut) = @_;
     my $error_code = 47;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
 
         my $text_test = q{};
 
@@ -5576,10 +5541,9 @@ sub error_047_template_no_correct_begin {
 ###########################################################################
 
 sub error_048_title_in_text {
-    my ($attribut) = @_;
     my $error_code = 48;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
 
         my $text_test = $text;
 
@@ -5612,10 +5576,9 @@ sub error_048_title_in_text {
 ###########################################################################
 
 sub error_049_headline_with_html {
-    my ($attribut) = @_;
     my $error_code = 49;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
 
         if (   $page_namespace == 0
             or $page_namespace == 6
@@ -5652,10 +5615,9 @@ sub error_049_headline_with_html {
 ###########################################################################
 
 sub error_050_dash {
-    my ($attribut) = @_;
     my $error_code = 50;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
         my $pos = -1;
         $pos = index( lc($text), '&ndash;' );
         $pos = index( lc($text), '&mdash;' ) if $pos == -1;
@@ -5680,10 +5642,9 @@ sub error_050_dash {
 ###########################################################################
 
 sub error_051_interwiki_before_last_headline {
-    my ($attribut) = @_;
     my $error_code = 51;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
         my $number_of_headlines = @headlines;
         my $pos                 = -1;
 
@@ -5728,10 +5689,9 @@ sub error_051_interwiki_before_last_headline {
 ###########################################################################
 
 sub error_052_category_before_last_headline {
-    my ($attribut) = @_;
     my $error_code = 52;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
         my $number_of_headlines = @headlines;
         my $pos                 = -1;
 
@@ -5773,10 +5733,9 @@ sub error_052_category_before_last_headline {
 ###########################################################################
 
 sub error_053_interwiki_before_category {
-    my ($attribut) = @_;
     my $error_code = 53;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if (    $category_counter > -1
             and $interwiki_counter > -1
             and ( $page_namespace == 0 or $page_namespace == 104 ) )
@@ -5813,10 +5772,9 @@ sub error_053_interwiki_before_category {
 ###########################################################################
 
 sub error_054_break_in_list {
-    my ($attribut) = @_;
     my $error_code = 54;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             my $found_text = q{};
             foreach (@lines) {
@@ -5859,10 +5817,9 @@ sub error_054_break_in_list {
 ###########################################################################
 
 sub error_055_html_text_style_elements_small_double {
-    my ($attribut) = @_;
     my $error_code = 55;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
         my $test_line = q{};
         my $test_text = lc($text);
 
@@ -5912,10 +5869,9 @@ sub error_055_html_text_style_elements_small_double {
 ###########################################################################
 
 sub error_056_arrow_as_ASCII_art {
-    my ($attribut) = @_;
     my $error_code = 56;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             my $pos = -1;
             $pos = index( lc($text), '->' );
@@ -5941,10 +5897,9 @@ sub error_056_arrow_as_ASCII_art {
 ###########################################################################
 
 sub error_057_headline_end_with_colon {
-    my ($attribut) = @_;
     my $error_code = 57;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             foreach (@headlines) {
                 my $current_line = $_;
@@ -5967,10 +5922,9 @@ sub error_057_headline_end_with_colon {
 ###########################################################################
 
 sub error_058_headline_with_capitalization {
-    my ($attribut) = @_;
     my $error_code = 58;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
 
         my $found_text = q{};
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
@@ -6040,10 +5994,9 @@ sub error_058_headline_with_capitalization {
 ###########################################################################
 
 sub error_059_template_value_end_with_br {
-    my ($attribut) = @_;
     my $error_code = 59;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
         my $found_text = q{};
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             for ( my $i = 0 ; $i <= $number_of_template_parts ; $i++ ) {
@@ -6075,10 +6028,9 @@ sub error_059_template_value_end_with_br {
 ###########################################################################
 
 sub error_060_template_parameter_with_problem {
-    my ($attribut) = @_;
     my $error_code = 60;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
         my $found_text = q{};
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             for ( my $i = 0 ; $i <= $number_of_template_parts ; $i++ ) {
@@ -6106,10 +6058,9 @@ sub error_060_template_parameter_with_problem {
 ###########################################################################
 
 sub error_061_reference_with_punctuation {
-    my ($attribut) = @_;
     my $error_code = 61;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             my $found_txt = q{};
             my $pos       = -1;
@@ -6143,10 +6094,10 @@ sub error_061_reference_with_punctuation {
 ###########################################################################
 
 sub error_062_headline_alone {
-    my ( $attribut, $comment ) = @_;
+    my ($comment) = @_;
     my $error_code = 62;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
             my $number_of_headlines = @headlines;
@@ -6234,10 +6185,9 @@ sub error_062_headline_alone {
 ###########################################################################
 
 sub error_063_html_text_style_elements_small_ref_sub_sup {
-    my ($attribut) = @_;
     my $error_code = 63;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
         my $test_line = q{};
         my $test_text = lc($text);
 
@@ -6295,10 +6245,9 @@ sub error_063_html_text_style_elements_small_ref_sub_sup {
 ###########################################################################
 
 sub error_064_link_equal_linktext {
-    my ($attribut) = @_;
     my $error_code = 64;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
 
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
@@ -6319,10 +6268,9 @@ sub error_064_link_equal_linktext {
 ###########################################################################
 
 sub error_065_image_description_with_break {
-    my ($attribut) = @_;
     my $error_code = 65;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             my $found_text = q{};
             foreach (@images_all) {
@@ -6353,10 +6301,9 @@ sub error_065_image_description_with_break {
 ###########################################################################
 
 sub error_066_image_description_with_full_small {
-    my ($attribut) = @_;
     my $error_code = 66;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             my $found_text = q{};
             foreach (@images_all) {
@@ -6387,10 +6334,9 @@ sub error_066_image_description_with_full_small {
 ###########################################################################
 
 sub error_067_reference_after_punctuation {
-    my ($attribut) = @_;
     my $error_code = 67;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
         my $found_text = q{};
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             my $pos = -1;
@@ -6424,10 +6370,9 @@ sub error_067_reference_after_punctuation {
 ###########################################################################
 
 sub error_068_link_to_other_language {
-    my ($attribut) = @_;
     my $error_code = 68;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             my $found_text = q{};
             foreach (@links_all) {
@@ -6460,10 +6405,10 @@ sub error_068_link_to_other_language {
 ###########################################################################
 
 sub error_069_isbn_wrong_syntax {
-    my ( $attribut, $found_text ) = @_;
+    my ($found_text) = @_;
     my $error_code = 69;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( ( $page_namespace == 0 or $page_namespace == 104 )
             and $found_text ne '' )
         {
@@ -6480,10 +6425,10 @@ sub error_069_isbn_wrong_syntax {
 ###########################################################################
 
 sub error_070_isbn_wrong_length {
-    my ( $attribut, $found_text ) = @_;
+    my ($found_text) = @_;
     my $error_code = 70;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( ( $page_namespace == 0 or $page_namespace == 104 )
             and $found_text ne '' )
         {
@@ -6500,10 +6445,10 @@ sub error_070_isbn_wrong_length {
 ###########################################################################
 
 sub error_071_isbn_wrong_pos_X {
-    my ( $attribut, $found_text ) = @_;
+    my ($found_text) = @_;
     my $error_code = 71;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
 
         if ( ( $page_namespace == 0 or $page_namespace == 104 )
             and $found_text ne '' )
@@ -6521,10 +6466,10 @@ sub error_071_isbn_wrong_pos_X {
 ###########################################################################
 
 sub error_072_isbn_10_wrong_checksum {
-    my ( $attribut, $found_text ) = @_;
+    my ($found_text) = @_;
     my $error_code = 72;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( ( $page_namespace == 0 or $page_namespace == 104 )
             and $found_text ne '' )
         {
@@ -6541,10 +6486,10 @@ sub error_072_isbn_10_wrong_checksum {
 ###########################################################################
 
 sub error_073_isbn_13_wrong_checksum {
-    my ( $attribut, $found_text ) = @_;
+    my ($found_text) = @_;
     my $error_code = 73;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( ( $page_namespace == 0 or $page_namespace == 104 )
             and $found_text ne '' )
         {
@@ -6561,10 +6506,9 @@ sub error_073_isbn_13_wrong_checksum {
 ###########################################################################
 
 sub error_074_link_with_no_target {
-    my ($attribut) = @_;
     my $error_code = 74;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             my $found_text = q{};
             foreach (@links_all) {
@@ -6592,10 +6536,9 @@ sub error_074_link_with_no_target {
 ###########################################################################
 
 sub error_075_indented_list {
-    my ($attribut) = @_;
     my $error_code = 75;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             my $found_text = q{};
             foreach (@lines) {
@@ -6627,10 +6570,9 @@ sub error_075_indented_list {
 ###########################################################################
 
 sub error_076_link_with_no_space {
-    my ($attribut) = @_;
     my $error_code = 76;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             my $found_text = q{};
             foreach (@links_all) {
@@ -6658,10 +6600,9 @@ sub error_076_link_with_no_space {
 ###########################################################################
 
 sub error_077_image_description_with_partial_small {
-    my ($attribut) = @_;
     my $error_code = 77;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             my $found_text = q{};
             foreach (@images_all) {
@@ -6692,10 +6633,9 @@ sub error_077_image_description_with_partial_small {
 ###########################################################################
 
 sub error_078_reference_double {
-    my ($attribut) = @_;
     my $error_code = 78;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             my $test_text      = lc($text);
             my $number_of_refs = 0;
@@ -6737,10 +6677,9 @@ sub error_078_reference_double {
 ###########################################################################
 
 sub error_079_external_link_without_description {
-    my ($attribut) = @_;
     my $error_code = 79;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             my $test_text = lc($text);
 
@@ -6798,10 +6737,9 @@ sub error_079_external_link_without_description {
 ###########################################################################
 
 sub error_080_external_link_with_line_break {
-    my ($attribut) = @_;
     my $error_code = 80;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             my $test_text = lc($text);
 
@@ -6855,10 +6793,9 @@ sub error_080_external_link_with_line_break {
 ###########################################################################
 
 sub error_081_ref_double {
-    my ($attribut) = @_;
     my $error_code = 81;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             my $number_of_ref = @ref;
             my $found_text    = q{};
@@ -6895,10 +6832,9 @@ sub error_081_ref_double {
 ###########################################################################
 
 sub error_082_link_to_other_wikiproject {
-    my ($attribut) = @_;
     my $error_code = 82;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             my $found_text = q{};
             foreach (@links_all) {
@@ -6932,10 +6868,9 @@ sub error_082_link_to_other_wikiproject {
 ###########################################################################
 
 sub error_083_headline_only_three_and_later_level_two {
-    my ($attribut) = @_;
     my $error_code = 83;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $headlines[0]
             and ( $page_namespace == 0 or $page_namespace == 104 ) )
         {
@@ -6963,10 +6898,9 @@ sub error_083_headline_only_three_and_later_level_two {
 ###########################################################################
 
 sub error_084_section_without_text {
-    my ($attribut) = @_;
     my $error_code = 84;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $headlines[0]
             and ( $page_namespace == 0 or $page_namespace == 104 ) )
         {
@@ -7038,10 +6972,9 @@ sub error_084_section_without_text {
 ###########################################################################
 
 sub error_085_tag_without_content {
-    my ($attribut) = @_;
     my $error_code = 85;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             my $found_text = q{};
             my $found_pos  = -1;
@@ -7083,10 +7016,9 @@ sub error_085_tag_without_content {
 ###########################################################################
 
 sub error_086_link_with_two_brackets_to_external_source {
-    my ($attribut) = @_;
     my $error_code = 86;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             my $text_lc = lc($text);
             if ( $text_lc =~ /\[\[\s*(https?:\/\/[^\]:]*)/ ) {
@@ -7103,10 +7035,9 @@ sub error_086_link_with_two_brackets_to_external_source {
 ###########################################################################
 
 sub error_087_html_names_entities_without_semicolon {
-    my ($attribut) = @_;
     my $error_code = 87;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if (   $page_namespace == 0
             or $page_namespace == 6
             or $page_namespace == 104 )
@@ -7177,10 +7108,9 @@ sub error_087_html_names_entities_without_semicolon {
 ###########################################################################
 
 sub error_088_defaultsort_with_first_blank {
-    my ($attribut) = @_;
     my $error_code = 88;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
 
         if (    ( $page_namespace == 0 or $page_namespace == 104 )
             and $project ne 'arwiki'
@@ -7226,10 +7156,9 @@ sub error_088_defaultsort_with_first_blank {
 ###########################################################################
 
 sub error_089_defaultsort_with_capitalization_in_the_middle_of_the_word {
-    my ($attribut) = @_;
     my $error_code = 89;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if (    ( $page_namespace == 0 or $page_namespace == 104 )
             and $project ne 'arwiki'
             and $project ne 'hewiki'
@@ -7274,10 +7203,9 @@ sub error_089_defaultsort_with_capitalization_in_the_middle_of_the_word {
 ###########################################################################
 
 sub error_090_defaultsort_with_lowercase_letters {
-    my ($attribut) = @_;
     my $error_code = 90;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if (    ( $page_namespace == 0 or $page_namespace == 104 )
             and $project ne 'arwiki'
             and $project ne 'hewiki'
@@ -7322,10 +7250,9 @@ sub error_090_defaultsort_with_lowercase_letters {
 ###########################################################################
 
 sub error_091_title_with_lowercase_letters_and_no_defaultsort {
-    my ($attribut) = @_;
     my $error_code = 91;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if (    ( $page_namespace == 0 or $page_namespace == 104 )
             and $category_counter > -1
             and $project ne 'arwiki'
@@ -7365,10 +7292,9 @@ sub error_091_title_with_lowercase_letters_and_no_defaultsort {
 ###########################################################################
 
 sub error_092_headline_double {
-    my ($attribut) = @_;
     my $error_code = 92;
 
-    if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             my $found_text          = q{};
             my $number_of_headlines = @headlines;
