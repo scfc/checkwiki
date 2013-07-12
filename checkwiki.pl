@@ -21,7 +21,7 @@
 use strict;
 use warnings;
 
-our $VERSION = '2013-02-15';
+our $VERSION = '2013-07-15';
 
 use lib '/data/project/checkwiki/share/perl';
 use DBI;
@@ -36,6 +36,8 @@ use XML::LibXML;
 use Data::Dumper;
 use MediaWiki::API;
 use Encode;
+
+binmode( STDOUT, ":encoding(UTF-8)" );    # PRINT OUTPUT IN UTF-8 ARTICLE TITLES
 
 our $quit_program =
   'no';    # quit the program (yes,no), for quit the programm in an emergency
@@ -7086,24 +7088,9 @@ sub error_086_link_with_two_brackets_to_external_source {
 
     if ( $attribut eq 'check' and $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
-            my $found_text = q{};
-            foreach (@links_all) {
-
-                # check all links
-                if ( $found_text eq '' ) {
-                    my $current_link = $_;
-                    if (   $current_link =~ /^\[\[([ ]+)?http:\/\//
-                        or $current_link =~ /^\[\[([ ]+)?ftp:\/\//
-                        or $current_link =~ /^\[\[([ ]+)?https:\/\// )
-                    {
-                        $found_text = $current_link;
-                    }
-
-                }
-            }
-            if ( $found_text ne '' ) {
-                error_register( $error_code,
-                    '<nowiki>' . $found_text . ' </nowiki>' );
+            my $text_lc = lc($text);
+            if ( $text_lc =~ /\[\[\s*(https?:\/\/[^\]:]*)/ ) {
+                error_register( $error_code, '<nowiki>' . $1 . ' </nowiki>' );
             }
         }
     }
@@ -7670,18 +7657,13 @@ if ( defined($DumpFilename) ) {
 s/^(?:.*\/)?\Q$project\E-(\d{4})(\d{2})(\d{2})-pages-articles\.xml\.bz2$/$1-$2-$3/;
 
     # GET DUMP FILE SIZE, UNCOMPRESS AND THEN OPEN VIA METAWIKI::DumpFile
-    #my $dump;
+    my $dump;
     $file_size = ( stat($DumpFilename) )[7];
 
-    #open( $dump, '-|', 'bzcat', '-q', $DumpFilename )
-    #      or die("Couldn't open dump file '$DumpFilename'");
+    open( $dump, '-|', 'bzcat', '-q', $DumpFilename )
+          or die("Couldn't open dump file '$DumpFilename'");
 
-    $DumpFilename =
-      '/home/bgwhite/windows/enwiki/enwiki-20130708-pages-articles.xml';
-    $dump_date_for_output = '2013-07-08';
-    $pages                = $pmwd->pages($DumpFilename);
-
-    # $pages = $pmwd->pages($dump);
+    $pages = $pmwd->pages($dump);
 
     # OPEN TEMPLATETIGER FILE
     if (
@@ -7741,7 +7723,7 @@ if ( defined($TTFile) ) {
 }
 
 print_line();
-two_column_display( 'Found errors:', $error_counter );
+two_column_display( 'Found errors:', ++$error_counter );
 $time_end = time() - $time_start;
 printf "Program run time:              %d hours, %d minutes and %d seconds\n\n",
   ( gmtime $time_end )[ 2, 1, 0 ];
