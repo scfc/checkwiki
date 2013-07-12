@@ -295,124 +295,6 @@ sub close_db {
 }
 
 ###########################################################################
-## LOAD ARTICLE FOR LIVE SCAN
-###########################################################################
-
-sub load_article_for_live_scan {
-    print_line();
-    two_column_display( 'Load article for:', 'live scan' )
-      if ( !$silent_modus );
-
-    # Get 250 new articles last days.
-    new_article(250) if ($load_modus_new);
-
-    # Get 50 change articles last days.
-    last_change_article(50) if ($load_modus_last_change);
-
-    # Get 250 articles which are set as done in the database
-    # which are not Scan_Live.
-    get_done_article_from_database(250) if ($load_modus_done);
-
-    # Get 250 articles which are the date of last_scan is very old.
-    get_oldest_article_from_database(250) if ($load_modus_old);
-
-    # Sort all articles.
-    @live_article = sort (@live_article);
-
-    # Delete all double/multi input article
-    my ( $all_errors_of_this_article, @new_live_article, $old_title );
-    foreach my $Line (@live_article) {
-        $Line =~ /^([^\t]+)\t(\d+)\n?$/ || die("Couldn't parse '$Line'\n");
-
-        my ( $current_title, $current_errors ) = ( $1, $2 );
-
-        if ( defined($old_title) && $old_title ne $current_title ) {
-
-            # Save old line.
-            push( @new_live_article,
-                $old_title . "\t" . $all_errors_of_this_article );
-            $all_errors_of_this_article = $current_errors;
-            $old_title                  = $current_title;
-        }
-        else {
-            $all_errors_of_this_article .= ', ' . $current_errors;
-        }
-    }
-
-    # Save last line.
-    if ( defined($old_title) ) {
-        push( @new_live_article,
-            $old_title . "\t" . $all_errors_of_this_article );
-    }
-
-    @live_article = @new_live_article;
-    two_column_display( 'all articles without double:', scalar(@live_article) );
-
-    if ( !@live_article ) {
-
-        # If no articles were found, end the scan.
-        die("No articles in scan list for live\n");
-    }
-
-    return ();
-}
-
-###########################################################################
-## NEW ARTICLE
-###########################################################################
-
-sub new_article {
-    my ($limit) = @_;
-
-# oldest not scanned article
-# select distinct title from cw_new where scan_live = 0 and project = 'dewiki' and daytime >= (select daytime from cw_new where scan_live = 0 and project = 'dewiki' order by daytime limit 1) order by daytime limit 250;
-
-    $for_statistic_new_article = 0;
-
-    my $sth = $dbh->prepare(
-'SELECT DISTINCT Title FROM cw_new WHERE Scan_Live = 0 AND Project = ? AND Daytime >= (SELECT Daytime FROM cw_new WHERE Scan_Live = 0 AND Project = ? ORDER BY Daytime LIMIT 1) ORDER BY Daytime LIMIT ?;'
-    ) || die "Can not prepare statement: $DBI::errstr\n";
-    $sth->execute( $project, $project, $limit )
-      or die "Cannot execute: " . $sth->errstr . "\n";
-
-    while ( my $r = $sth->fetchrow_arrayref() ) {
-        push( @live_article, $r->[0] . "\t0" );
-        $for_statistic_new_article++;
-    }
-    two_column_display( 'from db articles new:', $for_statistic_new_article );
-
-    return ();
-}
-
-###########################################################################
-##
-###########################################################################
-
-sub last_change_article {
-    my ($limit) = @_;
-
-# oldest not scanned article
-# select distinct title from cw_new where scan_live = 0 and project = 'dewiki' and daytime >= (select daytime from cw_new where scan_live = 0 and project = 'dewiki' order by daytime limit 1) order by daytime limit 250;
-
-    $for_statistic_last_change_article = 0;
-
-    my $sth = $dbh->prepare(
-'SELECT DISTINCT Title FROM cw_change WHERE Scan_Live = 0 AND Project = ? AND Daytime >= (SELECT Daytime FROM cw_change WHERE Scan_Live = 0 AND Project = ? ORDER BY Daytime LIMIT 1) ORDER BY Daytime LIMIT ?;'
-    ) || die "Can not prepare statement: $DBI::errstr\n";
-    $sth->execute( $project, $project, $limit )
-      or die "Cannot execute: " . $sth->errstr . "\n";
-
-    while ( my $r = $sth->fetchrow_arrayref() ) {
-        push( @live_article, $r->[0] . "\t0" );
-        $for_statistic_last_change_article++;
-    }
-    two_column_display( 'from db articles changed:',
-        $for_statistic_last_change_article );
-
-    return ();
-}
-
-###########################################################################
 ## DELETE OLD LIST OF ARTICLES FROM LAST DUMP SCAN IN TABLE cw_dumpscan
 ###########################################################################
 
@@ -442,82 +324,6 @@ sub updateDumpDate {
     my $sth = $dbh->prepare($sql_text)
       || die "Can not prepare statement: $DBI::errstr\n";
     $sth->execute or die "Cannot execute: " . $sth->errstr . "\n";
-
-    return ();
-}
-
-###########################################################################
-##
-###########################################################################
-
-sub article_with_error_from_dump_scan {
-    my $database_dump_scan_counter = 0;
-    my $limit                      = 250;
-
-# oldest not scanned article
-# select distinct title from cw_new where scan_live = 0 and project = 'dewiki' and daytime >= (select daytime from cw_new where scan_live = 0 and project = 'dewiki' order by daytime limit 1) order by daytime limit 250;
-
-    my $sth = $dbh->prepare(
-'SELECT DISTINCT Title FROM cw_dumpscan WHERE Scan_Live = 0 AND Project = ? LIMIT ?;'
-    ) || die "Can not prepare statement: $DBI::errstr\n";
-    $sth->execute( $project, $limit )
-      or die "Cannot execute: " . $sth->errstr . "\n";
-
-    while ( my $r = $sth->fetchrow_arrayref() ) {
-        push( @live_article, $r->[0] . "\t0" );
-        $database_dump_scan_counter++;
-    }
-
-    two_column_display( 'from db articles (not scan live):',
-        $database_dump_scan_counter );
-
-#print "\t".$database_dump_scan_counter."\t".'articles from dump (not scan live) from db'."\n";
-
-    return ();
-}
-
-###########################################################################
-##
-###########################################################################
-
-sub get_done_article_from_database {
-    my ($limit) = @_;
-    my $database_ok_counter = 0;
-
-    my $sth = $dbh->prepare(
-        'SELECT Title FROM cw_error WHERE Ok = 1 AND Project = ? LIMIT ?;')
-      || die "Can not prepare statement: $DBI::errstr\n";
-    $sth->execute( $project, $limit )
-      or die "Cannot execute: " . $sth->errstr . "\n";
-
-    while ( my $r = $sth->fetchrow_arrayref() ) {
-        push( @live_article, $r->[0] . "\t0" );
-        $database_ok_counter++;
-    }
-    two_column_display( 'from db done articles:', $database_ok_counter );
-
-    return ();
-}
-
-###########################################################################
-##
-###########################################################################
-
-sub get_oldest_article_from_database {
-    my ($limit) = @_;
-    my $database_ok_counter = 0;
-
-    my $sth = $dbh->prepare(
-'SELECT Title FROM cw_error WHERE Project = ? AND DATEDIFF(NOW(), Found) > 31 ORDER BY DATEDIFF(NOW(), Found) DESC LIMIT ?;'
-    ) || die "Can not prepare statement: $DBI::errstr\n";
-    $sth->execute( $project, $limit )
-      or die "Cannot execute: " . $sth->errstr . "\n";
-
-    while ( my $r = $sth->fetchrow_arrayref() ) {
-        push( @live_article, $r->[0] . "\t0" );
-        $database_ok_counter++;
-    }
-    two_column_display( 'from db old articles:', $database_ok_counter );
 
     return ();
 }
@@ -745,54 +551,6 @@ sub deleteFixedArticles {
     my $sth = $dbh->prepare($sql_text)
       || die "Can not prepare statement: $DBI::errstr\n";
     $sth->execute or die "Cannot execute: " . $sth->errstr . "\n";
-
-    return ();
-}
-
-###########################################################################
-## DELETE ALL SCANNED OR OLD (7 DAYS) ARTICLES
-###########################################################################
-
-sub deleteArticleFrom_cw_new {
-
-    my $sql_text =
-        "DELETE FROM cw_new WHERE Project = '"
-      . $project
-      . "' AND (Scan_Live = 1 OR DATEDIFF(NOW(), Daytime) > 7);";
-
-    my $sth = $dbh->prepare($sql_text)
-      || die "Can not prepare statement: $DBI::errstr\n";
-    $sth->execute or die "Cannot execute: " . $sth->errstr . "\n";
-
-    # Delete all articles from don't scan projects.
-    $sth =
-      $dbh->prepare('DELETE FROM cw_new WHERE DATEDIFF(NOW(), Daytime) > 8;')
-      || die "Can not prepare statement: $DBI::errstr\n";
-    $sth->execute or die "Cannot execute: " . $sth->errstr . "\n";
-
-    return ();
-}
-
-###########################################################################
-## DELETE ARTICLES THAT ARE SCANNED AND OLDER THAN THREE DAYS
-###########################################################################
-
-sub deleteArticleFrom_cw_change {
-
-    my $sql_text =
-        "DELETE FROM cw_change WHERE Project = '"
-      . $project
-      . "' AND (Scan_Live = 1 OR DATEDIFF(NOW(), Daytime) > 3);";
-
-    my $sth = $dbh->prepare($sql_text)
-      || die "Can not prepare statement: $DBI::errstr\n";
-    $sth->execute or die "Cannot execute: " . $sth->errstr . "\n";
-
-    # Delete all articles from don't scan projects.
-    $sth =
-      $dbh->prepare('DELETE FROM cw_change WHERE DATEDIFF(NOW(), Daytime) > 8;')
-      || die "Can not prepare statement: $DBI::errstr\n";
-    $sth->execute() or die "Cannot execute: " . $sth->errstr . "\n";
 
     return ();
 }
@@ -7550,8 +7308,6 @@ scan_pages();    # Scan articles.
 updateDumpDate($dump_date_for_output);
 update_table_cw_error_from_dump();
 deleteFixedArticles();
-deleteArticleFrom_cw_new();
-deleteArticleFrom_cw_change();
 
 close_db();
 
