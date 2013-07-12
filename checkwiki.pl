@@ -547,7 +547,7 @@ sub scan_pages {
             $title          = case_fixer($title);
             $text           = ${ $page->text };
             check_article();
-            $end_of_dump = 'yes' if ( $artcount > 500 );
+            $end_of_dump = 'yes' if ( $artcount > 10000 );
         }
     }
     elsif ( $dump_or_live eq 'live' ) {
@@ -3616,62 +3616,22 @@ sub error_002_have_br {
     my $test      = 'no found';
     my $test_line = q{};
 
-    if (   $page_namespace == 0
-        or $page_namespace == 104 )
-    {
-        my $test_text = lc($text);
-        if (   index( $test_text, '<br' ) > -1
-            or index( $test_text, 'br>' ) > -1 )
-        {
-            my $pos = -1;
-            foreach (@lines) {
-                my $current_line    = $_;
-                my $current_line_lc = lc($current_line);
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
+        if ( $page_namespace == 0 or $page_namespace == 104 ) {
+            my $test_text = lc($text);
+            if ( $test_text =~
+/(<\s*br\/[^ ]>|<\s*br[^ ]\/>|<\s*br[^ \/]>|<[^ ]br\s*>|<\s*br\s*\/[^ ]>)/
+              )
+            {
 
-                #print $current_line_lc."\n";
+                my $pos = index( $test_text, $1 );
+                $test_line = substr( $text, $pos, 40 );
+                $test_line =~ s/[\n\r]//mg;
 
-                if ( $current_line_lc =~ /<br\/[^ ]>/g ) {
-
-                    # <br/1>
-                    $pos = pos($current_line_lc) if ( $pos == -1 );
-                }
-
-                if ( $current_line_lc =~ /<br[^ ]\/>/g ) {
-
-                    # <br1/>
-                    $pos = pos($current_line_lc) if ( $pos == -1 );
-                }
-
-                if ( $current_line_lc =~ /<br[^ \/]>/g ) {
-
-                    # <br7>
-                    $pos = pos($current_line_lc) if ( $pos == -1 );
-                }
-
-                if ( $current_line_lc =~ /<[^ \/]br>/g ) {
-
-                    # <\br>
-                    $pos = pos($current_line_lc) if ( $pos == -1 );
-                }
-
-                if (    $pos > -1
-                    and $test ne 'found' )
-                {
-                    #print $pos."\n";
-                    $test = 'found';
-                    if ( $test_line eq '' ) {
-                        $test_line = substr( $current_line, 0, $pos );
-                        $test_line = text_reduce_to_end( $test_line, 50 );
-
-                        #print $test_line."\n";
-                    }
-                }
+                error_register( $error_code,
+                    '<nowiki>' . $test_line . ' </nowiki>' );
             }
         }
-    }
-    if ( $test eq 'found' ) {
-        $test_line = text_reduce( $test_line, 80 );
-        error_register( $error_code, '<nowiki>' . $test_line . ' </nowiki>' );
     }
 
     return ();
@@ -4851,56 +4811,20 @@ sub error_034_template_programming_elements {
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
-            my $test      = 'no found';
+            my $test_text = 'no found';
             my $test_line = q{};
 
             my $text_lc = lc($text);
             if ( $text_lc =~
-/{{{|#if:|#ifeq:|#switch:|#ifexist:|{{fullpagename}}|{{sitename}}|{{namespace}}/
+/({{{|#if:|#ifeq:|#switch:|#ifexist:|{{fullpagename}}|{{sitename}}|{{namespace}})/
               )
             {
+                my $pos = index( $test_text, $1 );
+                $test_line = substr( $text, $pos, 40 );
+                $test_line =~ s/[\n\r]//mg;
 
-                foreach (@lines) {
-                    my $current_line    = $_;
-                    my $current_line_lc = lc($current_line);
-
-                    my $pos = -1;
-
-                    $pos = index( $current_line_lc, '#if:' )
-                      if ( index( $current_line_lc, '#if:' ) > -1 );
-                    $pos = index( $current_line_lc, '#ifeq:' )
-                      if ( index( $current_line_lc, '#ifeq:' ) > -1 );
-                    $pos = index( $current_line_lc, '#ifeq:' )
-                      if ( index( $current_line_lc, '#ifeq:' ) > -1 );
-                    $pos = index( $current_line_lc, '#switch:' )
-                      if ( index( $current_line_lc, '#switch:' ) > -1 );
-                    $pos = index( $current_line_lc, '{{namespace}}' )
-                      if ( index( $current_line_lc, '{{namespace}}' ) > -1 );
-                    $pos = index( $current_line_lc, '{{sitename}}' )
-                      if ( index( $current_line_lc, '{{sitename}}' ) > -1 );
-                    $pos = index( $current_line_lc, '{{fullpagename}}' )
-                      if ( index( $current_line_lc, '{{fullpagename}}' ) > -1 );
-                    $pos = index( $current_line_lc, '#ifexist:' )
-                      if ( index( $current_line_lc, '#ifexist:' ) > -1 );
-                    $pos = index( $current_line_lc, '{{{' )
-                      if ( index( $current_line_lc, '{{{' ) > -1 );
-                    $pos = index( $current_line_lc, '#tag:' )
-                      if (  index( $current_line_lc, '#tag:' ) > -1
-                        and index( $current_line_lc, '#tag:ref' ) == -1 );
-
-                   # http://en.wikipedia.org/wiki/Wikipedia:Footnotes#Known_bugs
-
-                    if ( $pos > -1 ) {
-                        $test = 'found';
-                        if ( $test_line eq '' ) {
-                            $test_line = $current_line;
-                            $test_line = substr( $test_line, $pos );
-                            $test_line = text_reduce( $test_line, 50 );
-                            error_register( $error_code,
-                                '<nowiki>' . $test_line . ' </nowiki>' );
-                        }
-                    }
-                }
+                error_register( $error_code,
+                    '<nowiki>' . $test_line . ' </nowiki>' );
             }
         }
     }
