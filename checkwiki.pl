@@ -35,7 +35,7 @@ use URI::Escape;
 use XML::LibXML;
 use Data::Dumper;
 use MediaWiki::API;
-use Encode;
+use MediaWiki::Bot;
 
 binmode( STDOUT, ":encoding(UTF-8)" );    # PRINT OUTPUT IN UTF-8 ARTICLE TITLES
 
@@ -46,21 +46,13 @@ our $quit_reason = q{};    # quit the program reason
 our $dump_or_live = q{};   # scan modus (dump, live)
 our $silent_modus = 0;     # silent modus (very low output at screen) for batch
 
-our $CheckOnlyOne    = 0;  # Check only one error or all errors
-our $starter_modus   = 0;  # to update in the loadmodus the cw_starter table
-our $load_modus_done = 1;  # done article from db
-our $load_modus_new  = 1;  # new article from db
-our $load_modus_dump = 1;  # new article from db
-our $load_modus_last_change = 1;    # last_change article from db
-our $load_modus_old         = 1;    # old article from db
+our $CheckOnlyOne = 0;     # Check only one error or all errors
 
 our $details_for_page =
   'no';   # yes/no  durring the scan you can get more details for a article scan
 
-our $line_number = 0;    # number of line in dump
-our $project;            # name of the project 'dewiki'
-our $language    = q{};  # language of dump 'de', 'en';
-our $page_number = 0;    # number of pages in namesroom 0
+our $project;    # name of the project 'dewiki'
+our $language = q{};    # language of dump 'de', 'en';
 our $base = q{};    # base of article, 'http://de.wikipedia.org/wiki/Hauptseite'
 our $home = q{};    # base of article, 'http://de.wikipedia.org/wiki/'
 
@@ -122,33 +114,13 @@ our $time_end   = time();    # end time in secound
 our $time_found = time();    # for column "Found" in cw_error
 
 # Wiki-special variables
-our @live_article;           # to-do-list for live (all articles to scan)
-our $current_live_article = -1;    # line_number_of_current_live_article
-
-our $current_live_error_scan = -1; # for scan every 100 article of an error
-our @live_to_scan;    # article of one error number which should be scanned
-our $number_article_live_to_scan = -1;    # all article from one error
-our @article_was_scanned;    #if an article was scanned, this will insert here
-
-our $xml_text_from_api =
-  q{};                       # the text from more then one articles from the API
 
 our $error_counter = -1;     # number of found errors in all article
 our @ErrorPriorityValue;     # Priority value each error has
 
 our @Error_number_counter = (0) x 150;    # Error counter for individual errors
 
-our $number_of_error_description = -1;    # number of error_description
-
-our $max_error_count = 50;                # maximum of shown article per error
-our $maximum_current_error_scan =
-  -1;    # how much shold be scanned for reach the max_error_count
-our $rest_of_errors_not_scan_yet          = q{};
-our $number_of_all_errors_in_all_articles = 0;     #all errors
-
-our $for_statistic_new_article                   = 0;
-our $for_statistic_last_change_article           = 0;
-our $for_statistic_number_of_articles_with_error = 0;
+our $number_of_all_errors_in_all_articles = 0;    #all errors
 
 # Files
 our $error_list_filename = 'error_list.txt';
@@ -179,34 +151,23 @@ our @foundation_projects = (
     'nost',        'testwiki'
 );
 
-our $top_priority_script    = 'Top priority';
-our $middle_priority_script = 'Middle priority';
-our $lowest_priority_script = 'Lowest priority';
-
 ###############################
 # variables for one article
 ###############################
 
-$page_number = $page_number + 1;
-our $title         = q{};    # title of the current article
-our $page_id       = -1;     # page id of the current article
-our $revision_id   = -1;     # revision id of the current article
-our $revision_time = -1;     # revision time of the current article
-our $text          = q{};    # text of the current article  (for work)
-our $text_origin   = q{};    # text of the current article origin (for save)
+our $title   = q{};    # title of the current article
+our $page_id = -1;     # page id of the current article
+our $text    = q{};    # text of the current article  (for work)
 our $text_without_comments =
-  q{};    # text of the current article without_comments (for save)
+  q{};                 # text of the current article without_comments (for save)
 
-our $page_namespace;    # namespace of page
+our $page_namespace;   # namespace of page
 our $page_is_redirect       = 'no';
 our $page_is_disambiguation = 'no';
 
-our $page_categories = q{};
-our $page_interwikis = q{};
-
-our @comments;          # 0 pos_start
-                        # 1 pos_end
-                        # 2 comment
+our @comments;         # 0 pos_start
+                       # 1 pos_end
+                       # 2 comment
 our $comment_counter = -1;    #number of comments in this page
 
 our @category;                # 0 pos_start
@@ -253,14 +214,6 @@ our $end_of_live =
 
 our $statistic_online_page =
   -1;      # number of pages online from metadata-statistic
-
-###########################################################################
-###
-############################################################################
-
-sub get_time_string {
-    return strftime( '%Y%m%d %H%M%S', localtime() );
-}
 
 ###########################################################################
 ## OPEN DATABASE
@@ -358,20 +311,15 @@ sub scan_pages {
     }
     elsif ( $dump_or_live eq 'live' ) {
         do {
-            set_variables_for_article();
             get_next_page_from_live();
-            check_article();
           } until (
             $end_of_live eq 'yes'
 
-              #or $page_number > 2000
               #or ($error_counter > 10000 and $project ne 'dewiki')
               #or $page_id  > 7950
               #or ($error_counter > 40000)
           );
     }
-
-    print 'articles scan finish' . "\n\n" if ( !$silent_modus );
 
     return ();
 }
@@ -451,21 +399,14 @@ sub case_fixer {
 ###########################################################################
 
 sub set_variables_for_article {
-    $page_number   = $page_number + 1;
-    $title         = q{};              # title of the current article
-    $page_id       = -1;               # page id of the current article
-    $revision_id   = -1;               # revision id of the current article
-    $revision_time = -1;               # revision time of the current article
-    $text          = q{};              # text of the current article  (for work)
-    $text_origin = q{};    # text of the current article origin (for save)
+    $title   = q{};    # title of the current article
+    $page_id = -1;     # page id of the current article
+    $text    = q{};    # text of the current article  (for work)
     $text_without_comments =
-      q{};    # text of the current article without_comments (for save)
+      q{};             # text of the current article without_comments (for save)
 
     $page_is_redirect       = 'no';
     $page_is_disambiguation = 'no';
-
-    $page_categories = q{};
-    $page_interwikis = q{};
 
     undef(@comments);    # 0 pos_start
                          # 1 pos_end
@@ -537,31 +478,13 @@ sub update_table_cw_error_from_dump {
 }
 
 ###########################################################################
-## DELETE ANY ARTICLES FIXED IN PAST 7 DAYS.  DUMP DATA CAN BE OLDER
-###########################################################################
-
-sub deleteFixedArticles {
-
-    my $sql_text =
-        "DELETE FROM cw_error WHERE ok = 1 AND Project = '"
-      . $project
-      . "' AND FOUND NOT LIKE '%"
-      . substr( get_time_string(), 0, 7 ) . "%';";
-
-    my $sth = $dbh->prepare($sql_text)
-      || die "Can not prepare statement: $DBI::errstr\n";
-    $sth->execute or die "Cannot execute: " . $sth->errstr . "\n";
-
-    return ();
-}
-
-###########################################################################
 ##
 ###########################################################################
 
 sub getErrors {
-    my $error_counter = 0;
-    my $priority      = -1;
+    my $error_counter               = 0;
+    my $priority                    = -1;
+    my $number_of_error_description = 0;
 
     my $sth = $dbh->prepare('SELECT COUNT(*) FROM cw_error_desc')
       || die "Can not prepare statement: $DBI::errstr\n";
@@ -711,454 +634,39 @@ sub readMetadata {
 ###########################################################################
 
 sub get_next_page_from_live {
-    $current_live_article++;    #next article
 
-    if ( $current_live_error_scan != 0 ) {
+    my @live_titles;
+    my $limit = 100;
+    $page_namespace = 0;
 
-        # Error not 0 (new aricles, and last changes...)
-
-        if (    $current_live_error_scan != 0
-            and $current_live_article == $maximum_current_error_scan )
+    my $bot = MediaWiki::Bot->new(
         {
-# set number higher if not all 50 errors  found
-#print 'Nr.'.$current_live_error_scan."\n";
-#print 'Found at moment :'.$Error_number_counter[$current_live_error_scan]."\n";
-#print 'Max allowed:'.$max_error_count."\n";
-#print 'Max possible:'.$number_article_live_to_scan."\n";
-
-            if ( $Error_number_counter[$current_live_error_scan] <
-                $max_error_count )
-            {
-                # set higer maximum
-                $maximum_current_error_scan =
-                  $maximum_current_error_scan +
-                  ( $max_error_count -
-                      $Error_number_counter[$current_live_error_scan] );
-
-                #print 'Set higher maximum: '.$maximum_current_error_scan."\n";
-            }
-            else {
-                # stop scan
-                save_errors_for_next_scan($current_live_article);
-
-                #$rest_of_errors_not_scan_yet
-                $current_live_article = -1;
-            }
+            assert   => 'bot',
+            protocol => 'http',
+            host     => 'en.wikipedia.org',
         }
+    );
 
-        # find next error with articles
-        if (   ( $current_live_error_scan > 0 and $current_live_article == -1 )
-            or $current_live_article == $number_article_live_to_scan
-            or $current_live_error_scan == -1 )
-        {
-            #print 'switch from error to error'."\n";
+    my @rc = $bot->recentchanges( { ns => $page_namespace, limit => $limit } );
+    foreach my $hashref (@rc) {
+        push( @live_titles, $hashref->{title} );
+    }
 
-            $current_live_error_scan = 0
-              if ( $current_live_error_scan == -1 );    #start with error 1
-
-            do {
-                $current_live_error_scan++;
-
-                #print $current_live_error_scan."\n";
-                @live_to_scan = ();
-                if ( $Error_number_counter[$current_live_error_scan] <
-                    $max_error_count )
-                {
-                    # only if not all found with new/change/last
-                    get_all_error_with_number($current_live_error_scan);
-                }
-                else {
-                    # if with new /change etc. we found for this error much
-                    get_all_error_with_number($current_live_error_scan);
-                    save_errors_for_next_scan(0);
-                    @live_to_scan = ();
-                }
-
-                $number_article_live_to_scan = @live_to_scan;
-              } until (
-                $current_live_error_scan >= $number_of_error_description
-                  or $number_article_live_to_scan > 0
-              );
-
-            $maximum_current_error_scan = $max_error_count;
-            if ( $Error_number_counter[$current_live_error_scan] > 0 ) {
-
- #print 'More errors for error'.$current_live_error_scan."\n";
- #print 'At moment only :'.$Error_number_Counter[$current_live_error_scan]."\n";
-                $maximum_current_error_scan =
-                  $max_error_count -
-                  $Error_number_counter[$current_live_error_scan];
-
-                #print 'Search now for more :'.$maximum_current_error_scan."\n";
-            }
-            $current_live_article = 0;
-            $xml_text_from_api    = q{};
-
-#print '#############################################################'."\n";
-#print 'Error '.$current_live_error_scan.' :'."\t".$number_article_live_to_scan."\n" if ($number_article_live_to_scan > 0);
-#print 'Max='.$maximum_current_error_scan."\n";
-#print 'Available = '.$number_article_live_to_scan."\n";
-
+    my @temp_titles = @live_titles;
+    my $thing       = $bot->get_pages( \@live_titles );
+    foreach my $page ( keys %$thing ) {
+        $text  = $thing->{$page};
+        $title = pop(@temp_titles);
+        if ( defined($text) ) {
+            print $title . "\n";
+            set_variables_for_article();
+            check_article();
         }
     }
 
-    if (    $current_live_error_scan == 0
-        and $current_live_article >= $number_article_live_to_scan )
-    {
-        # end of live, no more article to scan
-        $end_of_live = 'yes';
-    }
-
-    if ( $current_live_error_scan >= $number_of_error_description ) {
-
-# after check live all errors, then start with check of error 0 (new articles, last changes, ...)
-        $current_live_article    = 0;
-        $xml_text_from_api       = q{};
-        $current_live_error_scan = 0;
-        get_all_error_with_number($current_live_error_scan);
-        $number_article_live_to_scan = @live_to_scan;
-
-        #print 'Error 0 :'."\t".$number_article_live_to_scan."\n";
-        $maximum_current_error_scan = $max_error_count;
-    }
-
-    #$number_article_live_to_scan = @live_to_scan;
-    if (    $current_live_article < $number_article_live_to_scan
-        and $number_article_live_to_scan > 0
-        and $end_of_live ne 'yes' )
-    {
-        # there is an error with articles
-        # now we get the next article
-
-        if ( $xml_text_from_api eq '' ) {
-
-            # if list of xml_text_from_api is empty, then load next ariticles
-            #print 'Load next texts from API'."\n";
-            my $many_titles    = q{};
-            my $i              = $current_live_article;
-            my $end_many_title = 'false';
-            do {
-
-                my $line       = $live_to_scan[$i];
-                my @line_split = split( /\t/, $line );
-                my $next_title = $line_split[0];
-                printf( "\$next_title = %s\n", $next_title );
-                $next_title  = replace_special_letters($next_title);
-                $many_titles = $many_titles . '|' . uri_escape($next_title);
-                $many_titles =~ s/^\|//;
-                $i++;
-                $end_many_title = 'true'
-                  if ( $i == $number_article_live_to_scan );
-                $end_many_title = 'true'
-                  if ( $i == $current_live_article + 25 )
-                  ;    # not more then 25 articles
-                $end_many_title = 'true'
-                  if ( length($many_titles) > 2000 )
-                  ; # url length not too long (Problem ruwiki and other no latin letters    )
-            } until ( $end_many_title eq 'true' );
-
-            #print 'Many titles ='.$many_titles."\n";
-            $xml_text_from_api = raw_text_more_articles($many_titles);
-            $xml_text_from_api =~ s/^<\?xml version="1\.0"\?>//;
-            $xml_text_from_api =~ s/^<api>//;
-            $xml_text_from_api =~ s/^<query>//;
-            $xml_text_from_api =~ s/^<pages>//;
-            $xml_text_from_api =~ s/<\/api>$//;
-            $xml_text_from_api =~ s/<\/query>$//;
-            $xml_text_from_api =~ s/<\/pages>$//;
-
-            #print $xml_text_from_api."\n";
-
-        }
-
-        # get next title and  text from xml_text_from_api
-        if ( $xml_text_from_api ne '' ) {
-
-            my $pos_end = index( $xml_text_from_api, '</page>' );
-            if ( $pos_end > -1 ) {
-
-                # normal page
-                $text =
-                  substr( $xml_text_from_api, 0, $pos_end + length('</page>') );
-                $xml_text_from_api =
-                  substr( $xml_text_from_api, $pos_end + length('</page>') );
-            }
-            else {
-                # missing page
-                # <page ns="0" title="ZBlu-ray Disc" missing="" />
-                #print 'Missing Page'."\n";
-                $pos_end = index( $xml_text_from_api, 'missing="" />' );
-                $text =
-                  substr( $xml_text_from_api, 0,
-                    $pos_end + length('missing="" />') );
-                $xml_text_from_api =
-                  substr( $xml_text_from_api,
-                    $pos_end + length('missing="" />') );
-                if ( $pos_end == -1 ) {
-
-                    #BIG PROBLEM
-                    print 'WARNING: Big problem with API' . "\n";
-                    $text              = q{};
-                    $xml_text_from_api = q{};
-                }
-            }
-
-            my $line = $live_to_scan[$current_live_article];
-            my @line_split = split( /\t/, $line );
-            $title = $line_split[0];
-
-            #print $title ."\n";
-            #print substr (  $text, 0, 150)."\n";
-
-            if ( index( $text, 'title=' . '"' . $title . '"' ) == -1 ) {
-
-                # the result from the api is in a other sort
-                # know get the current title
-                # for example <page pageid="2065519" ns="0" title=".380 ACP">
-                #print "Old title:".$title ."\n";
-                my $pos_title = index( $text, 'title="' );
-                my $title_text = $text;
-                $title_text =
-                  substr( $title_text, $pos_title + length('title="') );
-                $pos_title = index( $title_text, '"' );
-                $title = substr( $title_text, 0, $pos_title );
-
-                #print "New title:".$title;
-                #print "\n\n";
-                #print substr (  $text, 0, 150)."\n";
-                #print "\n\n";
-
-            }
-
-            #print $title."\n";
-            push( @article_was_scanned, $title );
-
-            # get id
-            my $test_id_pos = index( $text, 'pageid="' );
-            if ( $test_id_pos > -1 ) {
-                $page_id = substr( $text, $test_id_pos + length('pageid="') );
-                $test_id_pos = index( $page_id, '"' );
-                $page_id = substr( $page_id, 0, $test_id_pos );
-
-                #print $page_id.' - '.$title."\n";
-            }
-
-            # get  text
-            my $test = index( $text, '<rev timestamp="' );
-            if ( $test > -1 ) {
-                my $pos = index( $text, '">', $test );
-                $text = substr( $text, $pos + 2 );
-
-                #$text =~ s/<text xml:space="preserve">//g;
-                $test = index( $text, '</rev>' );
-                $text = substr( $text, 0, $test );
-            }
-
-            #revision_id
-            #revision_time
-            #print $text."\n";
-            #print substr($text, 0, 60)."\n";
-            $text = replace_special_letters($text);
-        }
-    }
+    $end_of_live = 'yes';
 
     return ();
-}
-
-###########################################################################
-##
-###########################################################################
-
-sub save_errors_for_next_scan {
-    my ($from_number) = @_;
-    $number_article_live_to_scan = @live_to_scan;
-
-    for ( my $i = $from_number ; $i < $number_article_live_to_scan ; $i++ ) {
-
-        #print $live_to_scan[$i]."\n";
-
-        my $line = $live_to_scan[$i];
-
-        #print '1:'.$line."\n";
-        my @line_split = split( /\t/, $line );
-        my $rest_title = $line_split[0];
-        $rest_of_errors_not_scan_yet =
-            $rest_of_errors_not_scan_yet . "\n"
-          . $rest_title . "\t"
-          . $current_live_error_scan;
-    }
-
-    return ();
-}
-
-###########################################################################
-##
-###########################################################################
-
-sub get_all_error_with_number {
-
-# get from array "live_article" with all errors, only this errors with error number X
-    my ($error_live) = @_;
-
-    #print 'Error number: '.$error_live."\n";
-
-    my $number_of_article = @live_article;
-
-    #print $number_of_article."\n";
-    #print $live_article[0]."\n";
-
-    if ( $number_of_article > 0 ) {
-        for ( my $i = 0 ; $i < $number_of_article ; $i++ ) {
-            my $current_live_line = $live_article[$i];
-
-            #print $current_live_line."\n";
-            my @line_split = split( /\t/, $current_live_line );
-
-            #print 'alle:'.$line_split[1]."\n" if ($error_live == 0);
-            my @split_error = split( ', ', $line_split[1] );
-            my $found = 'no';
-            foreach (@split_error) {
-                if ( $error_live eq $_ ) {
-
-                    #found error with number X
-                    $found = 'yes';
-
-                    #print $current_live_line."\n" if ($error_live == 0);
-                }
-            }
-            if ( $found eq 'yes' ) {
-
-                # article has error X
-                #print 'found '.$current_live_line."\n"  if ($error_live == 7);
-
-                # was this article scanned today ?
-                $found = 'no';
-                my $number_of_scanned_articles = @article_was_scanned;
-
-                #print 'Scanned: '."\t".$number_of_scanned_articles."\n";
-                foreach (@article_was_scanned) {
-
-                    #print $_."\n";
-                    if ( index( $current_live_line, $_ . "\t" ) == 0 ) {
-
-                        #article was in this run scanned
-                        $found = 'yes';
-
-                        #print 'Was scanned :'."\t".$current_live_line."\n";
-                    }
-                }
-                if ( $found eq 'no' ) {
-                    push( @live_to_scan, $current_live_line );    #."\t".$i
-                }
-            }
-        }
-    }
-
-    return ();
-}
-
-###########################################################################
-##
-###########################################################################
-
-sub replace_special_letters {
-    my ($content) = @_;
-
-# only in dump must replace not in live
-# http://de.wikipedia.org/w/index.php?title=Benutzer_Diskussion:Stefan_K%C3%BChn&oldid=48573921#Dump
-    $content =~ s/&lt;/</g;
-    $content =~ s/&gt;/>/g;
-    $content =~ s/&quot;/"/g;
-    $content =~ s/&#039;/'/g;
-    $content =~ s/&amp;/&/g;
-
-    # &lt; -> <
-    # &gt; -> >
-    # &quot;  -> "
-    # &#039; -> '
-    # &amp; -> &
-    return ($content);
-}
-
-###########################################################################
-##
-###########################################################################
-
-sub raw_text {
-    my ($my_title) = @_;
-
-    $my_title =~ s/&amp;/%26/g;    # Problem with & in title
-    $my_title =~ s/&#039;/'/g;     # Problem with apostroph in title
-    $my_title =~ s/&lt;/</g;
-    $my_title =~ s/&gt;/>/g;
-    $my_title =~ s/&quot;/"/g;
-
-# http://localhost/~daniel/WikiSense/WikiProxy.php?wiki=$lang.wikipedia.org&title=$article
-    my $url2 = q{};
-
-#$url2 = 'http://localhost/~daniel/WikiSense/WikiProxy.php?wiki=de.wikipedia.org&title='.$title;
-    $url2 = $home;
-    $url2 =~ s/\/wiki\//\/w\//;
-
-    # old  	$url2 = $url2.'index.php?title='.$title.'&action=raw';
-    $url2 =
-        $url2
-      . 'api.php?action=query&prop=revisions&titles='
-      . $my_title
-      . '&rvprop=timestamp|content&format=xml';
-
-    #print $url2."\n";
-
-    my $response2;
-
-    #do {
-    uri_escape($url2);
-
-    #print $url2."\n";
-    #uri_escape( join ' ' => @ARGV );
-    my $ua2 = LWP::UserAgent->new;
-    $response2 = $ua2->get($url2);
-
-    #}
-    #until ($response2->is_success);
-    my $content2 = $response2->content;
-    my $result2  = q{};
-    $result2 = $content2 if ($content2);
-
-    return ($result2);
-}
-
-###########################################################################
-##
-###########################################################################
-
-sub raw_text_more_articles {
-    my ($my_title) = @_;
-
-    #$my_title =~ s/&amp;/%26/g;		# Problem with & in title
-    #$my_title =~ s/&#039;/'/g;			# Problem with apostroph in title
-    #$my_title =~ s/&lt;/</g;
-    #$my_title =~ s/&gt;/>/g;
-    #$my_title =~ s/&quot;/"/g;
-    #$my_title =~ s/&#039;/'/g;
-
-    my $url2 = q{};
-    $url2 = $home;
-    $url2 =~ s/\/wiki\//\/w\//;
-    $url2 =
-        $url2
-      . 'api.php?action=query&prop=revisions&titles='
-      . $my_title
-      . '&rvprop=timestamp|content&format=xml';
-
-    printf( "\$url2 = %s\n", $url2 );
-    my $response2;
-    my $ua2 = LWP::UserAgent->new;
-    $response2 = $ua2->get($url2);
-    my $content2 = $response2->content;
-    my $result2  = q{};
-    $result2 = $content2 if ($content2);
-    return ($result2);
 }
 
 ###########################################################################
@@ -1167,14 +675,6 @@ sub raw_text_more_articles {
 
 sub check_article {
     my $steps = 1;
-    $steps = 5000 if ( $silent_modus eq 'silent' );
-
-    if (   $title eq 'At-Tabarī'
-        or $title eq 'Rumänien'
-        or $title eq 'Liste der Ortsteile im Saarland' )
-    {
-        # $details_for_page = 'yes';
-    }
 
     my $text_for_tests = "Hallo
 Barnaby, Wendy. The Plague Makers: The Secret World of Biological Warfare, Frog Ltd, 1999. 
@@ -1384,9 +884,6 @@ Verlag LANGEWIESCHE, ISBN-10: 3784551912 und ISBN-13: 9783784551913
     # 27, 35, 36, 43, 46-50, 54-56, 59-61, 63-74, 76-80, 82, 84-90
     error_check();
 
-    set_article_as_scan_live_in_db( $title, $page_id )
-      if ( $dump_or_live eq 'live' );
-
     return ();
 }
 
@@ -1402,35 +899,6 @@ sub delete_old_errors_in_db {
         $sth->execute( $page_id, $project )
           or die "Cannot execute: " . $sth->errstr . "\n";
     }
-
-    return ();
-}
-
-###########################################################################
-## SET THE NAMESPACE ID OF AN ARTICLE
-###########################################################################
-
-sub get_namespace {
-    if ( $title =~ '^([^:]+):' ) {
-        foreach my $Namespace (@namespace) {
-            if ( $1 eq $Namespace->[1] || $1 eq $Namespace->[2] ) {
-                $page_namespace = $Namespace->[0];
-
-                return;
-            }
-        }
-
-        foreach my $NamespaceAlias (@namespacealiases) {
-            if ( $1 eq $NamespaceAlias->[1] ) {
-                $page_namespace = $NamespaceAlias->[0];
-
-                return;
-            }
-        }
-    }
-
-    # If no namespace prefix or not found.
-    $page_namespace = 0;
 
     return ();
 }
@@ -2495,14 +1963,7 @@ sub get_templates {
         print $output if ( $details_for_page eq 'yes' );
         $TTFile->print($output);
 
-# new in tt-table of database
-# for (my $i = 0; $i <=$number_of_template_parts; $i++) {
-#	insert_into_db_table_tt ($title, $page_id, $template[$i][0], $template[$i][1], $template[$i][2], $template[$i][3], $template[$i][4], $template[$i][5]);
-#}
-
     }
-
-    #die  if ($title eq 'Methanol');
 
     return ();
 }
@@ -4015,7 +3476,6 @@ sub error_017_category_double {
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
 
-        #print $title."\n" if ($page_number > 25000);;
         for ( my $i = 0 ; $i <= $category_counter - 1 ; $i++ ) {
 
 #if ($title eq 'File:TobolskCoin.jpg') {
@@ -5870,19 +5330,12 @@ sub error_063_html_text_style_elements_small_ref_sub_sup {
     my $error_code = 63;
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
-        my $test_line = q{};
-        my $test_text = lc($text);
-
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
-
-            #print 'a'."\n";
+            my $test_line = q{};
             my $test_text = lc($text);
             my $pos       = -1;
 
-            #print $test_text."\n";
             if ( index( $test_text, '</small>' ) > -1 ) {
-
-                #print 'b'."\n";
                 $pos = index( $test_text, '</small></ref>' )  if ( $pos == -1 );
                 $pos = index( $test_text, '</small> </ref>' ) if ( $pos == -1 );
                 $pos = index( $test_text, '</small>  </ref>' )
@@ -7007,12 +6460,12 @@ sub error_register {
 
     $notice =~ s/\n//g;
 
-    #print "\t" . $error_code . "\t" . $title . "\t" . $notice . "\n";
+    print "\t" . $error_code . "\t" . $title . "\t" . $notice . "\n";
 
     $Error_number_counter[$error_code] = $Error_number_counter[$error_code] + 1;
     $error_counter = $error_counter + 1;
 
-    insert_into_db( $error_counter, $error_code, $notice );
+    #insert_into_db( $error_counter, $error_code, $notice );
 
     return ();
 }
@@ -7060,51 +6513,6 @@ sub insert_into_db {
 
     return ();
 }
-
-######################################################################
-
-# If an article was scanned live, then set this in the table
-# cw_dumpscan as true.
-sub set_article_as_scan_live_in_db {
-    my ( $article, $id ) = @_;
-
-# Update the table cw_dumpscan.
-# $sth = $dbh->prepare ('UPDATE cw_dumpscan SET Scan_Live = TRUE WHERE Project = ? AND (Title = ? OR ID = ?);') or die ($dbh->errstr ());
-# $sth->execute ($project, $article, $id) or die ('article:' . $article . "\n" . $dbh->errstr ());
-
-    # Update the tables cw_new and cw_change.
-    my $sth = $dbh->prepare(
-        'UPDATE cw_new SET Scan_Live = TRUE WHERE Project = ? AND Title = ?;')
-      or die( $dbh->errstr() . "\n" );
-    $sth->execute( $project, $article )
-      or die( 'article:' . $article . "\n" . $dbh->errstr() . "\n" );
-
-    $sth = $dbh->prepare(
-        'UPDATE cw_change SET Scan_Live = TRUE WHERE Project = ? AND Title = ?;'
-    ) or die( $dbh->errstr() . "\n" );
-    $sth->execute( $project, $article )
-      or die( 'article:' . $article . "\n" . $dbh->errstr() . "\n" );
-
-    return ();
-}
-
-######################################################################
-
-# If a new error was found in the dump, then write this into the
-# database table cw_dumpscan.
-sub insert_into_db_table_tt {
-    my ( $article, $page_id, $template, $name, $number, $parameter, $value ) =
-      @_;
-
-# Insert error into database (disabled for the moment).
-# my $sth = $dbh->prepare ('INSERT INTO tt (Project, ID, Title, Template, Name, Number, Parameter, Value) VALUES (?, ?, ?, ?, ?, ?, ?, ?);') or die ($dbh->errstr ());
-# $sth->execute ($project, $page_id, $article, $template, $name, $number, $parameter, $value) or die ($dbh->errstr ());
-
-    return ();
-}
-
-# Right trim string, but only to full words (result may be longer than
-# $Length characters).
 
 ######################################################################
 
@@ -7201,7 +6609,6 @@ my @Options = (
     'dumpfile=s'   => \$DumpFilename,
     'tt-file=s'    => \$TTFilename,
     'silent'       => \$silent_modus,
-    'starter'      => \$starter_modus,
     'check'        => \$CheckOnlyOne
 );
 
@@ -7237,18 +6644,6 @@ print_line();
 two_column_display( 'Start time:',
     ( strftime "%a %b %e %H:%M:%S %Y", localtime ) );
 $time_found = strftime( '%F %T', gmtime() );
-
-# Split load mode.
-if ( defined($load_mode) && !defined($DumpFilename) ) {
-    my %LoadOptions = map { $_ => 1; } split( /\//, $load_mode );
-
-    $load_modus_done = exists( $LoadOptions{'done'} );    # done article from db
-    $load_modus_new  = exists( $LoadOptions{'new'} );     # new article from db
-    $load_modus_dump = exists( $LoadOptions{'dump'} );    # new article from db
-    $load_modus_last_change =
-      exists( $LoadOptions{'last_change'} );    # last_change article from db
-    $load_modus_old = exists( $LoadOptions{'old'} );    # old article from db
-}
 
 $language = $project;
 $language =~ s/source$//;
@@ -7291,21 +6686,20 @@ s/^(?:.*\/)?\Q$project\E-(\d{4})(\d{2})(\d{2})-pages-articles\.xml\.bz2$/$1-$2-$
 }
 else {
     $dump_or_live = 'live';
-    load_article_for_live_scan();
 }
 
 two_column_display( 'Project:',   $project );
 two_column_display( 'Scan type:', $dump_or_live . " scan" );
 
 open_db();
-clearDumpscanTable() if ( $dump_or_live eq 'dump' );
+cearDumpscanTable() if ( $dump_or_live eq 'dump' );
 getErrors();
 readMetadata();
 
 # MAIN ROUTINE - SCAN PAGES FOR ERRORS
 scan_pages();    # Scan articles.
 
-updateDumpDate($dump_date_for_output);
+updateDumpDate($dump_date_for_output) if ( $dump_or_live eq 'dump' );
 update_table_cw_error_from_dump();
 deleteFixedArticles();
 
@@ -7329,7 +6723,7 @@ if ( defined($TTFile) ) {
 }
 
 print_line();
-two_column_display( 'Found errors:', ++$error_counter );
+two_column_display( 'Errors Found:', ++$error_counter );
 $time_end = time() - $time_start;
 printf "Program run time:              %d hours, %d minutes and %d seconds\n\n",
   ( gmtime $time_end )[ 2, 1, 0 ];
