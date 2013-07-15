@@ -68,6 +68,7 @@ our @namespacealiases;    # namespacealiases values
 our @namespace_cat;       #all namespaces for categorys
 our @namespace_image;     #all namespaces for images
 our @namespace_templates; #all namespaces for templates
+our $image_regex = q{};
 
 our @magicword_defaultsort;
 
@@ -306,7 +307,7 @@ sub scan_pages {
             $title          = case_fixer($title);
             $text           = ${ $page->text };
             check_article();
-            $end_of_dump = 'yes' if ( $artcount > 10000 );
+            $end_of_dump = 'yes' if ( $artcount > 500 );
         }
     }
     elsif ( $dump_or_live eq 'live' ) {
@@ -571,6 +572,7 @@ sub readMetadata {
         # Store special namespaces in convenient variables.
         if ( $id == 6 ) {
             @namespace_image = ( $name, $canonical );
+            $image_regex = $name;
         }
         elsif ( $id == 10 ) {
             @namespace_templates = ($name);
@@ -586,6 +588,7 @@ sub readMetadata {
         my $name = $entry->{'*'};
         if ( $entry->{id} == 6 ) {
             push( @namespace_image, $name );
+            $image_regex = $image_regex . "|" . $name;
         }
         elsif ( $entry->{id} == 10 ) {
             push( @namespace_templates, $name );
@@ -2022,6 +2025,11 @@ sub get_links {
 
             #print 'Link:'.$link_text_2."\n";
             push( @links_all, $link_text_2 );
+
+            if ( $link_text_2 =~ /^\[\[([ ]?)+?($image_regex):/i ) {
+                push( @images_all, $link_text_2 );
+            }
+
         }
         else {
             # template has no correct end
@@ -2041,187 +2049,168 @@ sub get_links {
 
 sub get_images {
 
-    # get all images from all links
-    undef(@images_all);
-
     my $found_error_text = q{};
-    foreach (@links_all) {
-        my $current_link = $_;
+    foreach (@images_all) {
 
-        #print $current_link. "\n";
+        my $current_image = $_;
 
-        my $link_is_image = 'no';
-        foreach (@namespace_image) {
-            my $namespace_image_word = $_;
-            $link_is_image = 'yes'
-              if ( $current_link =~ /^\[\[([ ]?)+?$namespace_image_word:/i );
+        my $test_image = $current_image;
+
+        #print '1:'."\t".$test_image."\n";
+        foreach (@magicword_img_thumbnail) {
+            my $current_magicword = $_;
+
+            #print $current_magicword."\n";
+            $test_image =~ s/\|([ ]?)+$current_magicword([ ]?)+(\||\])/$3/i;
         }
-        if ( $link_is_image eq 'yes' ) {
 
-            # link is a image
-            my $current_image = $current_link;
-            push( @images_all, $current_image );
+        #print '2:'."\t".$test_image."\n";
+        foreach (@magicword_img_right) {
+            my $current_magicword = $_;
 
-            #print "\t".'Image:'."\t".$current_image."\n";
+            #print $current_magicword."\n";
+            $test_image =~ s/\|([ ]?)+$current_magicword([ ]?)+(\||\])/$3/i;
+        }
 
-            my $test_image = $current_image;
+        #print '3:'."\t".$test_image."\n";
+        foreach (@magicword_img_left) {
+            my $current_magicword = $_;
 
-            #print '1:'."\t".$test_image."\n";
-            foreach (@magicword_img_thumbnail) {
-                my $current_magicword = $_;
+            #print $current_magicword."\n";
+            $test_image =~ s/\|([ ]?)+$current_magicword([ ]?)+(\||\])/$3/i;
+        }
 
-                #print $current_magicword."\n";
-                $test_image =~ s/\|([ ]?)+$current_magicword([ ]?)+(\||\])/$3/i;
+        #print '4:'."\t".$test_image."\n";
+        foreach (@magicword_img_none) {
+            my $current_magicword = $_;
+
+            #print $current_magicword."\n";
+            $test_image =~ s/\|([ ]?)+$current_magicword([ ]?)+(\||\])/$3/i;
+        }
+
+        #print '5:'."\t".$test_image."\n";
+        foreach (@magicword_img_center) {
+            my $current_magicword = $_;
+
+            #print $current_magicword."\n";
+            $test_image =~ s/\|([ ]?)+$current_magicword([ ]?)+(\||\])/$3/i;
+        }
+
+        #print '6:'."\t".$test_image."\n";
+        foreach (@magicword_img_framed) {
+            my $current_magicword = $_;
+
+            #print $current_magicword."\n";
+            $test_image =~ s/\|([ ]?)+$current_magicword([ ]?)+(\||\])/$3/i;
+        }
+
+        #print '7:'."\t".$test_image."\n";
+        foreach (@magicword_img_frameless) {
+            my $current_magicword = $_;
+
+            #print $current_magicword."\n";
+            $test_image =~ s/\|([ ]?)+$current_magicword([ ]?)+(\||\])/$3/i;
+        }
+
+        #print '8:'."\t".$test_image."\n";
+        foreach (@magicword_img_border) {
+            my $current_magicword = $_;
+
+            #print $current_magicword."\n";
+            $test_image =~ s/\|([ ]?)+$current_magicword([ ]?)+(\||\])/$3/i;
+        }
+
+        #print '9:'."\t".$test_image."\n";
+        foreach (@magicword_img_sub) {
+            my $current_magicword = $_;
+
+            #print $current_magicword."\n";
+            $test_image =~ s/\|([ ]?)+$current_magicword([ ]?)+(\||\])/$3/i;
+        }
+
+        #print '10:'."\t".$test_image."\n";
+        foreach (@magicword_img_super) {
+            my $current_magicword = $_;
+
+            #print $current_magicword."\n";
+            $test_image =~ s/\|([ ]?)+$current_magicword([ ]?)+(\||\])/$3/i;
+        }
+
+        #print '11:'."\t".$test_image."\n";
+        foreach (@magicword_img_baseline) {
+            my $current_magicword = $_;
+
+            #print $current_magicword."\n";
+            $test_image =~ s/\|([ ]?)+$current_magicword([ ]?)+(\||\])/$3/i;
+        }
+
+        #print '12:'."\t".$test_image."\n";
+        foreach (@magicword_img_top) {
+            my $current_magicword = $_;
+
+            #print $current_magicword."\n";
+            $test_image =~ s/\|([ ]?)+$current_magicword([ ]?)+(\||\])/$3/i;
+        }
+
+        #print '13:'."\t".$test_image."\n";
+        foreach (@magicword_img_text_top) {
+            my $current_magicword = $_;
+
+            #print $current_magicword."\n";
+            $test_image =~ s/\|([ ]?)+$current_magicword([ ]?)+(\||\])/$3/i;
+        }
+
+        #print '14:'."\t".$test_image."\n";
+        foreach (@magicword_img_middle) {
+            my $current_magicword = $_;
+
+            #print $current_magicword."\n";
+            $test_image =~ s/\|([ ]?)+$current_magicword([ ]?)+(\||\])/$3/i;
+        }
+
+        #print '15:'."\t".$test_image."\n";
+        foreach (@magicword_img_bottom) {
+            my $current_magicword = $_;
+
+            #print $current_magicword."\n";
+            $test_image =~ s/\|([ ]?)+$current_magicword([ ]?)+(\||\])/$3/i;
+        }
+
+        #######
+        # special
+
+        # 100px
+        # 100x100px
+        #print '16:'."\t".$test_image."\n";
+        #foreach(@magicword_img_width) {
+        #	my $current_magicword = $_;
+        #	$current_magicword =~ s/$1/[0-9]+/;
+        ##	print $current_magicword."\n";
+        $test_image =~ s/\|([ ]?)+[0-9]+(x[0-9]+)?px([ ]?)+(\||\])/$4/i;
+
+        #}
+
+        #print '17:'."\t".$test_image."\n";
+
+        if ( $found_error_text eq '' ) {
+            if ( index( $test_image, '|' ) == -1 ) {
+
+                # [[Image:Afriga3.svg]]
+                $found_error_text = $current_image;
             }
+            else {
+                my $pos_1 = index( $test_image, '|' );
+                my $pos_2 = index( $test_image, '|', $pos_1 + 1 );
 
-            #print '2:'."\t".$test_image."\n";
-            foreach (@magicword_img_right) {
-                my $current_magicword = $_;
-
-                #print $current_magicword."\n";
-                $test_image =~ s/\|([ ]?)+$current_magicword([ ]?)+(\||\])/$3/i;
-            }
-
-            #print '3:'."\t".$test_image."\n";
-            foreach (@magicword_img_left) {
-                my $current_magicword = $_;
-
-                #print $current_magicword."\n";
-                $test_image =~ s/\|([ ]?)+$current_magicword([ ]?)+(\||\])/$3/i;
-            }
-
-            #print '4:'."\t".$test_image."\n";
-            foreach (@magicword_img_none) {
-                my $current_magicword = $_;
-
-                #print $current_magicword."\n";
-                $test_image =~ s/\|([ ]?)+$current_magicword([ ]?)+(\||\])/$3/i;
-            }
-
-            #print '5:'."\t".$test_image."\n";
-            foreach (@magicword_img_center) {
-                my $current_magicword = $_;
-
-                #print $current_magicword."\n";
-                $test_image =~ s/\|([ ]?)+$current_magicword([ ]?)+(\||\])/$3/i;
-            }
-
-            #print '6:'."\t".$test_image."\n";
-            foreach (@magicword_img_framed) {
-                my $current_magicword = $_;
-
-                #print $current_magicword."\n";
-                $test_image =~ s/\|([ ]?)+$current_magicword([ ]?)+(\||\])/$3/i;
-            }
-
-            #print '7:'."\t".$test_image."\n";
-            foreach (@magicword_img_frameless) {
-                my $current_magicword = $_;
-
-                #print $current_magicword."\n";
-                $test_image =~ s/\|([ ]?)+$current_magicword([ ]?)+(\||\])/$3/i;
-            }
-
-            #print '8:'."\t".$test_image."\n";
-            foreach (@magicword_img_border) {
-                my $current_magicword = $_;
-
-                #print $current_magicword."\n";
-                $test_image =~ s/\|([ ]?)+$current_magicword([ ]?)+(\||\])/$3/i;
-            }
-
-            #print '9:'."\t".$test_image."\n";
-            foreach (@magicword_img_sub) {
-                my $current_magicword = $_;
-
-                #print $current_magicword."\n";
-                $test_image =~ s/\|([ ]?)+$current_magicword([ ]?)+(\||\])/$3/i;
-            }
-
-            #print '10:'."\t".$test_image."\n";
-            foreach (@magicword_img_super) {
-                my $current_magicword = $_;
-
-                #print $current_magicword."\n";
-                $test_image =~ s/\|([ ]?)+$current_magicword([ ]?)+(\||\])/$3/i;
-            }
-
-            #print '11:'."\t".$test_image."\n";
-            foreach (@magicword_img_baseline) {
-                my $current_magicword = $_;
-
-                #print $current_magicword."\n";
-                $test_image =~ s/\|([ ]?)+$current_magicword([ ]?)+(\||\])/$3/i;
-            }
-
-            #print '12:'."\t".$test_image."\n";
-            foreach (@magicword_img_top) {
-                my $current_magicword = $_;
-
-                #print $current_magicword."\n";
-                $test_image =~ s/\|([ ]?)+$current_magicword([ ]?)+(\||\])/$3/i;
-            }
-
-            #print '13:'."\t".$test_image."\n";
-            foreach (@magicword_img_text_top) {
-                my $current_magicword = $_;
-
-                #print $current_magicword."\n";
-                $test_image =~ s/\|([ ]?)+$current_magicword([ ]?)+(\||\])/$3/i;
-            }
-
-            #print '14:'."\t".$test_image."\n";
-            foreach (@magicword_img_middle) {
-                my $current_magicword = $_;
-
-                #print $current_magicword."\n";
-                $test_image =~ s/\|([ ]?)+$current_magicword([ ]?)+(\||\])/$3/i;
-            }
-
-            #print '15:'."\t".$test_image."\n";
-            foreach (@magicword_img_bottom) {
-                my $current_magicword = $_;
-
-                #print $current_magicword."\n";
-                $test_image =~ s/\|([ ]?)+$current_magicword([ ]?)+(\||\])/$3/i;
-            }
-
-            #######
-            # special
-
-            # 100px
-            # 100x100px
-            #print '16:'."\t".$test_image."\n";
-            #foreach(@magicword_img_width) {
-            #	my $current_magicword = $_;
-            #	$current_magicword =~ s/$1/[0-9]+/;
-            ##	print $current_magicword."\n";
-            $test_image =~ s/\|([ ]?)+[0-9]+(x[0-9]+)?px([ ]?)+(\||\])/$4/i;
-
-            #}
-
-            #print '17:'."\t".$test_image."\n";
-
-            if ( $found_error_text eq '' ) {
-                if ( index( $test_image, '|' ) == -1 ) {
-
-                    # [[Image:Afriga3.svg]]
+                #print '1:'."\t".$pos_1."\n";
+                #print '2:'."\t".$pos_2."\n";
+                if ( $pos_2 == -1
+                    and index( $test_image, '|]' ) > -1 )
+                {
+                    # [[Image:Afriga3.svg|]]
                     $found_error_text = $current_image;
-                }
-                else {
-                    my $pos_1 = index( $test_image, '|' );
-                    my $pos_2 = index( $test_image, '|', $pos_1 + 1 );
 
-                    #print '1:'."\t".$pos_1."\n";
-                    #print '2:'."\t".$pos_2."\n";
-                    if ( $pos_2 == -1
-                        and index( $test_image, '|]' ) > -1 )
-                    {
-                        # [[Image:Afriga3.svg|]]
-                        $found_error_text = $current_image;
-
-                        #print 'Error'."\n";
-                    }
+                    #print 'Error'."\n";
                 }
             }
         }
@@ -2230,7 +2219,6 @@ sub get_images {
     if ( $found_error_text ne '' ) {
         error_030_image_without_description($found_error_text);
     }
-
     return ();
 }
 
@@ -6460,7 +6448,7 @@ sub error_register {
 
     $notice =~ s/\n//g;
 
-    print "\t" . $error_code . "\t" . $title . "\t" . $notice . "\n";
+    #print "\t" . $error_code . "\t" . $title . "\t" . $notice . "\n";
 
     $Error_number_counter[$error_code] = $Error_number_counter[$error_code] + 1;
     $error_counter = $error_counter + 1;
@@ -6692,7 +6680,7 @@ two_column_display( 'Project:',   $project );
 two_column_display( 'Scan type:', $dump_or_live . " scan" );
 
 open_db();
-cearDumpscanTable() if ( $dump_or_live eq 'dump' );
+clearDumpscanTable() if ( $dump_or_live eq 'dump' );
 getErrors();
 readMetadata();
 
@@ -6701,7 +6689,6 @@ scan_pages();    # Scan articles.
 
 updateDumpDate($dump_date_for_output) if ( $dump_or_live eq 'dump' );
 update_table_cw_error_from_dump();
-deleteFixedArticles();
 
 close_db();
 
