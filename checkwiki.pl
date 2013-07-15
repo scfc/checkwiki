@@ -69,6 +69,7 @@ our @namespace_cat;       #all namespaces for categorys
 our @namespace_image;     #all namespaces for images
 our @namespace_templates; #all namespaces for templates
 our $image_regex = q{};
+our $cat_regex   = q{};
 
 our @magicword_defaultsort;
 
@@ -580,7 +581,9 @@ sub readMetadata {
         }
         elsif ( $id == 14 ) {
             @namespace_cat = ($name);
+            $cat_regex     = $name;
             push( @namespace_cat, $canonical ) if ( $name ne $canonical );
+            $cat_regex = $name . "|" . $canonical if ( $name ne $canonical );
         }
     }
 
@@ -595,6 +598,7 @@ sub readMetadata {
         }
         elsif ( $entry->{id} == 14 ) {
             push( @namespace_cat, $name );
+            $cat_regex = $cat_regex . "|" . $name;
         }
 
         # Store all aliases.
@@ -702,7 +706,8 @@ Rodné jméno = <hiero><--M17-Y5:N35-G17-F4:X1--></hiero> <br />
 Trůnní jméno = <hiero>M23-L2-<--N5:S12-D28*D28:D28--></hiero><br />
 <references group='Bild' />&Ouml  124345
 ===This is a headline with reference <ref>A reference with '''bold''' text</ref>===
-Nubkaure 
+Nubkaure
+[[Category:Living people]] 
 <hiero>-V28-V31:N35-G17-C10-</hiero>
 Jméno obou paní = &uuml<hiero>-G16-V28-V31:N35-G17-C10-</hiero><br />
 [[Image:logo|thumb| < small> sdfsdf</small>]]
@@ -774,13 +779,14 @@ ISBN 978-88-10-24109-7
 * Michel_Schooyans - [http://www.dehoniane.it/edb/cat_dettaglio.php?ISBN=24109]
 *VARA_gezinsencyclopedie - [https://www5.cbonline.nl/pls/apexcop/f?p=130:1010:401581703141772 ISBN-bureau]
 
-
+</math>This is the end
 Testtext hat einen [[|Link]], der nirgendwo hinführt.<ref>Kees Heitink en Gert Jan Koster, De tram rijdt weer!: Bennekomse tramgeschiedenis 1882 - 1937 - 1968 - 2008, 28 bladzijden, geen ISBN-nummer, uitverkocht.</ref>.
 === 4Acte au sens d''instrumentum'' ===
 [[abszolútérték-függvény||]] ''f''(''x'') – ''f''(''y'') [[abszolútérték-függvény||]] aus huwiki
  * [[Antwerpen (stad)|Antwerpen]] heeft na de succesvolle <BR>organisatie van de Eurogames XI in [[2007]] voorstellen gedaan om editie IX van de Gay Games in [[2014]] of eventueel de 3e editie van de World OutGames in [[2013]] naar Antwerpen te halen. Het zogeheten '[[bidbook]]' is ingediend en het is afwachten op mogelijke toewijzing door de internationale organisaties. <br>
 *a[[B:abc]]<br>
 *bas addf< br>
+<math>Cholose</math>
 *casfdasdf< br >
 *das fdasdf< br / >
 [[Che&#322;mno]] and 
@@ -1145,78 +1151,23 @@ sub get_next_comment {
 ###########################################################################
 
 sub get_math {
-    my $pos_start_old = 0;
-    my $pos_end_old   = 0;
-    my $end_search    = 'yes';
-    do {
-        my $pos_start = 0;
-        my $pos_end   = 0;
-        $end_search = 'yes';
 
-        #get position of next <math>
-        $pos_start = index( lc($text), '<math>', $pos_start_old );
-        my $pos_start2 = index( lc($text), '<math style=', $pos_start_old );
-        my $pos_start3 = index( lc($text), '<math title=', $pos_start_old );
-        my $pos_start4 = index( lc($text), '<math alt=',   $pos_start_old );
+    my $test_text = lc($text);
 
-        #print $pos_start.' '. $pos_end .' '.$pos_start2."\n";
-        if (
-            $pos_start == -1
-            or (    $pos_start > -1
-                and $pos_start2 > -1
-                and $pos_start > $pos_start2 )
-          )
-        {
-            $pos_start = $pos_start2;
-        }
-        if (
-            $pos_start == -1
-            or (    $pos_start > -1
-                and $pos_start3 > -1
-                and $pos_start > $pos_start3 )
-          )
-        {
-            $pos_start = $pos_start3;
-        }
-        if (
-            $pos_start == -1
-            or (    $pos_start > -1
-                and $pos_start4 > -1
-                and $pos_start > $pos_start4 )
-          )
-        {
-            $pos_start = $pos_start4;
-        }
-        $pos_end = index( lc($text), '</math>', $pos_start + length('<math') );
+    if ( $test_text =~ /<math>/ ) {
+        my $math_begin = 0;
+        my $math_end   = 0;
 
-        #print $pos_start.' '. $pos_end ."\n";
-        if ( $pos_start > -1 and $pos_end > -1 ) {
+        $math_begin = () = $test_text =~ /<math>/g;
+        $math_end   = () = $test_text =~ /<\/math>/g;
 
-            #found a math in current page
-            $pos_end = $pos_end + length('</math>');
-
-            #print substr($text, $pos_start, $pos_end - $pos_start  )."\n";
-
-            $end_search    = 'no';
-            $pos_start_old = $pos_end;
-
-            #replace comment with space
-            my $text_before = substr( $text, 0, $pos_start );
-            my $text_after  = substr( $text, $pos_end );
-            my $filler      = q{};
-            for ( my $i = 0 ; $i < ( $pos_end - $pos_start ) ; $i++ ) {
-                $filler = $filler . ' ';
-            }
-            $text = $text_before . $filler . $text_after;
-        }
-        if ( $pos_start > -1 and $pos_end == -1 ) {
-            error_013_Math_no_correct_end( substr( $text, $pos_start, 50 ) );
-
-            #print 'Math:'.substr( $text, $pos_start, 50)."\n";
-            $end_search = 'yes';
+        if ( $math_begin != $math_end ) {
+            my $snipett = get_broken_tag( '<math>', '</math>' );
+            error_013_Math_no_correct_end($snipett);
         }
 
-    } until ( $end_search eq 'yes' );
+        $text =~ s/<math>(.*?)<\/math>//g;
+    }
 
     return ();
 }
@@ -3191,28 +3142,21 @@ sub error_009_more_then_one_category_in_a_line {
     my $error_code = 9;
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
-        my $error_line = q{};
+        if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
-        foreach (@lines) {
-            my $current_line = $_;
-            my $found        = 0;
+            my $error_line = q{};
+            foreach (@lines) {
+                my $current_line = $_;
+                my $found        = 0;
+                my $cat_number   = 0;
 
-            foreach (@namespace_cat) {
-                my $namespace_cat_word = $_;
-                $found = $found + 1
-                  if ( $current_line =~ /\[\[([ ]+)?($namespace_cat_word:)/ig );
+                $cat_number = () = $current_line =~ /\[\[\s*($cat_regex):/ig;
+                if ( $cat_number > 1 ) {
+                    $error_line = $current_line;
+                    error_register( $error_code,
+                        '<nowiki>' . $error_line . '</nowiki>' );
+                }
             }
-
-            if ( $found > 1
-                and ( $page_namespace == 0 or $page_namespace == 104 ) )
-            {
-                $error_line = $current_line;
-            }
-        }
-
-        if ( $error_line ne '' ) {
-            error_register( $error_code,
-                '<nowiki>' . $error_line . '</nowiki>' );
         }
     }
 
@@ -6448,7 +6392,7 @@ sub error_register {
 
     $notice =~ s/\n//g;
 
-    #print "\t" . $error_code . "\t" . $title . "\t" . $notice . "\n";
+    print "\t" . $error_code . "\t" . $title . "\t" . $notice . "\n";
 
     $Error_number_counter[$error_code] = $Error_number_counter[$error_code] + 1;
     $error_counter = $error_counter + 1;
@@ -6459,6 +6403,59 @@ sub error_register {
 }
 
 ######################################################################
+
+sub get_broken_tag() {
+    my ( $tag_open, $tag_close ) = @_;
+    my $text_snipett = q{};
+    my $found        = 0;
+
+    my $test_text = lc($text);
+
+    my $tag_open_num  = () = $test_text =~ /$tag_open/g;
+    my $tag_close_num = () = $test_text =~ /$tag_close/g;
+
+    if ( $tag_open_num > $tag_close_num ) {
+        my $pos_open  = index( $test_text, $tag_open );
+        my $pos_open2 = index( $test_text, $tag_open, $pos_open + 6 );
+        my $pos_close = index( $test_text, $tag_close );
+        while ( $found eq 0 ) {
+            if ( $pos_open2 == -1 ) {
+                $found = $pos_open;
+            }
+            elsif ( $pos_open2 < $pos_close ) {
+                $found = $pos_open;
+            }
+            else {
+                $pos_open  = $pos_open2;
+                $pos_open2 = index( $test_text, $tag_open, $pos_open + 6 );
+                $pos_close = index( $test_text, $tag_close, $pos_close + 6 );
+            }
+        }
+    }
+    elsif ( $tag_open_num < $tag_close_num ) {
+        my $pos_close  = rindex( $test_text, $tag_close );
+        my $pos_close2 = rindex( $test_text, $tag_close, $pos_close - 6 );
+        my $pos_open   = rindex( $test_text, $tag_open );
+        while ( $found eq 0 ) {
+            if ( $pos_close2 == -1 ) {
+                $found = $pos_close;
+            }
+            elsif ( $pos_close2 > $pos_open ) {
+                $found = $pos_close;
+            }
+            else {
+                $pos_close  = $pos_close2;
+                $pos_close2 = rindex( $test_text, $tag_close, $pos_close - 6 );
+                $pos_open   = rindex( $test_text, $tag_open, $pos_open - 6 );
+            }
+        }
+    }
+
+    $text_snipett = substr( $text, $found, 40 );
+    return ($text_snipett);
+}
+
+######################################################################}
 
 # Insert error into database.
 sub insert_into_db {
