@@ -308,7 +308,8 @@ sub scan_pages {
             $title          = case_fixer($title);
             $text           = ${ $page->text };
             check_article();
-            $end_of_dump = 'yes' if ( $artcount > 500 );
+
+            #$end_of_dump = 'yes' if ( $artcount > 10000 );
         }
     }
     elsif ( $dump_or_live eq 'live' ) {
@@ -1154,19 +1155,19 @@ sub get_math {
 
     my $test_text = lc($text);
 
-    if ( $test_text =~ /<math>/ ) {
+    if ( $test_text =~ /<math>|<math style|<math title|<math alt/ ) {
         my $math_begin = 0;
         my $math_end   = 0;
 
-        $math_begin = () = $test_text =~ /<math>/g;
+        $math_begin = () = $test_text =~ /<math/g;
         $math_end   = () = $test_text =~ /<\/math>/g;
 
         if ( $math_begin != $math_end ) {
-            my $snipett = get_broken_tag( '<math>', '</math>' );
-            error_013_Math_no_correct_end($snipett);
+            my $snippet = get_broken_tag( '<math', '</math>' );
+            error_013_Math_no_correct_end($snippet);
         }
 
-        $text =~ s/<math>(.*?)<\/math>//g;
+        $text =~ s/<math>(.*?)<\/math>//sg;
     }
 
     return ();
@@ -3961,7 +3962,6 @@ sub error_034_template_programming_elements {
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
-            my $test_text = 'no found';
             my $test_line = q{};
 
             my $text_lc = lc($text);
@@ -3969,7 +3969,7 @@ sub error_034_template_programming_elements {
 /({{{|#if:|#ifeq:|#switch:|#ifexist:|{{fullpagename}}|{{sitename}}|{{namespace}})/
               )
             {
-                my $pos = index( $test_text, $1 );
+                my $pos = index( $text_lc, $1 );
                 $test_line = substr( $text, $pos, 40 );
                 $test_line =~ s/[\n\r]//mg;
 
@@ -6392,12 +6392,12 @@ sub error_register {
 
     $notice =~ s/\n//g;
 
-    print "\t" . $error_code . "\t" . $title . "\t" . $notice . "\n";
+    #print "\t" . $error_code . "\t" . $title . "\t" . $notice . "\n";
 
     $Error_number_counter[$error_code] = $Error_number_counter[$error_code] + 1;
     $error_counter = $error_counter + 1;
 
-    #insert_into_db( $error_counter, $error_code, $notice );
+    insert_into_db( $error_counter, $error_code, $notice );
 
     return ();
 }
