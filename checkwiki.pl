@@ -826,19 +826,27 @@ Verlag LANGEWIESCHE, ISBN-10: 3784551912 und ISBN-13: 9783784551913
 
     delete_old_errors_in_db();
 
-    # REMOVES FROM $text ANY CONTENT BETWEEN <SOURCE> AND <PRE> TAGS.
-    # CALLS #005 AND #023
-    get_comments_nowiki_pre();
+    # REMOVES FROM $text ANY CONTENT BETWEEN <!-- --> TAGS.
+    # CALLS #05
+    get_comments();
 
-    # REMOVES FROM $text ANY CONTENT BETWEEN <MATH> TAGS.
+    # REMOVES FROM $text ANY CONTENT BETWEEN <nowiki> </nowiki> TAGS.
+    # CALLS #23
+    get_nowiki();
+
+    # REMOVES FROM $text ANY CONTENT BETWEEN <pre> </pre> TAGS.
+    # CALLS #24
+    get_pre();
+
+    # REMOVES FROM $text ANY CONTENT BETWEEN <math> </math> TAGS.
     # CALLS #013
     get_math();
 
-    # REMOVES FROM $text ANY CONTENT BETWEEN <SOURCE> TAGS.
+    # REMOVES FROM $text ANY CONTENT BETWEEN <source> </sources TAGS.
     # CALLS #014
     get_source();
 
-    # REMOVES FROM $text ANY CONTENT BETWEEN <CODE> TAGS.
+    # REMOVES FROM $text ANY CONTENT BETWEEN <code> </code> TAGS.
     # CALLS #15
     get_code();
 
@@ -860,7 +868,7 @@ Verlag LANGEWIESCHE, ISBN-10: 3784551912 und ISBN-13: 9783784551913
     get_ref();
 
     # DOES TEMPLATETIGER.
-    # CREATES @templates_all - USED IN #16
+    # CREATES @templates_all - USED IN #59, #60
     # CALLS #43
     get_templates();
 
@@ -914,237 +922,81 @@ sub delete_old_errors_in_db {
 }
 
 ###########################################################################
-##
+## FIND MISSING COMMENTS TAGS AND REMOVE EVERYTHIGN BETWEEN THE TAGS
 ###########################################################################
 
-sub get_comments_nowiki_pre {
-    my $last_pos    = -1;
-    my $pos_comment = -1;
-    my $pos_nowiki  = -1;
-    my $pos_pre     = -1;
-    my $pos_first   = -1;
-    my $loop_again  = 0;
-    do {
+sub get_comments {
 
-        # next tag
-        $pos_comment = index( $text, '<!--',     $last_pos );
-        $pos_nowiki  = index( $text, '<nowiki>', $last_pos );
-        $pos_pre     = index( $text, '<pre>',    $last_pos );
-        $pos_pre = index( $text, '<pre ', $last_pos ) if ( $pos_pre == -1 );
+    my $test_text = lc($text);
 
-        #print $pos_comment.' '.$pos_nowiki.' '.$pos_pre."\n";
+    if ( $test_text =~ /<!--/ ) {
+        my $comments_begin = 0;
+        my $comments_end   = 0;
 
-        #first tag
-        my $tag_first = q{};
-        $tag_first = 'comment' if ( $pos_comment > -1 );
-        $tag_first = 'nowiki'
-          if (
-            ( $pos_nowiki > -1 and $tag_first eq '' )
-            or (    $pos_nowiki > -1
-                and $tag_first eq 'comment'
-                and $pos_nowiki < $pos_comment )
-          );
-        $tag_first = 'pre'
-          if (
-            ( $pos_pre > -1 and $tag_first eq '' )
-            or (    $pos_pre > -1
-                and $tag_first eq 'comment'
-                and $pos_pre < $pos_comment )
-            or (    $pos_pre > -1
-                and $tag_first eq 'nowiki'
-                and $pos_pre < $pos_nowiki )
-          );
+        $comments_begin = () = $test_text =~ /<!--/g;
+        $comments_end   = () = $test_text =~ /-->/g;
 
-        #print $tag_first."\n";
-
-        #check end tag
-        my $pos_comment_end =
-          index( $text, '-->', $pos_comment + length('<!--') );
-        my $pos_nowiki_end =
-          index( $text, '</nowiki>', $pos_nowiki + length('<nowiki>') );
-        my $pos_pre_end = index( $text, '</pre>', $pos_pre + length('<pre') );
-
-        #comment
-        if ( $tag_first eq 'comment' and $pos_comment_end > -1 ) {
-
-            #found <!-- and -->
-            $last_pos   = get_next_comment( $pos_comment + $last_pos );
-            $loop_again = 1;
-
-            #print 'comment'.' '.$pos_comment.' '.$last_pos."\n";
-        }
-        if ( $tag_first eq 'comment' and $pos_comment_end == -1 ) {
-
-            #found <!-- and no -->
-            $last_pos   = $pos_comment + 1;
-            $loop_again = 1;
-
-            #print 'comment no end'."\n";
-            my $text_output = substr( $text, $pos_comment );
-            $text_output = text_reduce( $text_output, 80 );
-            error_005_Comment_no_correct_end($text_output);
-
-            #print $text_output."\n";
+        if ( $comments_begin != $comments_end ) {
+            my $snippet = get_broken_tag( '<!--', '-->' );
+            error_005_Comment_no_correct_end($snippet);
         }
 
-        #nowiki
-        if ( $tag_first eq 'nowiki' and $pos_nowiki_end > -1 ) {
-
-            # found <nowiki> and </nowiki>
-            $last_pos   = get_next_nowiki( $pos_nowiki + $last_pos );
-            $loop_again = 1;
-
-            #print 'nowiki'.' '.$pos_nowiki.' '.$last_pos."\n";
-        }
-        if ( $tag_first eq 'nowiki' and $pos_nowiki_end == -1 ) {
-
-            # found <nowiki> and no </nowiki>
-            $last_pos   = $pos_nowiki + 1;
-            $loop_again = 1;
-
-            #print 'nowiki no end'."\n";
-            my $text_output = substr( $text, $pos_nowiki );
-            $text_output = text_reduce( $text_output, 80 );
-            error_023_nowiki_no_correct_end($text_output);
-        }
-
-        #pre
-        if ( $tag_first eq 'pre' and $pos_pre_end > -1 ) {
-
-            # found <pre> and </pre>
-            $last_pos   = get_next_pre( $pos_pre + $last_pos );
-            $loop_again = 1;
-
-            #print 'pre'.' '.$pos_pre.' '.$last_pos."\n";
-        }
-        if ( $tag_first eq 'pre' and $pos_pre_end == -1 ) {
-
-            # found <pre> and no </pre>
-            #print $last_pos.' '.$pos_pre."\n";
-            $last_pos   = $pos_pre + 1;
-            $loop_again = 1;
-
-            #print 'pre no end'."\n";
-            my $text_output = substr( $text, $pos_pre );
-            $text_output = text_reduce( $text_output, 80 );
-            error_024_pre_no_correct_end($text_output);
-        }
-
-        #end
-        if (    $pos_comment == -1
-            and $pos_nowiki == -1
-            and $pos_pre == -1 )
-        {
-            # found no <!-- and no <nowiki> and no <pre>
-            $loop_again = 0;
-
-        }
-    } until ( $loop_again == 0 );
-    $text_without_comments = $text;
+        $text =~ s/<!--(.*?)-->//sg;
+    }
 
     return ();
 }
 
 ###########################################################################
-##
+## FIND MISSING NOWIKI TAGS AND REMOVE EVERYTHIGN BETWEEN THE TAGS
 ###########################################################################
 
-sub get_next_pre {
+sub get_nowiki {
 
-    #get position of next comment
-    my $pos_start = index( $text, '<pre' );
-    my $pos_end = index( $text, '</pre>', $pos_start );
-    my $result = $pos_start + length('<pre');
+    my $test_text = lc($text);
 
-    if ( $pos_start > -1 and $pos_end > -1 ) {
+    if ( $test_text =~ /<nowiki>/ ) {
+        my $nowiki_begin = 0;
+        my $nowiki_end   = 0;
 
-        #found a comment in current page
-        $pos_end = $pos_end + length('</pre>');
+        $nowiki_begin = () = $test_text =~ /<math/g;
+        $nowiki_end   = () = $test_text =~ /<\/math>/g;
 
-#$comment_counter = $comment_counter +1;
-#$comments[$comment_counter][0] = $pos_start;
-#$comments[$comment_counter][1] = $pos_end;
-#$comments[$comment_counter][2] = substr($text, $pos_start, $pos_end - $pos_start  );
-
-#print 'Begin='.$comments[$comment_counter][0].' End='.$comments[$comment_counter][1]."\n";
-#print 'Comment='.$comments[$comment_counter][2]."\n";
-
-        #replace comment with space
-        my $text_before = substr( $text, 0, $pos_start );
-        my $text_after  = substr( $text, $pos_end );
-        my $filler      = q{};
-        for ( my $i = 0 ; $i < ( $pos_end - $pos_start ) ; $i++ ) {
-            $filler = $filler . ' ';
+        if ( $nowiki_begin != $nowiki_end ) {
+            my $snippet = get_broken_tag( '<nowiki>', '</nowiki>' );
+            error_023_nowiki_no_correct_end($snippet);
         }
-        $text   = $text_before . $filler . $text_after;
-        $result = $pos_end;
+
+        $text =~ s/<nowiki>(.*?)<\/nowiki>//sg;
     }
 
-    return ($result);
+    return ();
 }
 
 ###########################################################################
-##
+## FIND MISSING PRE TAGS AND REMOVE EVERYTHIGN BETWEEN THE TAGS
 ###########################################################################
 
-sub get_next_nowiki {
+sub get_pre {
 
-    #get position of next comment
-    my $pos_start = index( $text, '<nowiki>' );
-    my $pos_end = index( $text, '</nowiki>', $pos_start );
-    my $result = $pos_start + length('<nowiki>');
+    my $test_text = lc($text);
 
-    if ( $pos_start > -1 and $pos_end > -1 ) {
+    if ( $test_text =~ /<pre>/ ) {
+        my $pre_begin = 0;
+        my $pre_end   = 0;
 
-        #found a comment in current page
-        $pos_end = $pos_end + length('</nowiki>');
+        $pre_begin = () = $test_text =~ /<pre>/g;
+        $pre_end   = () = $test_text =~ /<\/pre>/g;
 
-        #replace comment with space
-        my $text_before = substr( $text, 0, $pos_start );
-        my $text_after  = substr( $text, $pos_end );
-        my $filler      = q{};
-        for ( my $i = 0 ; $i < ( $pos_end - $pos_start ) ; $i++ ) {
-            $filler = $filler . ' ';
+        if ( $pre_begin != $pre_end ) {
+            my $snippet = get_broken_tag( '<pre>', '</pre>' );
+            error_024_pre_no_correct_end($snippet);
         }
-        $text   = $text_before . $filler . $text_after;
-        $result = $pos_end;
+
+        $text =~ s/<pre>(.*?)<\/pre>//sg;
     }
 
-    return ($result);
-}
-
-###########################################################################
-##
-###########################################################################
-
-sub get_next_comment {
-    my $pos_start = index( $text, '<!--' );
-    my $pos_end = index( $text, '-->', $pos_start + length('<!--') );
-    my $result = $pos_start + length('<!--');
-    if ( $pos_start > -1 and $pos_end > -1 ) {
-
-        #found a comment in current page
-        $pos_end                       = $pos_end + length('-->');
-        $comment_counter               = $comment_counter + 1;
-        $comments[$comment_counter][0] = $pos_start;
-        $comments[$comment_counter][1] = $pos_end;
-        $comments[$comment_counter][2] =
-          substr( $text, $pos_start, $pos_end - $pos_start );
-
-        #print $comments[$comment_counter][2]."\n";
-
-        #replace comment with space
-        my $text_before = substr( $text, 0, $pos_start );
-        my $text_after  = substr( $text, $pos_end );
-        my $filler      = q{};
-        for ( my $i = 0 ; $i < ( $pos_end - $pos_start ) ; $i++ ) {
-            $filler = $filler . ' ';
-        }
-        $text   = $text_before . $filler . $text_after;
-        $result = $pos_end;
-    }
-
-    return ($result);
+    return ();
 }
 
 ###########################################################################
@@ -1167,162 +1019,72 @@ sub get_math {
             error_013_Math_no_correct_end($snippet);
         }
 
-        $text =~ s/<math>(.*?)<\/math>//sg;
+        $text =~ s/<math(.*?)<\/math>//sg;
     }
 
     return ();
 }
 
 ###########################################################################
-##
+## FIND MISSING SOURCE TAGS AND REMOVE EVERYTHIGN BETWEEN THE TAGS
 ###########################################################################
 
 sub get_source {
-    my $pos_start_old = 0;
-    my $pos_end_old   = 0;
-    my $end_search    = 'yes';
 
-    do {
-        my $pos_start = 0;
-        my $pos_end   = 0;
-        $end_search = 'yes';
+    my $test_text = lc($text);
 
-        #get position of next <math>
-        $pos_start = index( $text, '<source', $pos_start_old );
-        $pos_end = index( $text, '</source>', $pos_start + length('<source') );
-        if ( $title eq 'ALTER' ) {
-            print $pos_start. "\n";
-            print $pos_end. "\n";
+    if ( $test_text =~ /<source>/ ) {
+        my $source_begin = 0;
+        my $source_end   = 0;
+
+        $source_begin = () = $test_text =~ /<source>/g;
+        $source_end   = () = $test_text =~ /<\/source>/g;
+
+        if ( $source_begin != $source_end ) {
+            my $snippet = get_broken_tag( '<source>', '</source>' );
+            error_014_Source_no_correct_end($snippet);
         }
 
-        if ( $pos_start > -1 and $pos_end > -1 ) {
-
-            #found a math in current page
-            $pos_end = $pos_end + length('</source>');
-
-            #print substr($text, $pos_start, $pos_end - $pos_start  )."\n";
-
-            $end_search    = 'no';
-            $pos_start_old = $pos_end;
-
-            #replace comment with space
-            my $text_before = substr( $text, 0, $pos_start );
-            my $text_after  = substr( $text, $pos_end );
-            my $filler      = q{};
-            for ( my $i = 0 ; $i < ( $pos_end - $pos_start ) ; $i++ ) {
-                $filler = $filler . ' ';
-            }
-            $text = $text_before . $filler . $text_after;
-        }
-        if ( $pos_start > -1 and $pos_end == -1 ) {
-            error_014_Source_no_correct_end( substr( $text, $pos_start, 50 ) );
-
-            #print 'Source:'.substr( $text, $pos_start, 50)."\n";
-            $end_search = 'yes';
-        }
-
-    } until ( $end_search eq 'yes' );
+        $text =~ s/<source>(.*?)<\/source>//sg;
+    }
 
     return ();
 }
 
 ###########################################################################
-##
-###########################################################################
-
-sub get_syntaxhighlight {
-    my $pos_start_old = 0;
-    my $pos_end_old   = 0;
-    my $end_search    = 'yes';
-
-    do {
-        my $pos_start = 0;
-        my $pos_end   = 0;
-        $end_search = 'yes';
-
-        #get position of next <math>
-        $pos_start = index( $text, '<syntaxhighlight', $pos_start_old );
-        $pos_end =
-          index( $text, '</syntaxhighlight>',
-            $pos_start + length('<syntaxhighlight') );
-        if ( $title eq 'ALTER' ) {
-            print $pos_start. "\n";
-            print $pos_end. "\n";
-        }
-
-        if ( $pos_start > -1 and $pos_end > -1 ) {
-
-            #found a math in current page
-            $pos_end = $pos_end + length('</syntaxhighlight>');
-
-            #print substr($text, $pos_start, $pos_end - $pos_start  )."\n";
-
-            $end_search    = 'no';
-            $pos_start_old = $pos_end;
-
-            #replace comment with space
-            my $text_before = substr( $text, 0, $pos_start );
-            my $text_after  = substr( $text, $pos_end );
-            my $filler      = q{};
-            for ( my $i = 0 ; $i < ( $pos_end - $pos_start ) ; $i++ ) {
-                $filler = $filler . ' ';
-            }
-            $text = $text_before . $filler . $text_after;
-        }
-        if ( $pos_start > -1 and $pos_end == -1 ) {
-
-            $end_search = 'yes';
-        }
-
-    } until ( $end_search eq 'yes' );
-
-    return ();
-}
-
-###########################################################################
-##
+## FIND MISSING CODE TAGS AND REMOVE EVERYTHIGN BETWEEN THE TAGS
 ###########################################################################
 
 sub get_code {
-    my $pos_start_old = 0;
-    my $pos_end_old   = 0;
-    my $end_search    = 'yes';
-    do {
-        my $pos_start = 0;
-        my $pos_end   = 0;
-        $end_search = 'yes';
+    my $test_text = lc($text);
 
-        #get position of next <math>
-        $pos_start = index( $text, '<code>',  $pos_start_old );
-        $pos_end   = index( $text, '</code>', $pos_start );
+    if ( $test_text =~ /<code>/ ) {
+        my $code_begin = 0;
+        my $code_end   = 0;
 
-        if ( $pos_start > -1 and $pos_end > -1 ) {
+        $code_begin = () = $test_text =~ /<code>/g;
+        $code_end   = () = $test_text =~ /<\/code>/g;
 
-            #found a math in current page
-            $pos_end = $pos_end + length('</code>');
-
-            #print substr($text, $pos_start, $pos_end - $pos_start  )."\n";
-
-            $end_search    = 'no';
-            $pos_start_old = $pos_end;
-
-            #replace comment with space
-            my $text_before = substr( $text, 0, $pos_start );
-            my $text_after  = substr( $text, $pos_end );
-            my $filler      = q{};
-            for ( my $i = 0 ; $i < ( $pos_end - $pos_start ) ; $i++ ) {
-                $filler = $filler . ' ';
-            }
-            $text = $text_before . $filler . $text_after;
-        }
-        if ( $pos_start > -1 and $pos_end == -1 ) {
-            error_015_Code_no_correct_end( substr( $text, $pos_start, 50 ) );
-
-            #print 'Code:'.substr( $text, $pos_start, 50)."\n";
-            $end_search = 'yes';
+        if ( $code_begin != $code_end ) {
+            my $snippet = get_broken_tag( '<code>', '</code>' );
+            error_015_Code_no_correct_end($snippet);
         }
 
-    } until ( $end_search eq 'yes' );
+        $text =~ s/<code>(.*?)<\/code>//sg;
+    }
+
+    return ();
+}
+
+###########################################################################
+## FIND MISSING SYNTAXHIGHLIGHT TAGS AND REMOVE EVERYTHIGN BETWEEN THE TAGS
+###########################################################################
+
+sub get_syntaxhighlight {
+
+    my $test_text = lc($text);
+
+    $text =~ s/<syntaxhighlight(.*?)<\/syntaxhighlight>//sg;
 
     return ();
 }
@@ -2240,39 +2002,21 @@ sub get_tables {
 ###########################################################################
 
 sub get_gallery {
-    my $pos_start_old = 0;
-    my $pos_end_old   = 0;
-    my $end_search    = 'yes';
-    do {
-        my $pos_start = 0;
-        my $pos_end   = 0;
-        $end_search = 'yes';
-        $pos_start  = index( $text, '<gallery', $pos_start_old );
-        $pos_end    = index( $text, '</gallery>', $pos_start );
-        if ( $pos_start > -1 and $pos_end > -1 ) {
-            $pos_end       = $pos_end + length('</gallery>');
-            $end_search    = 'no';
-            $pos_start_old = $pos_end;
 
-            #replace comment with space
-            my $text_before = substr( $text, 0, $pos_start );
-            my $text_after = substr( $text, $pos_end );
-            my $text_gallery =
-              substr( $text, $pos_start, $pos_end - $pos_start );
-            error_035_gallery_without_description($text_gallery);
+    my $test_text = lc($text);
 
-            my $filler = q{};
-            for ( my $i = 0 ; $i < ( $pos_end - $pos_start ) ; $i++ ) {
-                $filler = $filler . ' ';
-            }
-            $text = $text_before . $filler . $text_after;
+    if ( $test_text =~ /<gallery>/ ) {
+        my $gallery_begin = 0;
+        my $gallery_end   = 0;
 
+        $gallery_begin = () = $test_text =~ /<gallery>/g;
+        $gallery_end   = () = $test_text =~ /<\/gallery>/g;
+
+        if ( $gallery_begin != $gallery_end ) {
+            my $snippet = get_broken_tag( '<gallery>', '</gallery>' );
+            error_029_gallery_no_correct_end($snippet);
         }
-        if ( $pos_start > -1 and $pos_end == -1 ) {
-            error_029_gallery_no_correct_end( substr( $text, $pos_start, 50 ) );
-            $end_search = 'yes';
-        }
-    } until ( $end_search eq 'yes' );
+    }
 
     return ();
 }
@@ -6111,19 +5855,18 @@ sub error_087_html_names_entities_without_semicolon {
         {
             my $pos       = -1;
             my $test_text = lc($text);
+            $test_text =~ s/<ref(.*?)ref>//sg;    # REFS USE & FOR INPUT
 
             # see http://turner.faculty.swau.edu/webstuff/htmlsymbols.html
-            while ( $test_text =~ /&sup2[^;]/g )  { $pos = pos($test_text) }
-            while ( $test_text =~ /&sup3[^;]/g )  { $pos = pos($test_text) }
-            while ( $test_text =~ /&auml[^;]/g )  { $pos = pos($test_text) }
-            while ( $test_text =~ /&ouml[^;]/g )  { $pos = pos($test_text) }
-            while ( $test_text =~ /&uuml[^;]/g )  { $pos = pos($test_text) }
-            while ( $test_text =~ /&szlig[^;]/g ) { $pos = pos($test_text) }
-            while ( $test_text =~ /&aring[^;]/g ) { $pos = pos($test_text) }
-            while ( $test_text =~ /&hellip[^;]/g ) { $pos = pos($test_text) }; # …
-                #while($test_text =~ /&lt[^;]/g) { $pos = pos($test_text) };						# for example, &lt;em> produces <em> for use in examples
-                #while($test_text =~ /&gt[^;]/g) { $pos = pos($test_text) };
-                #while($test_text =~ /&amp[^;]/g) { $pos = pos($test_text) };
+            while ( $test_text =~ /&sup2[^;]/g )   { $pos = pos($test_text) }
+            while ( $test_text =~ /&sup3[^;]/g )   { $pos = pos($test_text) }
+            while ( $test_text =~ /&auml[^;]/g )   { $pos = pos($test_text) }
+            while ( $test_text =~ /&ouml[^;]/g )   { $pos = pos($test_text) }
+            while ( $test_text =~ /&uuml[^;]/g )   { $pos = pos($test_text) }
+            while ( $test_text =~ /&szlig[^;]/g )  { $pos = pos($test_text) }
+            while ( $test_text =~ /&aring[^;]/g )  { $pos = pos($test_text) }
+            while ( $test_text =~ /&hellip[^;]/g ) { $pos = pos($test_text) }
+
             while ( $test_text =~ /&quot[^;]/g )   { $pos = pos($test_text) }
             while ( $test_text =~ /&minus[^;]/g )  { $pos = pos($test_text) }
             while ( $test_text =~ /&oline[^;]/g )  { $pos = pos($test_text) }
@@ -6158,11 +5901,12 @@ sub error_087_html_names_entities_without_semicolon {
             while ( $test_text =~ /&harr[^;]/g )  { $pos = pos($test_text) }
 
             if ( $pos > -1 ) {
-                my $found_text = substr( $text, $pos - 10 );
+                my $found_text = substr( $text, $pos );
                 $found_text = text_reduce( $found_text, 50 );
 
                 error_register( $error_code,
                     '<nowiki>' . $found_text . '</nowiki>' );
+                die if ( $title eq 'Anthropology' );
             }
         }
     }
@@ -6392,19 +6136,19 @@ sub error_register {
 
     $notice =~ s/\n//g;
 
-    #print "\t" . $error_code . "\t" . $title . "\t" . $notice . "\n";
+    print "\t" . $error_code . "\t" . $title . "\t" . $notice . "\n";
 
     $Error_number_counter[$error_code] = $Error_number_counter[$error_code] + 1;
     $error_counter = $error_counter + 1;
 
-    insert_into_db( $error_counter, $error_code, $notice );
+    #insert_into_db( $error_code, $notice );
 
     return ();
 }
 
 ######################################################################
 
-sub get_broken_tag() {
+sub get_broken_tag {
     my ( $tag_open, $tag_close ) = @_;
     my $text_snipett = q{};
     my $found        = 0;
@@ -6418,7 +6162,7 @@ sub get_broken_tag() {
         my $pos_open  = index( $test_text, $tag_open );
         my $pos_open2 = index( $test_text, $tag_open, $pos_open + 6 );
         my $pos_close = index( $test_text, $tag_close );
-        while ( $found eq 0 ) {
+        while ( $found == 0 ) {
             if ( $pos_open2 == -1 ) {
                 $found = $pos_open;
             }
@@ -6436,7 +6180,7 @@ sub get_broken_tag() {
         my $pos_close  = rindex( $test_text, $tag_close );
         my $pos_close2 = rindex( $test_text, $tag_close, $pos_close - 6 );
         my $pos_open   = rindex( $test_text, $tag_open );
-        while ( $found eq 0 ) {
+        while ( $found == 0 ) {
             if ( $pos_close2 == -1 ) {
                 $found = $pos_close;
             }
@@ -6459,7 +6203,7 @@ sub get_broken_tag() {
 
 # Insert error into database.
 sub insert_into_db {
-    my ( $error_counter, $code, $notice ) = @_;
+    my ( $code, $notice ) = @_;
     my ( $table_name, $date_found, $article_title );
 
     $notice = substr( $notice, 0, 100 );    # Truncate notice.
