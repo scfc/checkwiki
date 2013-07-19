@@ -306,7 +306,8 @@ sub scan_pages {
             $page_namespace = 0;
             $title          = $page->title;
             $title          = case_fixer($title);
-            $text           = ${ $page->text };
+            print "Title: " . $title . "\n";
+            $text = ${ $page->text };
             check_article();
 
             #$end_of_dump = 'yes' if ( $artcount > 10000 );
@@ -926,7 +927,6 @@ sub delete_old_errors_in_db {
 ###########################################################################
 
 sub get_comments {
-
     my $test_text = lc($text);
 
     if ( $test_text =~ /<!--/ ) {
@@ -936,10 +936,11 @@ sub get_comments {
         $comments_begin = () = $test_text =~ /<!--/g;
         $comments_end   = () = $test_text =~ /-->/g;
 
-        if ( $comments_begin != $comments_end ) {
-            my $snippet = get_broken_tag( '<!--', '-->' );
-            error_005_Comment_no_correct_end($snippet);
-        }
+        # TURN OFF. FOR SOME REASON IT CAUSES PROGRAM TO HANG
+        #if ( $comments_begin != $comments_end ) {
+        #    my $snippet = get_broken_tag( '<!--', '-->' );
+        #    error_005_Comment_no_correct_end($snippet);
+        #}
 
         $text =~ s/<!--(.*?)-->//sg;
     }
@@ -952,7 +953,6 @@ sub get_comments {
 ###########################################################################
 
 sub get_nowiki {
-
     my $test_text = lc($text);
 
     if ( $test_text =~ /<nowiki>/ ) {
@@ -978,7 +978,6 @@ sub get_nowiki {
 ###########################################################################
 
 sub get_pre {
-
     my $test_text = lc($text);
 
     if ( $test_text =~ /<pre>/ ) {
@@ -1004,7 +1003,6 @@ sub get_pre {
 ###########################################################################
 
 sub get_math {
-
     my $test_text = lc($text);
 
     if ( $test_text =~ /<math>|<math style|<math title|<math alt/ ) {
@@ -1030,22 +1028,21 @@ sub get_math {
 ###########################################################################
 
 sub get_source {
-
     my $test_text = lc($text);
 
-    if ( $test_text =~ /<source>/ ) {
+    if ( $test_text =~ /<source/ ) {
         my $source_begin = 0;
         my $source_end   = 0;
 
-        $source_begin = () = $test_text =~ /<source>/g;
+        $source_begin = () = $test_text =~ /<source/g;
         $source_end   = () = $test_text =~ /<\/source>/g;
 
         if ( $source_begin != $source_end ) {
-            my $snippet = get_broken_tag( '<source>', '</source>' );
+            my $snippet = get_broken_tag( '<source', '</source>' );
             error_014_Source_no_correct_end($snippet);
         }
 
-        $text =~ s/<source>(.*?)<\/source>//sg;
+        $text =~ s/<source(.*?)<\/source>//sg;
     }
 
     return ();
@@ -1081,7 +1078,6 @@ sub get_code {
 ###########################################################################
 
 sub get_syntaxhighlight {
-
     my $test_text = lc($text);
 
     $text =~ s/<syntaxhighlight(.*?)<\/syntaxhighlight>//sg;
@@ -2005,15 +2001,15 @@ sub get_gallery {
 
     my $test_text = lc($text);
 
-    if ( $test_text =~ /<gallery>/ ) {
+    if ( $test_text =~ /<gallery/ ) {
         my $gallery_begin = 0;
         my $gallery_end   = 0;
 
-        $gallery_begin = () = $test_text =~ /<gallery>/g;
+        $gallery_begin = () = $test_text =~ /<gallery/g;
         $gallery_end   = () = $test_text =~ /<\/gallery>/g;
 
         if ( $gallery_begin != $gallery_end ) {
-            my $snippet = get_broken_tag( '<gallery>', '</gallery>' );
+            my $snippet = get_broken_tag( '<gallery', '</gallery>' );
             error_029_gallery_no_correct_end($snippet);
         }
     }
@@ -2382,7 +2378,7 @@ sub get_headlines {
 
 sub error_check {
     if ( $CheckOnlyOne > 0 ) {
-        error_034_template_programming_elements();
+        error_047_template_no_correct_begin();
     }
     else {
         #error_001_no_bold_title();        # does´t work - deactivated
@@ -2390,7 +2386,7 @@ sub error_check {
         error_003_have_ref();
         error_004_have_html_and_no_topic();
 
-        #error_005_Comment_no_correct_end('');i     # get_comments_nowiki_pre()
+        #error_005_Comment_no_correct_end('');i     # get_comments()
         error_006_defaultsort_with_special_letters();
         error_007_headline_only_three();
         error_008_headline_start_end();
@@ -2411,8 +2407,8 @@ sub error_check {
         error_021_category_is_english();
         error_022_category_with_space();
 
-        #error_023_nowiki_no_correct_end('');       # get_comments_nowiki_pre()
-        #error_024_pre_no_correct_end('');          # get_comments_nowiki_pre()
+        #error_023_nowiki_no_correct_end('');       # get_nowiki()
+        #error_024_pre_no_correct_end('');          # get_pre()
         error_025_headline_hierarchy();
         error_026_html_text_style_elements();
         error_027_unicode_syntax();
@@ -3937,6 +3933,8 @@ sub error_038_html_text_style_elements_italic {
 sub error_039_html_text_style_elements_paragraph {
     my $error_code = 39;
 
+    # https://bugzilla.wikimedia.org/show_bug.cgi?id=6200
+
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         my $test      = 'no found';
         my $test_line = q{};
@@ -4284,67 +4282,70 @@ sub error_046_count_square_breaks_begin {
 ###########################################################################
 
 sub error_047_template_no_correct_begin {
-    my $error_code = 47;
+    my $error_code       = 47;
+    my $pos_start        = 0;
+    my $pos_end          = 0;
+    my $tag_open         = "{{";
+    my $tag_close        = "}}";
+    my $look_ahead_open  = 0;
+    my $look_ahead_close = 0;
+    my $look_ahead       = 0;
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
-
-        my $text_test = q{};
 
         if (   $page_namespace == 0
             or $page_namespace == 6
             or $page_namespace == 104 )
         {
-            $text_test = $text;
 
-            #print $text_test."\n";
-            my $text_test_1_a = $text_test;
-            my $text_test_1_b = $text_test;
+            my $test_text = $text;
 
-            if ( ( $text_test_1_a =~ s/\{\{//g ) !=
-                ( $text_test_1_b =~ s/\}\}//g ) )
-            {
-                #print 'Error 47 not equl $title'."\n";
-                my $begin_time = time();
-                while ( $text_test =~ /\}\}/g ) {
+            my $tag_open_num  = () = $test_text =~ /$tag_open/g;
+            my $tag_close_num = () = $test_text =~ /$tag_close/g;
 
-                    #Begin of link
-                    my $pos_end     = pos($text_test) - 2;
-                    my $link_text   = substr( $text_test, 0, $pos_end );
-                    my $link_text_2 = q{};
-                    my $beginn_square_brackets = 0;
-                    my $end_square_brackets    = 1;
-                    while ( $link_text =~ /\{\{/g ) {
+            my $diff = $tag_close_num - $tag_open_num;
 
-                        # Find currect end - number of [[==]]
-                        my $pos_start = pos($link_text);
-                        $link_text_2 = substr( $link_text, $pos_start );
-                        $link_text_2 = ' ' . $link_text_2 . ' ';
+            if ( $diff > 0 ) {
 
-                        #print $link_text_2."\n";
+                my $pos_open  = rindex( $test_text, $tag_open );
+                my $pos_close = rindex( $test_text, $tag_close );
+                my $pos_close2 =
+                  rindex( $test_text, $tag_close, $pos_open - 2 );
 
-                        # test the number of [[and  ]]
-                        my $link_text_2_a = $link_text_2;
-                        $beginn_square_brackets =
-                          ( $link_text_2_a =~ s/\{\{//g );
-                        my $link_text_2_b = $link_text_2;
-                        $end_square_brackets = ( $link_text_2_b =~ s/\}\}//g );
-
-              #print $beginn_square_brackets .' vs. '.$end_square_brackets."\n";
-                        last
-                          if ( $beginn_square_brackets eq $end_square_brackets
-                            or $begin_time + 60 > time() );
-                    }
-
-                    if ( $beginn_square_brackets != $end_square_brackets ) {
-
-                        # template has no correct begin
-                        $link_text =~ s/  / /g;
-
-           #$link_text = '…'.substr($link_text, length($link_text) -50 ).'}}';
-                        $link_text =
-                          text_reduce_to_end( $link_text, 50 ) . '}}';
+                while ( $diff > 0 ) {
+                    if ( $pos_close2 == -1 ) {
                         error_register( $error_code,
-                            '<nowiki>' . $link_text . '</nowiki>' );
+                                '<nowiki>'
+                              . substr( $text, $pos_close, 40 )
+                              . '</nowiki>' );
+                        $diff = -1;
+                    }
+                    elsif ( $pos_close2 > $pos_open and $look_ahead > 0 ) {
+                        error_register( $error_code,
+                                '<nowiki>'
+                              . substr( $text, $pos_close, 40 )
+                              . '</nowiki>' );
+                        $diff--;
+                        print "POSCLOSE2: "
+                          . $pos_close2
+                          . "  POSOPEN: "
+                          . $pos_open
+                          . "  LOOKAHEAD: "
+                          . $look_ahead . "\n";
+                    }
+                    else {
+                        $pos_close = $pos_close2;
+                        $pos_close2 =
+                          rindex( $test_text, $tag_close, $pos_close - 2 );
+                        $pos_open =
+                          rindex( $test_text, $tag_open, $pos_open - 2 );
+                        if ( $pos_close2 > 0 ) {
+                            $look_ahead_close =
+                              rindex( $test_text, $tag_close, $pos_close2 - 2 );
+                            $look_ahead_open =
+                              rindex( $test_text, $tag_open, $pos_open - 2 );
+                            $look_ahead = $look_ahead_open - $look_ahead_close;
+                        }
                     }
                 }
             }
