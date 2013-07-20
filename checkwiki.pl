@@ -44,13 +44,13 @@ our $quit_program =
 our $quit_reason = q{};    # quit the program reason
 
 our $dump_or_live = q{};   # scan modus (dump, live)
-our $silent_modus = 0;     # silent modus (very low output at screen) for batch
 
 our $CheckOnlyOne = 0;     # Check only one error or all errors
 
 our $details_for_page =
   'no';   # yes/no  durring the scan you can get more details for a article scan
 
+our $ServerName = q{};
 our $project;    # name of the project 'dewiki'
 our $language = q{};    # language of dump 'de', 'en';
 our $base = q{};    # base of article, 'http://de.wikipedia.org/wiki/Hauptseite'
@@ -286,7 +286,6 @@ sub scan_pages {
 
     # get the text of the next page
     print_line();
-    print 'Start scanning' . "\n" if ( !$silent_modus );
 
     $end_of_dump = 'no';
     $end_of_live = 'no';
@@ -305,18 +304,18 @@ sub scan_pages {
             check_article();
 
             #$end_of_dump = 'yes' if ( $artcount > 10000 );
+            #$end_of_dump = 'yes' if ( $page_id  > 7950 );
+            #$end_of_dump = 'yes' if ( $error_counter > 40000 )
         }
     }
     elsif ( $dump_or_live eq 'live' ) {
-        do {
-            get_next_page_from_live();
-          } until (
-            $end_of_live eq 'yes'
-
-              #or ($error_counter > 10000 and $project ne 'dewiki')
-              #or $page_id  > 7950
-              #or ($error_counter > 40000)
-          );
+        live_scan();
+    }
+    elsif ( $dump_or_live eq 'delay' ) {
+        delay_scan();
+    }
+    else {
+        die("Wrong Load_mode entered \n");
     }
 
     return ();
@@ -475,7 +474,7 @@ sub update_table_cw_error_from_dump {
 ###########################################################################
 
 sub getErrors {
-    my $error_counter               = 0;
+    my $error_count                 = 0;
     my $priority                    = -1;
     my $number_of_error_description = 0;
 
@@ -494,13 +493,13 @@ sub getErrors {
     for ( my $i = 1 ; $i <= $number_of_error_description ; $i++ ) {
         $ErrorPriorityValue[$i] = $sth->fetchrow();
         if ( $ErrorPriorityValue[$i] > 0 ) {
-            $error_counter++;
+            $error_count++;
         }
     }
 
     two_column_display( 'Total # of errors possible:',
         $number_of_error_description );
-    two_column_display( 'Number of errors to process:', $error_counter );
+    two_column_display( 'Number of errors to process:', $error_count );
 
     return ();
 }
@@ -512,7 +511,7 @@ sub getErrors {
 sub readMetadata {
 
     # Calculate server name.
-    my $ServerName = $project;
+    $ServerName = $project;
     if (
         !(
                $ServerName =~ s/^nds_nlwiki$/nds-nl.wikipedia.org/
@@ -544,7 +543,7 @@ sub readMetadata {
             siprop =>
               'general|namespaces|namespacealiases|statistics|magicwords',
         }
-    ) || die $mw->{error}->{code} . ': ' . $mw->{error}->{details};
+    ) || die $mw->{error}->{code} . ': ' . $mw->{error}->{details} . "\n";
 
     two_column_display( 'Sitename:', $res->{query}->{general}->{sitename} );
 
@@ -631,7 +630,7 @@ sub readMetadata {
 ##
 ###########################################################################
 
-sub get_next_page_from_live {
+sub live_scan {
 
     my @live_titles;
     my $limit = 100;
@@ -641,7 +640,7 @@ sub get_next_page_from_live {
         {
             assert   => 'bot',
             protocol => 'http',
-            host     => 'en.wikipedia.org',
+            host     => $ServerName,
         }
     );
 
@@ -662,7 +661,42 @@ sub get_next_page_from_live {
         }
     }
 
-    $end_of_live = 'yes';
+    return ();
+}
+
+###########################################################################
+##
+###########################################################################
+
+sub delay_scan {
+
+    my $sql_text;
+    $page_namespace = 0;
+    my $bot = MediaWiki::Bot->new(
+        {
+            assert   => 'bot',
+            protocol => 'http',
+            host     => $ServerName,
+        }
+    );
+
+    $sql_text = "SELECT Title FROM cw_new WHERE Project = '" . $project . "';";
+
+    my $sth = $dbh->prepare($sql_text)
+      || die "Can not prepare statement: $DBI::errstr\n";
+    $sth->execute or die "Cannot execute: " . $sth->errstr . "\n";
+
+    while ( $title = $sth->fetchrow() ) {
+        $text = $bot->get_text($title);
+        $artcount++;
+        set_variables_for_article();
+        check_article();
+    }
+
+    #$sql_text = "DELETE FROM cw_new WHERE Project = '" . $project . "';";
+    #$sth = $dbh->prepare($sql_text)
+    #  || die "Can not prepare statement: $DBI::errstr\n";
+    #$sth->execute or die "Cannot execute: " . $sth->errstr . "\n";
 
     return ();
 }
@@ -6289,14 +6323,13 @@ my ( $load_mode, $DumpFilename, $TTFilename );
 
 my @Options = (
     'load=s'       => \$load_mode,
-    'p=s'          => \$project,
+    'project|p=s'  => \$project,
     'database|D=s' => \$DbName,
     'host|h=s'     => \$DbServer,
     'password=s'   => \$DbPassword,
     'user|u=s'     => \$DbUsername,
     'dumpfile=s'   => \$DumpFilename,
     'tt-file=s'    => \$TTFilename,
-    'silent'       => \$silent_modus,
     'check'        => \$CheckOnlyOne
 );
 
@@ -6372,8 +6405,14 @@ s/^(?:.*\/)?\Q$project\E-(\d{4})(\d{2})(\d{2})-pages-articles\.xml\.bz2$/$1-$2-$
     }
     binmode( $TTFile, ":encoding(UTF-8)" );
 }
-else {
+elsif ( $load_mode eq 'live' ) {
     $dump_or_live = 'live';
+}
+elsif ( $load_mode eq 'delay' ) {
+    $dump_or_live = 'delay';
+}
+else {
+    die("No load name, for example: \"-l live\"\n");
 }
 
 two_column_display( 'Project:',   $project );
@@ -6410,7 +6449,8 @@ if ( defined($TTFile) ) {
 }
 
 print_line();
-two_column_display( 'Errors Found:', ++$error_counter );
+two_column_display( 'Articles checked:', $artcount );
+two_column_display( 'Errors found:',     ++$error_counter );
 $time_end = time() - $time_start;
 printf "Program run time:              %d hours, %d minutes and %d seconds\n\n",
   ( gmtime $time_end )[ 2, 1, 0 ];
