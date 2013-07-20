@@ -159,7 +159,7 @@ our @foundation_projects = (
 
 our $title   = q{};    # title of the current article
 our $page_id = -1;     # page id of the current article
-our $text    = q{};    # text of the current article  (for work)
+our $text    = q{};    # text of the current article
 our $text_without_comments =
   q{};                 # text of the current article without_comments (for save)
 
@@ -167,16 +167,11 @@ our $page_namespace;   # namespace of page
 our $page_is_redirect       = 'no';
 our $page_is_disambiguation = 'no';
 
-our @comments;         # 0 pos_start
+our @category;         # 0 pos_start
                        # 1 pos_end
-                       # 2 comment
-our $comment_counter = -1;    #number of comments in this page
-
-our @category;                # 0 pos_start
-                              # 1 pos_end
-                              # 2 category	Test
-                              # 3 linkname	Linkname
-                              # 4 original	[[Category:Test|Linkname]]
+                       # 2 category	Test
+                       # 3 linkname	Linkname
+                       # 4 original	[[Category:Test|Linkname]]
 
 our $category_counter = -1;
 our $category_all     = q{};    # all categries
@@ -306,8 +301,7 @@ sub scan_pages {
             $page_namespace = 0;
             $title          = $page->title;
             $title          = case_fixer($title);
-            print "Title: " . $title . "\n";
-            $text = ${ $page->text };
+            $text           = ${ $page->text };
             check_article();
 
             #$end_of_dump = 'yes' if ( $artcount > 10000 );
@@ -374,7 +368,7 @@ sub pretty_bytes {
     }
 
     if ( ( $bytes = $bytes / 1024 ) > 1 ) {
-        $pretty = sprintf( "%0.4f", $bytes ) . ' GB';
+        $pretty = sprintf( "%0.3f", $bytes ) . ' GB';
     }
 
     return ($pretty);
@@ -412,16 +406,11 @@ sub set_variables_for_article {
     $page_is_redirect       = 'no';
     $page_is_disambiguation = 'no';
 
-    undef(@comments);    # 0 pos_start
+    undef(@category);    # 0 pos_start
                          # 1 pos_end
-                         # 2 comment
-    $comment_counter = -1;    #number of comments in this page
-
-    undef(@category);         # 0 pos_start
-                              # 1 pos_end
-                              # 2 category	Test
-                              # 3 linkname	Linkname
-                              # 4 original	[[Category:Test|Linkname]]
+                         # 2 category	Test
+                         # 3 linkname	Linkname
+                         # 4 original	[[Category:Test|Linkname]]
 
     $category_counter = -1;
     $category_all     = q{};    # all categries
@@ -937,7 +926,7 @@ sub get_comments {
         $comments_end   = () = $test_text =~ /-->/g;
 
         # TURN OFF. FOR SOME REASON IT CAUSES PROGRAM TO HANG
-        #if ( $comments_begin != $comments_end ) {
+        #if ( $comments_begin > $comments_end ) {
         #    my $snippet = get_broken_tag( '<!--', '-->' );
         #    error_005_Comment_no_correct_end($snippet);
         #}
@@ -962,10 +951,10 @@ sub get_nowiki {
         $nowiki_begin = () = $test_text =~ /<math/g;
         $nowiki_end   = () = $test_text =~ /<\/math>/g;
 
-        if ( $nowiki_begin != $nowiki_end ) {
-            my $snippet = get_broken_tag( '<nowiki>', '</nowiki>' );
-            error_023_nowiki_no_correct_end($snippet);
-        }
+        #if ( $nowiki_begin > $nowiki_end ) {
+        #    my $snippet = get_broken_tag( '<nowiki>', '</nowiki>' );
+        #    error_023_nowiki_no_correct_end($snippet);
+        #}
 
         $text =~ s/<nowiki>(.*?)<\/nowiki>//sg;
     }
@@ -987,10 +976,10 @@ sub get_pre {
         $pre_begin = () = $test_text =~ /<pre>/g;
         $pre_end   = () = $test_text =~ /<\/pre>/g;
 
-        if ( $pre_begin != $pre_end ) {
-            my $snippet = get_broken_tag( '<pre>', '</pre>' );
-            error_024_pre_no_correct_end($snippet);
-        }
+        #if ( $pre_begin > $pre_end ) {
+        #    my $snippet = get_broken_tag( '<pre>', '</pre>' );
+        #    error_024_pre_no_correct_end($snippet);
+        #}
 
         $text =~ s/<pre>(.*?)<\/pre>//sg;
     }
@@ -1012,10 +1001,10 @@ sub get_math {
         $math_begin = () = $test_text =~ /<math/g;
         $math_end   = () = $test_text =~ /<\/math>/g;
 
-        if ( $math_begin != $math_end ) {
-            my $snippet = get_broken_tag( '<math', '</math>' );
-            error_013_Math_no_correct_end($snippet);
-        }
+        #if ( $math_begin > $math_end ) {
+        #    my $snippet = get_broken_tag( '<math', '</math>' );
+        #    error_013_Math_no_correct_end($snippet);
+        #}
 
         $text =~ s/<math(.*?)<\/math>//sg;
     }
@@ -1037,10 +1026,10 @@ sub get_source {
         $source_begin = () = $test_text =~ /<source/g;
         $source_end   = () = $test_text =~ /<\/source>/g;
 
-        if ( $source_begin != $source_end ) {
-            my $snippet = get_broken_tag( '<source', '</source>' );
-            error_014_Source_no_correct_end($snippet);
-        }
+        #if ( $source_begin > $source_end ) {
+        #    my $snippet = get_broken_tag( '<source', '</source>' );
+        #    error_014_Source_no_correct_end($snippet);
+        #}
 
         $text =~ s/<source(.*?)<\/source>//sg;
     }
@@ -1062,10 +1051,10 @@ sub get_code {
         $code_begin = () = $test_text =~ /<code>/g;
         $code_end   = () = $test_text =~ /<\/code>/g;
 
-        if ( $code_begin != $code_end ) {
-            my $snippet = get_broken_tag( '<code>', '</code>' );
-            error_015_Code_no_correct_end($snippet);
-        }
+        #if ( $code_begin > $code_end ) {
+        #    my $snippet = get_broken_tag( '<code>', '</code>' );
+        #    error_015_Code_no_correct_end($snippet);
+        #}
 
         $text =~ s/<code>(.*?)<\/code>//sg;
     }
@@ -1963,14 +1952,6 @@ sub get_tables {
             #found a comment in current page
             $pos_end = $pos_end + length('|}');
 
-#$comment_counter = $comment_counter +1;
-#$comments[$comment_counter][0] = $pos_start;
-#$comments[$comment_counter][1] = $pos_end;
-#$comments[$comment_counter][2] = substr($text, $pos_start, $pos_end - $pos_start  );
-
-#print 'Begin='.$comments[$comment_counter][0].' End='.$comments[$comment_counter][1]."\n";
-#print 'Comment='.$comments[$comment_counter][2]."\n";
-
             $end_search    = 'no';
             $pos_start_old = $pos_end;
 
@@ -2008,10 +1989,10 @@ sub get_gallery {
         $gallery_begin = () = $test_text =~ /<gallery/g;
         $gallery_end   = () = $test_text =~ /<\/gallery>/g;
 
-        if ( $gallery_begin != $gallery_end ) {
-            my $snippet = get_broken_tag( '<gallery', '</gallery>' );
-            error_029_gallery_no_correct_end($snippet);
-        }
+        #if ( $gallery_begin > $gallery_end ) {
+        #    my $snippet = get_broken_tag( '<gallery', '</gallery>' );
+        #    error_029_gallery_no_correct_end($snippet);
+        #}
     }
 
     return ();
@@ -2386,7 +2367,7 @@ sub error_check {
         error_003_have_ref();
         error_004_have_html_and_no_topic();
 
-        #error_005_Comment_no_correct_end('');i     # get_comments()
+        #error_005_Comment_no_correct_end('');      # get_comments()
         error_006_defaultsort_with_special_letters();
         error_007_headline_only_three();
         error_008_headline_start_end();
@@ -3368,7 +3349,6 @@ sub error_024_pre_no_correct_end {
 ###########################################################################
 
 sub error_025_headline_hierarchy {
-    my ($comment) = @_;
     my $error_code = 25;
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
@@ -3704,12 +3684,12 @@ sub error_034_template_programming_elements {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             my $test_line = q{};
 
-            my $text_lc = lc($text);
-            if ( $text_lc =~
+            my $test_text = lc($text);
+            if ( $test_text =~
 /({{{|#if:|#ifeq:|#switch:|#ifexist:|{{fullpagename}}|{{sitename}}|{{namespace}})/
               )
             {
-                my $pos = index( $text_lc, $1 );
+                my $pos = index( $test_text, $1 );
                 $test_line = substr( $text, $pos, 40 );
                 $test_line =~ s/[\n\r]//mg;
 
@@ -3933,30 +3913,31 @@ sub error_038_html_text_style_elements_italic {
 sub error_039_html_text_style_elements_paragraph {
     my $error_code = 39;
 
-    # https://bugzilla.wikimedia.org/show_bug.cgi?id=6200
-
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
-        my $test      = 'no found';
-        my $test_line = q{};
-        my $test_text = lc($text);
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
-            if ( index( $test_text, '<p>' ) > -1 ) {
 
-                foreach (@lines) {
-                    my $current_line    = $_;
-                    my $current_line_lc = lc($current_line);
+            my $test_text = lc($text);
+            if ( $test_text =~ /<p>|<p / ) {
 
-                    if ( index( $current_line_lc, '<p>' ) > -1 ) {
-                        $test = 'found';
-                        $test_line = $current_line if ( $test_line eq '' );
+                # https://bugzilla.wikimedia.org/show_bug.cgi?id=6200
+                if ( $test_text !~
+                    /<blockquote|\{\{quote\s*|\{\{cquote|\{\{quotation/ )
+                {
+                    my $pos = index( $test_text, '<p>' );
+                    if ( $pos > -1 ) {
+                        error_register( $error_code,
+                                '<nowiki>'
+                              . substr( $text, $pos, 40 )
+                              . ' </nowiki>' );
+                    }
+                    $pos = index( $test_text, '<p ' );
+                    if ( $pos > -1 ) {
+                        error_register( $error_code,
+                                '<nowiki>'
+                              . substr( $text, $pos, 40 )
+                              . ' </nowiki>' );
                     }
                 }
-            }
-            if ( $test eq 'found' ) {
-                $test_line = text_reduce( $test_line, 80 );
-                $test_line = $test_line . '…';
-                error_register( $error_code,
-                    '<nowiki>' . $test_line . ' </nowiki>' );
             }
         }
     }
@@ -4913,7 +4894,6 @@ sub error_061_reference_with_punctuation {
 ###########################################################################
 
 sub error_062_headline_alone {
-    my ($comment) = @_;
     my $error_code = 62;
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
@@ -5832,8 +5812,8 @@ sub error_086_link_with_two_brackets_to_external_source {
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
-            my $text_lc = lc($text);
-            if ( $text_lc =~ /\[\[\s*(https?:\/\/[^\]:]*)/ ) {
+            my $test_text = lc($text);
+            if ( $test_text =~ /\[\[\s*(https?:\/\/[^\]:]*)/ ) {
                 error_register( $error_code, '<nowiki>' . $1 . ' </nowiki>' );
             }
         }
@@ -6151,53 +6131,31 @@ sub error_register {
 
 sub get_broken_tag {
     my ( $tag_open, $tag_close ) = @_;
-    my $text_snipett = q{};
+    my $text_snippet = q{};
     my $found        = 0;
 
     my $test_text = lc($text);
 
-    my $tag_open_num  = () = $test_text =~ /$tag_open/g;
-    my $tag_close_num = () = $test_text =~ /$tag_close/g;
+    my $pos_open  = index( $test_text, $tag_open );
+    my $pos_open2 = index( $test_text, $tag_open, $pos_open + 3 );
+    my $pos_close = index( $test_text, $tag_close );
 
-    if ( $tag_open_num > $tag_close_num ) {
-        my $pos_open  = index( $test_text, $tag_open );
-        my $pos_open2 = index( $test_text, $tag_open, $pos_open + 6 );
-        my $pos_close = index( $test_text, $tag_close );
-        while ( $found == 0 ) {
-            if ( $pos_open2 == -1 ) {
-                $found = $pos_open;
-            }
-            elsif ( $pos_open2 < $pos_close ) {
-                $found = $pos_open;
-            }
-            else {
-                $pos_open  = $pos_open2;
-                $pos_open2 = index( $test_text, $tag_open, $pos_open + 6 );
-                $pos_close = index( $test_text, $tag_close, $pos_close + 6 );
-            }
+    while ( $found == 0 ) {
+        if ( $pos_open2 == -1 ) {    # END OF ARTICLE AND NO CLOSING TAG FOUND
+            $found = $pos_open;
         }
-    }
-    elsif ( $tag_open_num < $tag_close_num ) {
-        my $pos_close  = rindex( $test_text, $tag_close );
-        my $pos_close2 = rindex( $test_text, $tag_close, $pos_close - 6 );
-        my $pos_open   = rindex( $test_text, $tag_open );
-        while ( $found == 0 ) {
-            if ( $pos_close2 == -1 ) {
-                $found = $pos_close;
-            }
-            elsif ( $pos_close2 > $pos_open ) {
-                $found = $pos_close;
-            }
-            else {
-                $pos_close  = $pos_close2;
-                $pos_close2 = rindex( $test_text, $tag_close, $pos_close - 6 );
-                $pos_open   = rindex( $test_text, $tag_open, $pos_open - 6 );
-            }
+        elsif ( $pos_open2 < $pos_close ) {
+            $found = $pos_open;
+        }
+        else {
+            $pos_open  = $pos_open2;
+            $pos_open2 = index( $test_text, $tag_open, $pos_open + 3 );
+            $pos_close = index( $test_text, $tag_close, $pos_close + 3 );
         }
     }
 
-    $text_snipett = substr( $text, $found, 40 );
-    return ($text_snipett);
+    $text_snippet = substr( $text, $found, 40 );
+    return ($text_snippet);
 }
 
 ######################################################################}
