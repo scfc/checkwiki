@@ -53,21 +53,20 @@ our $details_for_page =
 our $ServerName = q{};
 our $project;    # name of the project 'dewiki'
 our $language = q{};    # language of dump 'de', 'en';
-our $base = q{};    # base of article, 'http://de.wikipedia.org/wiki/Hauptseite'
-our $home = q{};    # base of article, 'http://de.wikipedia.org/wiki/'
+our $home     = q{};    # base of article, 'http://de.wikipedia.org/wiki/'
 
-our @namespace;     # namespace values
-                    # 0 number
-                    # 1 namespace in project language
-                    # 2 namespace in english language
+our @namespace;         # namespace values
+                        # 0 number
+                        # 1 namespace in project language
+                        # 2 namespace in english language
 
-our @namespacealiases;    # namespacealiases values
-                          # 0 number
-                          # 1 namespacealias
+our @namespacealiases;  # namespacealiases values
+                        # 0 number
+                        # 1 namespacealias
 
-our @namespace_cat;       #all namespaces for categorys
-our @namespace_image;     #all namespaces for images
-our @namespace_templates; #all namespaces for templates
+our @namespace_cat;          #all namespaces for categorys
+our @namespace_image;        #all namespaces for images
+our @namespace_templates;    #all namespaces for templates
 our $image_regex = q{};
 our $cat_regex   = q{};
 
@@ -161,7 +160,7 @@ our $title   = q{};    # title of the current article
 our $page_id = -1;     # page id of the current article
 our $text    = q{};    # text of the current article
 our $text_without_comments =
-  q{};                 # text of the current article without_comments (for save)
+  q{};                 # text of current article with comments only removed
 
 our $page_namespace;   # namespace of page
 our $page_is_redirect       = 'no';
@@ -187,8 +186,6 @@ our $interwiki_counter = -1;
 
 our @lines;                     # text seperated in lines
 our @headlines;                 # headlines
-our @section;                   # text between headlines
-undef(@section);
 
 our @templates_all;             # all templates
 our @template;                  # templates with values
@@ -326,7 +323,6 @@ sub scan_pages {
 ###########################################################################
 
 sub update_ui {
-    my $seconds = time - $time_start;
     my $bytes   = $pages->current_byte;
     my $percent = int( $bytes / $file_size * 100 );
 
@@ -399,8 +395,6 @@ sub set_variables_for_article {
     $title   = q{};    # title of the current article
     $page_id = -1;     # page id of the current article
     $text    = q{};    # text of the current article  (for work)
-    $text_without_comments =
-      q{};             # text of the current article without_comments (for save)
 
     $page_is_redirect       = 'no';
     $page_is_disambiguation = 'no';
@@ -425,7 +419,6 @@ sub set_variables_for_article {
 
     undef(@lines);              # text seperated in lines
     undef(@headlines);          # headlines
-    undef(@section);            # text between headlines
 
     undef(@templates_all);      # all templates
     undef(@template);           # templates with values
@@ -475,7 +468,6 @@ sub update_table_cw_error_from_dump {
 
 sub getErrors {
     my $error_count                 = 0;
-    my $priority                    = -1;
     my $number_of_error_description = 0;
 
     my $sth = $dbh->prepare('SELECT COUNT(*) FROM cw_error_desc')
@@ -706,7 +698,6 @@ sub delay_scan {
 ###########################################################################
 
 sub check_article {
-    my $steps = 1;
 
     my $text_for_tests = "Hallo
 Barnaby, Wendy. The Plague Makers: The Secret World of Biological Warfare, Frog Ltd, 1999. 
@@ -896,11 +887,11 @@ Verlag LANGEWIESCHE, ISBN-10: 3784551912 und ISBN-13: 9783784551913
     # CALLS #43
     get_templates();
 
-    # CREATES @links_all - USED IN get_images(), #64, #68, #74, #76, #82, #86
+    # CREATES @links_all & @images_all - USED IN #68, #74, #76, #82
     # CALLS #10
     get_links();
 
-    # CREATES @images_all - USED IN #65, #66, #67
+    # USES @images_all - USED IN #65, #66, #67
     # CALLS #30
     get_images();
 
@@ -967,6 +958,7 @@ sub get_comments {
 
         $text =~ s/<!--(.*?)-->//sg;
     }
+    $text_without_comments = $text;
 
     return ();
 }
@@ -1710,23 +1702,16 @@ sub get_templates {
 
 sub get_links {
 
-    # filter all templates
     my $pos_start = 0;
     my $pos_end   = 0;
 
     my $text_test = $text;
-
-#$text_test = 'abc[[Kartographie]], Bild:abd|[[Globus]]]] ohne [[Gradnetz]] weiterer Text
-#aber hier [[Link234|sdsdlfk]]  [[Test]]';
-
-    #print $text_test ."\n\n\n";
 
     $text_test =~ s/\n//g;
     undef(@links_all);
 
     while ( $text_test =~ /\[\[/g ) {
 
-        #Begin of link
         $pos_start = pos($text_test) - 2;
         my $link_text              = substr( $text_test, $pos_start );
         my $link_text_2            = q{};
@@ -1768,8 +1753,6 @@ sub get_links {
             # template has no correct end
             $link_text = text_reduce( $link_text, 80 );
             error_010_count_square_breaks($link_text);
-
-            #print 'Error: '.$title.' '.$link_text."\n";
         }
     }
 
@@ -2088,7 +2071,6 @@ sub get_hiero {
 
 sub get_ref {
 
-    #print 'Get hiero tag'."\n";
     undef(@ref);
     my $pos_start_old = 0;
     my $pos_end_old   = 0;
@@ -2098,13 +2080,11 @@ sub get_ref {
         my $pos_end   = 0;
         $end_search = 'yes';
 
-        #get position of next <math>
         $pos_start = index( $text, '<ref>',  $pos_start_old );
         $pos_end   = index( $text, '</ref>', $pos_start );
 
         if ( $pos_start > -1 and $pos_end > -1 ) {
 
-            #found a math in current page
             $pos_end = $pos_end + length('</ref>');
 
             #print substr($text, $pos_start, $pos_end - $pos_start  )."\n";
@@ -2149,11 +2129,6 @@ sub get_categories {
     # replace comments with space
     #print 'get categories'."\n";
 
-#$text = 'absc[[ Kategorie:123|Museum]],Kategorie:78]][[     Category:ABC-Waffe| Kreuz ]][[Category:XY-Waffe|Hand ]] [[  category:Schwert| Fuss]] [[Kategorie:Karto]][[kategorie:Karto]]';
-#print $text."\n";
-#foreach (@namespace_cat) {
-#	print $_."\n";
-#}
     foreach (@namespace_cat) {
 
         my $namespace_cat_word = $_;
@@ -2168,8 +2143,6 @@ sub get_categories {
         my $search_word = $namespace_cat_word;
         while ( $text_test =~ /\[\[([ ]+)?($search_word:)/ig ) {
             $pos_start = pos($text_test) - length($search_word) - 1;
-
-#print "search word <b>$search_word</b> gefunden bei Position $pos_start<br>\n";
 
             $pos_end = index( $text_test, ']]', $pos_start );
 
@@ -2271,8 +2244,6 @@ sub get_interwikis {
         while ( $text_test =~ /\[\[([ ]+)?($search_word:)/ig ) {
             $pos_start = pos($text_test) - length($search_word) - 1;
 
-#print "search word <b>$search_word</b> gefunden bei Position $pos_start<br>\n";
-
             $pos_end = index( $text_test, ']]', $pos_start );
 
             my $counter_begin = 0;
@@ -2359,30 +2330,14 @@ sub create_line_array {
 ###########################################################################
 
 sub get_headlines {
-    undef(@headlines);
 
-    my $section_text = q{};
-
-    #get headlines
     foreach (@lines) {
         my $current_line = $_;
 
         if ( substr( $current_line, 0, 1 ) eq '=' ) {
-
-            # save section
-            push( @section, $section_text );
-            $section_text = q{};
-
-            # save headline
             push( @headlines, $current_line );
         }
-        $section_text = $section_text . $_ . "\n";
     }
-    push( @section, $section_text );
-
-    #foreach(@headlines) {
-    #	print $_."\n";
-    #}
 
     return ();
 }
@@ -2393,7 +2348,7 @@ sub get_headlines {
 
 sub error_check {
     if ( $CheckOnlyOne > 0 ) {
-        error_047_template_no_correct_begin();
+        error_084_section_without_text();
     }
     else {
         #error_001_no_bold_title();        # does´t work - deactivated
@@ -5730,14 +5685,13 @@ sub error_084_section_without_text {
         if ( $headlines[0]
             and ( $page_namespace == 0 or $page_namespace == 104 ) )
         {
-            # this article has headlines
 
             my $number_of_headlines = @headlines;
-            my $found_text          = q{};
 
             for ( my $i = 0 ; $i < $number_of_headlines - 1 ; $i++ ) {
 
-                # check level of headline and behind headline
+                # Check level of headline and next headline
+
                 my $level_one = $headlines[$i];
                 my $level_two = $headlines[ $i + 1 ];
 
@@ -5747,45 +5701,31 @@ sub error_084_section_without_text {
                 $level_two =
                   length( $headlines[ $i + 1 ] ) - length($level_two);
 
-                if ( $level_one == $level_two or $level_one > $level_two ) {
+                # If headline's level is identical or lower to next headline
+                # And headline's level is ==
+                if ( $level_one >= $level_two and $level_one <= 2 ) {
+                    my $test_text = $text_without_comments;
+                    my $pos       = index( $test_text, $headlines[$i] );
+                    my $pos2      = index( $test_text, $headlines[ $i + 1 ] );
+                    my $pos3      = $pos2 - $pos;
 
-                    # check section if level identical or lower
-                    if ( $section[$i] ) {
-                        my $test_section   = $section[ $i + 1 ];
-                        my $test_section_2 = $section[ $i + 1 ];
-                        my $test_headline  = $headlines[$i];
-                        $test_headline =~ s/\n//g;
+                    # There are two copies of next headline. Get 2nd one
+                    if ( $pos3 < 0 ) {
+                        $pos2 =
+                          index( $test_text, $headlines[ $i + 1 ], $pos2 + 5 );
+                        $pos3 = $pos2 - $pos;
+                    }
+                    $test_text = substr( $test_text, $pos, $pos3 );
+                    $test_text =~ s/$headlines[$i]//;
+                    $test_text =~ s/[ ]//g;
+                    $test_text =~ s/\n//g;
+                    $test_text =~ s/\t//g;
 
-                        $test_section =
-                          substr( $test_section, length($test_headline) )
-                          if ($test_section);
-                        if ($test_section) {
-
-                            $test_section =~ s/[ ]//g;
-                            $test_section =~ s/\n//g;
-                            $test_section =~ s/\t//g;
-
-                            if ( $test_section eq '' ) {
-
-                                #print "\t x".$test_section_2."x\n";
-                                if (
-                                    index( $text_without_comments,
-                                        $test_section_2 ) > -1
-                                  )
-                                {
-                                    #print $text_without_comments."\n";
-                                    $found_text = $test_headline
-                                      if ( $found_text eq '' );
-                                }
-                            }
-                        }
+                    if ( $test_text eq q{} ) {
+                        error_register( $error_code,
+                            '<nowiki>' . $headlines[$i] . '</nowiki>' );
                     }
                 }
-            }
-
-            if ( $found_text ne '' ) {
-                error_register( $error_code,
-                    '<nowiki>' . $found_text . '</nowiki>' );
             }
         }
     }
@@ -6151,12 +6091,12 @@ sub error_register {
 
     $notice =~ s/\n//g;
 
-    print "\t" . $error_code . "\t" . $title . "\t" . $notice . "\n";
+    #print "\t" . $error_code . "\t" . $title . "\t" . $notice . "\n";
 
     $Error_number_counter[$error_code] = $Error_number_counter[$error_code] + 1;
     $error_counter = $error_counter + 1;
 
-    #insert_into_db( $error_code, $notice );
+    insert_into_db( $error_code, $notice );
 
     return ();
 }
