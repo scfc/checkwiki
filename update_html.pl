@@ -22,23 +22,37 @@
 use strict;
 use warnings;
 use DBI;
-use Getopt::Long;
+use Getopt::Long
+  qw(GetOptionsFromString :config bundling no_auto_abbrev no_ignore_case);
 
-our $output_directory = '/data/project/checkwiki/public_html';
+our $output_directory  = '/data/project/checkwiki/public_html';
 our $webpage_directory = 'https://tools.wmflabs.org/checkwiki';
 
 our $dbh;
 our @project;
 
-my ($DbName, $DbServer, $DbUsername, $DbPassword);
+my ( $DbName, $DbServer, $DbUsername, $DbPassword );
 my $ProjectName = q{};
 
-GetOptions(
+my @Options = (
     'database=s' => \$DbName,
     'host=s'     => \$DbServer,
     'password=s' => \$DbPassword,
     'user=s'     => \$DbUsername,
-    'project:s'  => \$ProjectName
+    'project=s'  => \$ProjectName
+);
+
+GetOptions(
+    'c=s' => sub {
+        my $f = IO::File->new( $_[1], '<:encoding(UTF-8)' )
+          or die( "Can't open " . $_[1] . "\n" );
+        local ($/);
+        my $s = <$f>;
+        $f->close();
+        my ( $Success, $RemainingArgs ) = GetOptionsFromString( $s, @Options );
+        die unless ( $Success && !@$RemainingArgs );
+    },
+    @Options
 );
 
 ##########################################################################
@@ -624,7 +638,7 @@ sub get_number_error_and_desc_by_prio {
           '<td class="table" style="text-align:right; vertical-align:middle;">'
           . $output[0][1] . '</td>';
         $result .=
-'<td class="table"><a href="http://toolserver.org/~sk/cgi-bin/checkwiki/checkwiki.cgi?project='
+'<td class="table"><a href="https://tools.wmflabs.org/checkwiki/cgi-bin/checkwiki.cgi?project='
           . $param_project
           . '&amp;view=only&amp;id='
           . $output[0][4]
