@@ -24,7 +24,8 @@ use strict;
 use warnings;
 
 use DBI;
-use Getopt::Long;
+use Getopt::Long
+  qw(GetOptionsFromString :config bundling no_auto_abbrev no_ignore_case);
 
 our $dbh;
 our @projects;
@@ -34,15 +35,24 @@ our $time_start;
 
 my ( $DbName, $DbServer, $DbUsername, $DbPassword );
 
-GetOptions(
+my @Options = (
     'database|d=s' => \$DbName,
     'host|h=s'     => \$DbServer,
     'password=s'   => \$DbPassword,
     'user|u=s'     => \$DbUsername
-  )
-  or die(
-"Input error. Try calling me with: --database <databasename> --host <host> --password <password> --user <username>\n"
-  );
+);
+
+GetOptions(
+    'c=s' => sub {
+        my $f = IO::File->new( $_[1], '<:encoding(UTF-8)' )
+          or die( "Can't open " . $_[1] . "\n" );
+        local ($/);
+        my $s = <$f>;
+        $f->close();
+        my ( $Success, $RemainingArgs ) = GetOptionsFromString( $s, @Options );
+        die unless ( $Success && !@$RemainingArgs );
+    }
+);
 
 ##########################################################################
 ## MAIN PROGRAM
@@ -61,6 +71,7 @@ cw_overview_update_done();
 cw_overview_update_error_number();
 cw_overview_update_last_update();
 cw_overview_update_last_dump();
+
 #cw_overview_update_last_change();
 
 close_db();
