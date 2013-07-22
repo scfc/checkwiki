@@ -909,6 +909,7 @@ Verlag LANGEWIESCHE, ISBN-10: 3784551912 und ISBN-13: 9783784551913
     create_line_array();
 
     # CREATES @headlines
+    # USES @lines
     # USED IN #07, #08, #25, #44, #51, #52, #57, #58, #62, #83, #84 and #92
     get_headlines();
 
@@ -3055,7 +3056,7 @@ sub error_014_Source_no_correct_end {
 }
 
 ###########################################################################
-## ERROR 16
+## ERROR 15
 ###########################################################################
 
 sub error_015_Code_no_correct_end {
@@ -3083,25 +3084,23 @@ sub error_016_unicode_control_characters {
             or $page_namespace == 6
             or $page_namespace == 104 )
         {
-            foreach (@templates_all) {
-                my $template_text = $_;
-                my $pos           = -1;
+            my $search;
 
-              #$pos = index( $text, '&#xFEFF;') 	if ($pos == -1);	# l in Wrozlaw
-              #$pos = index( $text, '&#x200E;') 	if ($pos == -1);	# l in Wrozlaw
-              #$pos = index( $text, '&#x200B;') 	if ($pos == -1);	# –
-                $pos = index( $template_text, '‎' )
-                  if ( $pos == -1 );    # &#x200E;
-                $pos = index( $template_text, '﻿' )
-                  if ( $pos == -1 );    # &#xFEFF;
-                  #$pos = index( $template_text, '​') if ($pos == -1);	# &#x200B;  # problem with IPA characters like "͡" in cs:Czechowice-Dziedzice.
+            # 200B is a problem with IPA characters in some wikis (czwiki)
+            if ( $project eq 'enwiki' ) {
+                $search = "\x{200E}|\x{FEFF}\x{200B}";
+            }
+            else {
+                $search = "\x{200E}|\x{FEFF}";
+            }
 
-                if ( $pos > -1 ) {
-                    my $found_text = substr( $template_text, $pos );
-                    $found_text = text_reduce( $found_text, 80 );
-                    error_register( $error_code,
-                        '<nowiki>' . $found_text . '</nowiki>' );
-                }
+            if ( $text =~ /($search)/ ) {
+                my $test_text = $text;
+                my $pos       = index( $test_text, $1 );
+                my $test_text = substr( $test_text, $pos, 40 );
+
+                error_register( $error_code,
+                    '<nowiki>' . $test_text . '</nowiki>' );
             }
         }
     }
