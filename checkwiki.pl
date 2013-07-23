@@ -1945,49 +1945,49 @@ sub get_images {
 
 sub get_tables {
 
-    # search for comments in this page
-    # save comments in Array
-    # replace comments with space
-    #print 'get comment'."\n";
-    my $pos_start_old = 0;
-    my $pos_end_old   = 0;
-    my $end_search    = 'yes';
-    do {
-        my $pos_start = 0;
-        my $pos_end   = 0;
-        $end_search = 'yes';
+    my $test_text = $text;
 
-        #get position of next comment
-        $pos_start = index( $text, '{|', $pos_start_old );
-        $pos_end   = index( $text, '|}', $pos_start );
+    my $tag_open_num  = () = $test_text =~ /\{\|/g;
+    my $tag_close_num = () = $test_text =~ /\|\}/g;
 
-        #print 'get table: x'.substr ($text, $pos_end, 3 )."x\n";
+    my $diff = $tag_open_num - $tag_close_num;
 
-        if (    $pos_start > -1
-            and $pos_end > -1
-            and substr( $text, $pos_end, 3 ) ne '|}}' )
-        {
-            #found a comment in current page
-            $pos_end = $pos_end + length('|}');
+    if ( $diff > 0 ) {
 
-            $end_search    = 'no';
-            $pos_start_old = $pos_end;
+        my $pos_start        = 0;
+        my $pos_end          = 0;
+        my $look_ahead_open  = 0;
+        my $look_ahead_close = 0;
+        my $look_ahead       = 0;
 
-            #replace comment with space
-            my $text_before = substr( $text, 0, $pos_start );
-            my $text_after  = substr( $text, $pos_end );
-            my $filler      = q{};
-            for ( my $i = 0 ; $i < ( $pos_end - $pos_start ) ; $i++ ) {
-                $filler = $filler . ' ';
+        my $pos_open  = index( $test_text, '{|' );
+        my $pos_open2 = index( $test_text, '{|', $pos_open + 2 );
+        my $pos_close = index( $test_text, '|}' );
+        while ( $diff > 0 ) {
+            if ( $pos_open2 == -1 ) {
+                error_028_table_no_correct_end(
+                    substr( $text, $pos_open, 40 ) );
+                $diff = -1;
             }
-            $text = $text_before . $filler . $text_after;
+            elsif ( $pos_open2 < $pos_close and $look_ahead > 0 ) {
+                error_028_table_no_correct_end(
+                    substr( $text, $pos_open, 40 ) );
+                $diff--;
+            }
+            else {
+                $pos_open  = $pos_open2;
+                $pos_open2 = index( $test_text, '{|', $pos_open + 2 );
+                $pos_close = index( $test_text, '|}', $pos_close + 2 );
+                if ( $pos_open2 > 0 ) {
+                    $look_ahead_open =
+                      index( $test_text, '{|', $pos_open2 + 2 );
+                    $look_ahead_close =
+                      index( $test_text, '|}', $pos_close + 2 );
+                    $look_ahead = $look_ahead_close - $look_ahead_open;
+                }
+            }
         }
-        if ( $pos_start > -1 and $pos_end == -1 ) {
-            error_028_table_no_correct_end( substr( $text, $pos_start, 50 ) );
-            $end_search = 'yes';
-        }
-
-    } until ( $end_search eq 'yes' );
+    }
 
     return ();
 }
@@ -3096,8 +3096,8 @@ sub error_016_unicode_control_characters {
 
             if ( $text =~ /($search)/ ) {
                 my $test_text = $text;
-                my $pos       = index( $test_text, $1 );
-                my $test_text = substr( $test_text, $pos, 40 );
+                my $pos = index( $test_text, $1 );
+                $test_text = substr( $test_text, $pos, 40 );
 
                 error_register( $error_code,
                     '<nowiki>' . $test_text . '</nowiki>' );
@@ -4295,12 +4295,6 @@ sub error_047_template_no_correct_begin {
                               . substr( $text, $pos_close, 40 )
                               . '</nowiki>' );
                         $diff--;
-                        print "POSCLOSE2: "
-                          . $pos_close2
-                          . "  POSOPEN: "
-                          . $pos_open
-                          . "  LOOKAHEAD: "
-                          . $look_ahead . "\n";
                     }
                     else {
                         $pos_close = $pos_close2;
@@ -5715,7 +5709,7 @@ sub error_084_section_without_text {
                         $pos3 = $pos2 - $pos;
                     }
                     $test_text = substr( $test_text, $pos, $pos3 );
-                    $test_text =~ s/$headlines[$i]//;
+                    $test_text =~ s/^\Q$headlines[$i]\E//;
                     $test_text =~ s/[ ]//g;
                     $test_text =~ s/\n//g;
                     $test_text =~ s/\t//g;
