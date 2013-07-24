@@ -180,8 +180,7 @@ sub get_projects {
         my $i = 0;
         foreach (@$arrayref) {
             $output[$i] = $_;
-            $output[$i] = q{};
-            unless defined $output[$i];
+            $output[$i] = q{} unless defined $output[$i];
             $i++;
         }
 
@@ -316,8 +315,7 @@ sub build_project_page {
             my $i = 0;
             foreach (@$arrayref) {
                 $output[$i] = $_;
-                $output[$i] = q{};
-                unless defined $output[$i];
+                $output[$i] = q{} unless defined $output[$i];
                 $i++;
             }
         }
@@ -349,7 +347,7 @@ sub build_project_page {
 
         $result .=
             '<p><small>This table will updated every 15 minutes. Last update: '
-          . get_time_string()
+          . $time 
           . ' (UTC)</small></p>' . "\n";
 
         $result .= '<table class="table">';
@@ -397,8 +395,7 @@ sub get_number_of_prio {
         my $i = 0;
         foreach (@$arrayref) {
             $output[$i] = $_;
-            $output[$i] = q{};
-            unless defined $output[$i];
+            $output[$i] = q{} unless defined $output[$i];
             $i++;
         }
 
@@ -568,8 +565,7 @@ sub get_number_error_and_desc_by_prio {
         my $i = 0;
         foreach (@$arrayref) {
             $output[$i] = $_;
-            $output[$i] = q{};
-            unless defined $output[$i];
+            $output[$i] = q{} unless defined $output[$i];
             $i++;
         }
 
@@ -634,6 +630,7 @@ sub time_string {
 }
 
 ###########################################################################
+
 sub html_head_start {
     my $result = "<!DOCTYPE html>\n<head>\n<meta charset=\"UTF-8\" />\n";
 
