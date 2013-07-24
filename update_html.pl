@@ -125,13 +125,12 @@ sub build_start_page {
       . "\n";
     $result .=
       '<li><a href="index.htm">FAQ</a> (be available soon)</li>' . "\n";
-    $result .=
-'<li><a href="next_dumpscan.html">Next scan of dump</a> <span style="background-color:yellow;">NEW</span></li>'
-      . "\n";
     $result .= '</ul>' . "\n";
+
+    my $time = gmtime();
     $result .=
 '<p>Choose your project! - <small>This table will updated every 15 minutes. Last update: '
-      . get_time_string()
+      . $time
       . ' (UTC)</small></p>' . "\n";
     $result .= get_projects();
 
@@ -156,11 +155,6 @@ sub get_projects {
 
     # List all projects at homepage
 
-    my $sth = $dbh->prepare(
-'SELECT id, project, errors, done, lang, project_page, translation_page, last_update, date(last_dump) from cw_overview ORDER BY project;'
-    ) || die "Problem with statement: $DBI::errstr\n";
-    $sth->execute or die "Cannot execute: " . $sth->errstr . "\n";
-
     my $result = q{};
     $result .= '<table class="table">';
     $result .= '<tr>' . "\n";
@@ -176,47 +170,46 @@ sub get_projects {
     $result .= '<th class="table">Translation</th>' . "\n";
     $result .= '</tr>' . "\n";
 
+    my $sth = $dbh->prepare(
+'SELECT id, project, errors, done, lang, project_page, translation_page, last_update, date(last_dump) from cw_overview ORDER BY project;'
+    ) || die "Problem with statement: $DBI::errstr\n";
+    $sth->execute or die "Cannot execute: " . $sth->errstr . "\n";
+
     while ( my $arrayref = $sth->fetchrow_arrayref() ) {
         my @output;
         my $i = 0;
-        my $j = 0;
         foreach (@$arrayref) {
-
-            #print $_."\n";
-            $output[$i][$j] = $_;
-            $output[$i][$j] = q{} unless defined $output[$i][$j];
-            $j              = $j + 1;
-            if ( $j == 11 ) {
-                $j = 0;
-                $i++;
-            }
+            $output[$i] = $_;
+            $output[$i] = q{};
+            unless defined $output[$i];
+            $i++;
         }
 
         # PRINT OUT "PROJECT NUMBER" and "PROJECT" COLUMNS
         $result .= '<tr>' . "\n";
-        $result .= '<td class="table">' . $output[0][0] . '</td>' . "\n";
+        $result .= '<td class="table">' . $output[0] . '</td>' . "\n";
         $result .=
             '<td class="table"><a href="'
           . $webpage_directory . '/'
-          . $output[0][1]
+          . $output[1]
           . '/index.htm" rel="nofollow">'
-          . $output[0][1]
+          . $output[1]
           . '</a></td>' . "\n";
 
         # PRINT OUT "TO-DO" and "DONE" COLUMNS
         $result .=
           '<td class="table" style="text-align:right; vertical-align:middle;">'
-          . $output[0][2] . '</td>' . "\n";
+          . $output[2] . '</td>' . "\n";
         $result .=
           '<td class="table" style="text-align:right; vertical-align:middle;">'
-          . $output[0][3] . '</td>' . "\n";
+          . $output[3] . '</td>' . "\n";
 
         # PRINT OUT "CHANGE TO YESTERDAY" and "CHANGE TO LAST WEEK" COLUMN
 
 #$result .= '<td class="table" style="text-align:right; vertical-align:middle;">'
-#  . $output[0][9] . '</td>' . "\n";
+#  . $output[9] . '</td>' . "\n";
 #$result .= '<td class="table" style="text-align:right; vertical-align:middle;">'
-#  . $output[0][10] . '</td>' . "\n";
+#  . $output[10] . '</td>' . "\n";
         $result .=
           '<td class="table" style="text-align:right; vertical-align:middle;">'
           . ' </td>' . "\n";
@@ -227,25 +220,23 @@ sub get_projects {
         # PRINT OUT "LAST DUMP" AND "LAST UPDATE" COLUMNS
         $result .=
           '<td class="table" style="text-align:right; vertical-align:middle;">'
-          . $output[0][8] . '</td>' . "\n";
-        $result .=
-          '<td class="table">' . time_string( $output[0][7] ) . '</td>';
+          . $output[8] . '</td>' . "\n";
+        $result .= '<td class="table">' . time_string( $output[7] ) . '</td>';
 
         # PRINT OUT "PAGE AT WIKIPEDIA" AND "TRANSLATION" COLUMNS
-        $output[0][5] =~ s/\s/%20/g;    # FOR HTML5.  CONVERT SPACE TO %20
         $result .=
-'<td class="table" style="text-align:center; vertical-align:middle;"><a href="http://'
-          . $output[0][4]
+'<td class="table" style="text-align:center; vertical-align:middle;"><a href="https://'
+          . $output[4]
           . '.wikipedia.org/wiki/'
-          . $output[0][5]
+          . $output[5]
           . '">here</a></td>' . "\n";
 
-        $output[0][6] =~ s/\s/%20/g;
+        $output[6] =~ s/\s/%20/g;
         $result .=
-'<td class="table" style="text-align:center; vertical-align:middle;"><a href="http://'
-          . $output[0][4]
+'<td class="table" style="text-align:center; vertical-align:middle;"><a href="https://'
+          . $output[4]
           . '.wikipedia.org/wiki/'
-          . $output[0][6]
+          . $output[6]
           . '">here</a></td>' . "\n";
         $result .= '</tr>' . "\n";
 
@@ -267,20 +258,8 @@ sub get_all_projects {
 
     my $result = q{};
     while ( my $arrayref = $sth->fetchrow_arrayref() ) {
-        my @output;
-        my $i = 0;
-        my $j = 0;
         foreach (@$arrayref) {
-
-            #print $_."\n";
-            $output[$i][$j] = $_;
-            $output[$i][$j] = q{} unless defined $output[$i][$j];
-            push( @project, $output[$i][$j] );
-            $j = $j + 1;
-            if ( $j == 1 ) {
-                $j = 0;
-                $i++;
-            }
+            push( @project, $_ );
         }
     }
 
@@ -299,7 +278,6 @@ sub build_project_page {
     print 'Build project page' . "\n";
     foreach (@project) {
 
-        #print $_."\n";
         my $project = $_;
 
         # CREATE SUBDIRECTORY IF IT DOES NOT EXIST
@@ -326,7 +304,6 @@ sub build_project_page {
 "SELECT lang, project_page, translation_page, last_update FROM cw_overview WHERE project = '"
           . $project . "'; ";
 
-        #print $sql_text . "\n\n\n";
         my $sth = $dbh->prepare($sql_text)
           || die "Problem with statement: $DBI::errstr\n";
         $sth->execute or die "Cannot execute: " . $sth->errstr . "\n";
@@ -334,31 +311,25 @@ sub build_project_page {
         my $project_page     = q{};
         my $translation_page = q{};
         my $lang             = q{};
+        my @output;
         while ( my $arrayref = $sth->fetchrow_arrayref() ) {
-            my @output;
             my $i = 0;
-            my $j = 0;
             foreach (@$arrayref) {
-
-                #print $_." - arrayref \n";
-                $output[$i][$j] = $_;
-                $output[$i][$j] = q{} unless defined $output[$i][$j];
-                $j              = $j + 1;
-                if ( $j == 3 ) {
-                    $j = 0;
-                    $i++;
-                }
+                $output[$i] = $_;
+                $output[$i] = q{};
+                unless defined $output[$i];
+                $i++;
             }
-            $lang             = $output[0][0];
-            $project_page     = $output[0][1];
-            $translation_page = $output[0][2];
         }
 
-        $project_page =~ s/\s/%20/g;    # FOR HTML5.  CONVERT SPACE TO %20
+        $lang             = $output[0];
+        $project_page     = $output[1];
+        $translation_page = $output[2];
+
         $result .= '<p>' . "\n";
         $result .= '<ul>' . "\n";
         $result .=
-            '<li>local page: <a href="http://'
+            '<li>local page: <a href="https://'
           . $lang
           . '.wikipedia.org/wiki/'
           . $project_page
@@ -366,9 +337,8 @@ sub build_project_page {
           . $project_page
           . '</a></li>' . "\n";
         $result .= '<li>page for translation: ';
-        $translation_page =~ s/\s/%20/g;    # FOR HTML5.  CONVERT SPACE TO %20
         $result .=
-            '<a href="http://'
+            '<a href="https://'
           . $lang
           . '.wikipedia.org/wiki/'
           . $translation_page
@@ -376,12 +346,6 @@ sub build_project_page {
           if ( $translation_page ne '' );
         $result .= 'unknown!' if ( $translation_page eq '' );
         $result .= '</li>' . "\n";
-        $result .=
-            '<li><a href="index.htm">statistic</a> (be available soon)</li>'
-          . "\n";
-        $result .=
-          '<li><a href="index.htm">top 100</a> (be available soon)</li>' . "\n";
-        $result .= '</ul>' . "\n";
 
         $result .=
             '<p><small>This table will updated every 15 minutes. Last update: '
@@ -420,7 +384,6 @@ sub get_number_of_prio {
       . $param_project
       . "' group by prio having prio > 0 order by prio;";
 
-    #print $sql_text . "\n\n\n";
     my $sth = $dbh->prepare($sql_text)
       || die "Can not prepare statement: $DBI::errstr\n";
     $sth->execute or die "Cannot execute: " . $sth->errstr . "\n";
@@ -428,41 +391,35 @@ sub get_number_of_prio {
     my $result        = q{};
     my $sum_of_all    = 0;
     my $sum_of_all_ok = 0;
+
     while ( my $arrayref = $sth->fetchrow_arrayref() ) {
         my @output;
         my $i = 0;
-        my $j = 0;
         foreach (@$arrayref) {
-
-            #print $_." - act \n";
-            $output[$i][$j] = $_;
-            $output[$i][$j] = '' unless defined $output[$i][$j];
-            $j              = $j + 1;
-            if ( $j == 3 ) {
-                $j = 0;
-                $i++;
-            }
-
-            #print $_."\n";
+            $output[$i] = $_;
+            $output[$i] = q{};
+            unless defined $output[$i];
+            $i++;
         }
+
         my $number_of_error = $i;
         $result .= '<tr><td class="table" style="text-align:right;"><a href=';
         $result .= '"priority_high.htm"   rel="nofollow">high priority'
-          if ( $output[0][1] == 1 );
+          if ( $output[1] == 1 );
         $result .= '"priority_middle.htm" rel="nofollow">middle priority'
-          if ( $output[0][1] == 2 );
+          if ( $output[1] == 2 );
         $result .= '"priority_low.htm"    rel="nofollow">low priority'
-          if ( $output[0][1] == 3 );
+          if ( $output[1] == 3 );
         $result .=
 '</a></td><td class="table" style="text-align:right; vertical-align:middle;">'
-          . $output[0][0]
+          . $output[0]
           . '</td><td class="table" style="text-align:right; vertical-align:middle;">'
-          . $output[0][2]
+          . $output[2]
           . '</td></tr>' . "\n";
-        $sum_of_all    = $sum_of_all + $output[0][0];
-        $sum_of_all_ok = $sum_of_all_ok + $output[0][2];
+        $sum_of_all    = $sum_of_all + $output[0];
+        $sum_of_all_ok = $sum_of_all_ok + $output[2];
 
-        if ( $output[0][1] == 3 ) {
+        if ( $output[1] == 3 ) {
 
             # sum -> all priorities
             my $result2 = q{};
@@ -592,11 +549,6 @@ sub get_number_error_and_desc_by_prio {
 "SELECT IFNULL(errors, '') todo, IFNULL(done, '') ok, name, name_trans, id, prio FROM cw_overview_errors ORDER BY name_trans, name;";
     }
 
-    #print $sql_text . "\n\n\n";
-    my $sth = $dbh->prepare($sql_text)
-      || die "Can not prepare statement: $DBI::errstr\n";
-    $sth->execute or die "Cannot execute: " . $sth->errstr . "\n";
-
     my $result = q{};
     $result .= '<table class="table">';
     $result .= '<tr>';
@@ -606,48 +558,45 @@ sub get_number_error_and_desc_by_prio {
     $result .= '<th class="table">Description</th>';
     $result .= '<th class="table">ID</th>';
     $result .= '</tr>' . "\n";
+
+    my $sth = $dbh->prepare($sql_text)
+      || die "Can not prepare statement: $DBI::errstr\n";
+    $sth->execute or die "Cannot execute: " . $sth->errstr . "\n";
+
     while ( my $arrayref = $sth->fetchrow_arrayref() ) {
         my @output;
         my $i = 0;
-        my $j = 0;
         foreach (@$arrayref) {
-
-            #print $_."\n";
-            $output[$i][$j] = $_;
-            $output[$i][$j] = '' unless defined $output[$i][$j];
-            $j              = $j + 1;
-            if ( $j == 6 ) {
-                $j = 0;
-                $i++;
-            }
-
-            #print $_."\n";
+            $output[$i] = $_;
+            $output[$i] = q{};
+            unless defined $output[$i];
+            $i++;
         }
 
-        my $headline = $output[0][2];
-        $headline = $output[0][3] if ( $output[0][3] ne '' );
+        my $headline = $output[2];
+        $headline = $output[3] if ( $output[3] ne q{} );
 
         $result .= '<tr>';
         $result .=
           '<td class="table" style="text-align:right; vertical-align:middle;">'
-          . priority_marker( $output[0][5] ) . '</td>';
+          . priority_marker( $output[5] ) . '</td>';
         $result .=
           '<td class="table" style="text-align:right; vertical-align:middle;">'
-          . $output[0][0] . '</td>';
+          . $output[0] . '</td>';
         $result .=
           '<td class="table" style="text-align:right; vertical-align:middle;">'
-          . $output[0][1] . '</td>';
+          . $output[1] . '</td>';
         $result .=
 '<td class="table"><a href="https://tools.wmflabs.org/checkwiki/cgi-bin/checkwiki.cgi?project='
           . $param_project
           . '&amp;view=only&amp;id='
-          . $output[0][4]
+          . $output[4]
           . '" rel="nofollow">'
           . $headline
           . '</a></td>';
         $result .=
           '<td class="table" style="text-align:right; vertical-align:middle;">'
-          . $output[0][4] . '</td>';
+          . $output[4] . '</td>';
         $result .= '</tr>' . "\n";
 
     }
@@ -685,51 +634,6 @@ sub time_string {
 }
 
 ###########################################################################
-
-sub get_time {
-    our (
-        $akSekunden,  $akMinuten,   $akStunden,
-        $akMonatstag, $akMonat,     $akJahr,
-        $akWochentag, $akJahrestag, $akSommerzeit
-    ) = localtime(time);
-    our $CTIME_String = localtime(time);
-    $akMonat     = $akMonat + 1;
-    $akJahr      = $akJahr + 1900;
-    $akMonat     = "0" . $akMonat if ( $akMonat < 10 );
-    $akMonatstag = "0" . $akMonatstag if ( $akMonatstag < 10 );
-    $akStunden   = "0" . $akStunden if ( $akStunden < 10 );
-    $akMinuten   = "0" . $akMinuten if ( $akMinuten < 10 );
-
-    return ();
-}
-
-###########################################################################
-
-sub get_time_string {
-    my (
-        $aakSekunden,  $aakMinuten,   $aakStunden,
-        $aakMonatstag, $aakMonat,     $aakJahr,
-        $aakWochentag, $aakJahrestag, $aakSommerzeit
-    ) = localtime(time);
-    $aakMonat     = $aakMonat + 1;
-    $aakJahr      = $aakJahr + 1900;
-    $aakMonat     = "0" . $aakMonat if ( $aakMonat < 10 );
-    $aakMonatstag = "0" . $aakMonatstag if ( $aakMonatstag < 10 );
-    $aakStunden   = "0" . $aakStunden if ( $aakStunden < 10 );
-    $aakMinuten   = "0" . $aakMinuten if ( $aakMinuten < 10 );
-    $aakSekunden  = "0" . $aakSekunden if ( $aakSekunden < 10 );
-    my $result =
-        $aakJahr . '-'
-      . $aakMonat . '-'
-      . $aakMonatstag . ' '
-      . $aakStunden . ':'
-      . $aakMinuten . ':'
-      . $aakSekunden;
-
-    return ($result);
-}
-
-###########################################################################
 sub html_head_start {
     my $result = "<!DOCTYPE html>\n<head>\n<meta charset=\"UTF-8\" />\n";
 
@@ -743,7 +647,7 @@ sub html_head_end {
 }
 
 sub html_end {
-    my $result = '';
+    my $result = q{};
     $result .= '<p><span style="font-size:10px;">' . "\n";
     $result .=
 'Author: <a href="http://en.wikipedia.org/wiki/User:Stefan_Kühn" >Stefan Kühn</a> · '
@@ -754,12 +658,12 @@ sub html_end {
     $result .=
 '<a href="http://de.wikipedia.org/w/index.php?title=Benutzer_Diskussion:Stefan_Kühn/Check_Wikipedia&amp;action=edit&amp;section=new">comments and bugs</a><br />'
       . "\n";
-    $result .= 'Version 0.14 · ' . "\n";
+    $result .= 'Version 2013-08-01 · ' . "\n";
     $result .=
-        'license: <a href="http://www.gnu.org/copyleft/gpl.html">GPL</a> · '
+        'license: <a href="http://www.gnu.org/copyleft/gpl.html">GPLv3</a> · '
       . "\n";
     $result .=
-'Powered by <a href="http://tools.wikimedia.de/">Wikimedia Toolserver</a> '
+'Powered by <a href="https://www.mediawiki.org/wiki/Wikimedia_Labs">Wikimedia Labs</a> '
       . "\n";
     $result .= '</span></p>' . "\n";
 
