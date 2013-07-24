@@ -2,26 +2,21 @@
 
 ###########################################################################
 ##
-## FILE:   checkwiki.pl
-## USAGE:
+##          FILE: checkwiki.pl
 ##
-## DESCRIPTION
+##         USAGE: ./checkwiki.pl -c checkwiki.cfg --project=<enwiki>
+##                --load <live, dump, delay> --dumpfile --tt-file
 ##
-## AUTHOR: Stefan Kühn
-## Licence: GPL
+##   DESCRIPTION: Scan Wikipedia articles for errors.
+##
+##        AUTHOR: Stefan Kühn, Bryan White
+##       LICENCE: GPLv3
+##       VERSION: 07/23/2013
 ##
 ###########################################################################
 
-# notice
-# delete_old_errors_in_db  --> Problem with deleting of errors in loadmodus
-# delete_deleted_article_from_db --> Problem old articles
-
-#################################################################
-
 use strict;
 use warnings;
-
-our $VERSION = '2013-07-15';
 
 use lib '/data/project/checkwiki/share/perl';
 use DBI;
@@ -37,38 +32,58 @@ use Data::Dumper;
 use MediaWiki::API;
 use MediaWiki::Bot;
 
-binmode( STDOUT, ":encoding(UTF-8)" );    # PRINT OUTPUT IN UTF-8 ARTICLE TITLES
+binmode( STDOUT, ":encoding(UTF-8)" );
 
-our $quit_program =
-  'no';    # quit the program (yes,no), for quit the programm in an emergency
-our $quit_reason = q{};    # quit the program reason
+our $dump_or_live = q{};    # Scan modus (dump, live, delay)
 
-our $dump_or_live = q{};   # scan modus (dump, live)
+our $CheckOnlyOne = 0;      # Check only one error or all errors
 
-our $CheckOnlyOne = 0;     # Check only one error or all errors
+our $ServerName  = q{};     # Address where api can be found
+our $project     = q{};     # Name of the project 'dewiki'
+our $language    = q{};     # Language of dump 'de', 'en';
+our $home        = q{};     # Base of article, 'http://de.wikipedia.org/wiki/'
+our $end_of_dump = q{};     # When last article from dump reached
+our $artcount    = 0;       # Number of articles processed
+our $file_size   = 0;       # How many MB of the dump has been processed.
 
-our $details_for_page =
-  'no';   # yes/no  durring the scan you can get more details for a article scan
+# Database configuration
+our $DbName;
+our $DbServer;
+our $DbUsername;
+our $DbPassword;
 
-our $ServerName = q{};
-our $project;    # name of the project 'dewiki'
-our $language = q{};    # language of dump 'de', 'en';
-our $home     = q{};    # base of article, 'http://de.wikipedia.org/wiki/'
+our $dbh;
 
-our @namespace;         # namespace values
-                        # 0 number
-                        # 1 namespace in project language
-                        # 2 namespace in english language
+# MediaWiki::DumpFile variables
+our $pmwd  = Parse::MediaWikiDump->new;
+our $pages = q{};
 
-our @namespacealiases;  # namespacealiases values
-                        # 0 number
-                        # 1 namespacealias
+# Time program starts
+our $time_start = time();    # start timer in secound
+our $time_end   = time();    # end time in secound
+our $time_found = time();    # for column "Found" in cw_error
 
-our @namespace_cat;          #all namespaces for categorys
-our @namespace_image;        #all namespaces for images
-our @namespace_templates;    #all namespaces for templates
-our $image_regex = q{};
-our $cat_regex   = q{};
+# File name
+our $TTFile;
+
+##############################
+##  Wiki-special variables
+##############################
+
+our @namespace;              # Namespace values
+                             # 0 number
+                             # 1 namespace in project language
+                             # 2 namespace in english language
+
+our @namespacealiases;       # Namespacealiases values
+                             # 0 number
+                             # 1 namespacealias
+
+our @namespace_cat;          # All namespaces for categorys
+our @namespace_image;        # All namespaces for images
+our @namespace_templates;    # All namespaces for templates
+our $image_regex = q{};      # Regex used in get_images()
+our $cat_regex   = q{};      # Regex used in get_categories()
 
 our @magicword_defaultsort;
 
@@ -95,37 +110,12 @@ our @magicword_img_middle;
 our @magicword_img_bottom;
 our @magicword_img_text_bottom;
 
-# Database configuration
-our $DbName;
-our $DbServer;
-our $DbUsername;
-our $DbPassword;
-
-our $dbh;
-
-# MediaWiki::DumpFile variables
-our $pmwd      = Parse::MediaWikiDump->new;
-our $pages     = q{};
-our $file_size = 0;
-our $artcount  = 0;
-
-# Time program starts
-our $time_start = time();    # start timer in secound
-our $time_end   = time();    # end time in secound
-our $time_found = time();    # for column "Found" in cw_error
-
-# Wiki-special variables
-
-our $error_counter = -1;     # number of found errors in all article
-our @ErrorPriorityValue;     # Priority value each error has
+our $error_counter = -1;    # number of found errors in all article
+our @ErrorPriorityValue;    # Priority value each error has
 
 our @Error_number_counter = (0) x 150;    # Error counter for individual errors
 
-our $number_of_all_errors_in_all_articles = 0;    #all errors
-
-# Files
-our $error_list_filename = 'error_list.txt';
-my $TTFile;
+our $number_of_all_errors_in_all_articles = 0;
 
 our @inter_list = (
     'af',     'als', 'an',  'ar',     'bg', 'bs',
@@ -153,61 +143,56 @@ our @foundation_projects = (
 );
 
 ###############################
-# variables for one article
+## Variables for one article
 ###############################
 
-our $title   = q{};    # title of the current article
-our $page_id = -1;     # page id of the current article
-our $text    = q{};    # text of the current article
-our $text_without_comments =
-  q{};                 # text of current article with comments only removed
+our $title                 = q{};    # Title of the current article
+our $text                  = q{};    # Text of the current article
+our $text_without_comments = q{};
 
-our $page_namespace;   # namespace of page
+# Text of article with comments only removed
+
+our $page_namespace;                 # Namespace of page
 our $page_is_redirect       = 'no';
 our $page_is_disambiguation = 'no';
 
-our @category;         # 0 pos_start
-                       # 1 pos_end
-                       # 2 category	Test
-                       # 3 linkname	Linkname
-                       # 4 original	[[Category:Test|Linkname]]
-
 our $category_counter = -1;
-our $category_all     = q{};    # all categries
+our $category_all     = q{};         # All categries
 
-our @interwiki;                 # 0 pos_start
-                                # 1 pos_end
-                                # 2 interwiki	Test
-                                # 3 linkname	Linkname
-                                # 4 original	[[de:Test|Linkname]]
-                                # 5 language
+our @category;                       # 0 pos_start
+                                     # 1 pos_end
+                                     # 2 category	Test
+                                     # 3 linkname	Linkname
+                                     # 4 original	[[Category:Test|Linkname]]
+
+our @interwiki;                      # 0 pos_start
+                                     # 1 pos_end
+                                     # 2 interwiki	Test
+                                     # 3 linkname	Linkname
+                                     # 4 original	[[de:Test|Linkname]]
+                                     # 5 language
 
 our $interwiki_counter = -1;
 
-our @lines;                     # text seperated in lines
-our @headlines;                 # headlines
+our @templates_all;                  # All templates
+our @template;                       # Templates with values
+                                     # 0 number of template
+                                     # 1 templatename
+                                     # 2 template_row
+                                     # 3 attribut
+                                     # 4 value
 
-our @templates_all;             # all templates
-our @template;                  # templates with values
-                                # 0 number of template
-                                # 1 templatename
-                                # 2 template_row
-                                # 3 attribut
-                                # 4 value
-our $number_of_template_parts = -1;    # number of all template parts
+our $number_of_template_parts = -1;  # Number of all template parts
 
-our @links_all;                        # all links
-our @images_all;                       # all images
-our @isbn;                             # all ibsn of books
-our @ref;                              # all ref
+our @links_all;                      # All links
+our @images_all;                     # All images
+our @isbn;                           # All ibsn of books
+our @ref;                            # All ref
+our @headlines;                      # All headlines
+our @lines;                          # Text seperated in lines
 
-our $end_of_dump =
-  'no';    # when last article from dump scan then 'yes', else 'no'
-our $end_of_live =
-  'no';    # when last article from live scan then 'yes', else 'no'
-
-our $statistic_online_page =
-  -1;      # number of pages online from metadata-statistic
+###########################################################################
+###########################################################################
 
 ###########################################################################
 ## OPEN DATABASE
@@ -285,7 +270,6 @@ sub scan_pages {
     print_line();
 
     $end_of_dump = 'no';
-    $end_of_live = 'no';
 
     my $page = q{};
 
@@ -301,7 +285,6 @@ sub scan_pages {
             check_article();
 
             #$end_of_dump = 'yes' if ( $artcount > 10000 );
-            #$end_of_dump = 'yes' if ( $page_id  > 7950 );
             #$end_of_dump = 'yes' if ( $error_counter > 40000 )
         }
     }
@@ -392,9 +375,8 @@ sub case_fixer {
 ###########################################################################
 
 sub set_variables_for_article {
-    $title   = q{};    # title of the current article
-    $page_id = -1;     # page id of the current article
-    $text    = q{};    # text of the current article  (for work)
+    $title = q{};    # title of the current article
+    $text  = q{};    # text of the current article  (for work)
 
     $page_is_redirect       = 'no';
     $page_is_disambiguation = 'no';
@@ -463,6 +445,23 @@ sub update_table_cw_error_from_dump {
 }
 
 ###########################################################################
+## DELETE "DONE" ARTICLES FROM DB
+###########################################################################
+
+sub delete_deleted_article_from_db {
+
+    my $sql_text =
+      "DELETE /* SLOW_OK */ FROM cw_error WHERE ok = 1 and PROJECT = '"
+      . $project . "';";
+
+    my $sth = $dbh->prepare($sql_text)
+      || die "Can not prepare statement: $DBI::errstr\n";
+    $sth->execute or die "Cannot execute: " . $sth->errstr . "\n";
+
+    return ();
+}
+
+###########################################################################
 ##
 ###########################################################################
 
@@ -470,19 +469,21 @@ sub getErrors {
     my $error_count                 = 0;
     my $number_of_error_description = 0;
 
-    my $sth = $dbh->prepare('SELECT COUNT(*) FROM cw_error_desc')
+    my $sql_text =
+      "SELECT COUNT(*) FROM cw_error_desc WHERE project = '" . $project . "';";
+    my $sth = $dbh->prepare($sql_text)
       || die "Can not prepare statement: $DBI::errstr\n";
     $sth->execute or die "Cannot execute: " . $sth->errstr . "\n";
 
     $number_of_error_description = $sth->fetchrow();
 
-    my $sql_text =
+    $sql_text =
       "SELECT prio FROM cw_error_desc WHERE project = '" . $project . "';";
     $sth = $dbh->prepare($sql_text)
       || die "Can not prepare statement: $DBI::errstr\n";
     $sth->execute or die "Cannot execute: " . $sth->errstr . "\n";
 
-    for ( my $i = 1 ; $i <= $number_of_error_description ; $i++ ) {
+    foreach my $i ( 1 .. $number_of_error_description ) {
         $ErrorPriorityValue[$i] = $sth->fetchrow();
         if ( $ErrorPriorityValue[$i] > 0 ) {
             $error_count++;
@@ -625,7 +626,7 @@ sub readMetadata {
 sub live_scan {
 
     my @live_titles;
-    my $limit = 100;
+    my $limit = 500;    # 500 is the max mediawiki allows
     $page_namespace = 0;
 
     my $bot = MediaWiki::Bot->new(
@@ -662,8 +663,8 @@ sub live_scan {
 
 sub delay_scan {
 
-    my $sql_text;
     $page_namespace = 0;
+
     my $bot = MediaWiki::Bot->new(
         {
             assert   => 'bot',
@@ -672,23 +673,20 @@ sub delay_scan {
         }
     );
 
-    $sql_text = "SELECT Title FROM cw_new WHERE Project = '" . $project . "';";
-
-    my $sth = $dbh->prepare($sql_text)
+    my $sth = $dbh->prepare('SELECT Title FROM cw_new WHERE Project = ?;')
       || die "Can not prepare statement: $DBI::errstr\n";
-    $sth->execute or die "Cannot execute: " . $sth->errstr . "\n";
+    $sth->execute($project) or die "Cannot execute: " . $sth->errstr . "\n";
 
     while ( $title = $sth->fetchrow() ) {
         $text = $bot->get_text($title);
-        $artcount++;
+        update_ui() if ++$artcount % 500 == 0;
         set_variables_for_article();
         check_article();
     }
 
-    #$sql_text = "DELETE FROM cw_new WHERE Project = '" . $project . "';";
-    #$sth = $dbh->prepare($sql_text)
-    #  || die "Can not prepare statement: $DBI::errstr\n";
-    #$sth->execute or die "Cannot execute: " . $sth->errstr . "\n";
+    $sth = $dbh->prepare('DELETE FROM cw_new WHERE Project = ?;')
+      || die "Can not prepare statement: $DBI::errstr\n";
+    $sth->execute($project) or die "Cannot execute: " . $sth->errstr . "\n";
 
     return ();
 }
@@ -841,6 +839,10 @@ Verlag LANGEWIESCHE, ISBN-10: 3784551912 und ISBN-13: 9783784551913
 
     delete_old_errors_in_db();
 
+    #------------------------------------------------------
+    # Following alters text and must be run first
+    #------------------------------------------------------
+
     # REMOVES FROM $text ANY CONTENT BETWEEN <!-- --> TAGS.
     # CALLS #05
     get_comments();
@@ -868,16 +870,22 @@ Verlag LANGEWIESCHE, ISBN-10: 3784551912 und ISBN-13: 9783784551913
     # REMOVE FROM $text ANY CONTENT BETWEEN <SYNTAXHIGHLIGHT> TAGS.
     get_syntaxhighlight();
 
+    #------------------------------------------------------
+    # Following calls do not interact with other get_* or error #'s
+    #------------------------------------------------------
+
     # CALLS #29 and #25
     get_gallery();
-
-    #------------------------------------------------------
 
     # CALLS #28
     get_tables();
 
     # CALLS #69, #70, #71, #72 ISBN CHECKS
     get_isbn();
+
+    #------------------------------------------------------
+    # Following interacts with other get_* or error #'s
+    #------------------------------------------------------
 
     # CREATES @ref - USED IN #81
     get_ref();
@@ -926,11 +934,11 @@ Verlag LANGEWIESCHE, ISBN-10: 3784551912 und ISBN-13: 9783784551913
 ###########################################################################
 
 sub delete_old_errors_in_db {
-    if ( $dump_or_live eq 'live' && $page_id && $title ne '' ) {
-        my $sth = $dbh->prepare(
-            'DELETE FROM cw_error WHERE Error_ID = ? AND Project = ?;')
+    if ( $dump_or_live eq 'live' && $title ne '' ) {
+        my $sth =
+          $dbh->prepare('DELETE FROM cw_error WHERE Title = ? AND Project = ?;')
           || die "Can not prepare statement: $DBI::errstr\n";
-        $sth->execute( $page_id, $project )
+        $sth->execute( $title, $project )
           or die "Cannot execute: " . $sth->errstr . "\n";
     }
 
@@ -1660,7 +1668,6 @@ sub get_templates {
                 #print $number_of_template_parts."\n";
 
                 $output .= $title . "\t";
-                $output .= $page_id . "\t";
                 $output .= $template[$template_part_counter][0] . "\t";
                 $output .= $template[$template_part_counter][1] . "\t";
                 $output .= $template[$template_part_counter][2] . "\t";
@@ -1689,7 +1696,6 @@ sub get_templates {
       )
     {
 
-        print $output if ( $details_for_page eq 'yes' );
         $TTFile->print($output);
 
     }
@@ -6141,7 +6147,7 @@ sub insert_into_db {
     $notice        =~ s/\\/\\\\/g;
     $notice        =~ s/'/\\'/g;
 
-    if ( $dump_or_live eq 'live' ) {
+    if ( $dump_or_live eq 'live' or $dump_or_live eq 'delay' ) {
         $table_name = 'cw_error';
         $date_found = strftime( '%F %T', gmtime() );
     }
@@ -6155,7 +6161,6 @@ sub insert_into_db {
       . $table_name
       . " VALUES ( '"
       . $project . "', "
-      . $page_id . ", '"
       . $article_title . "', "
       . $code . ", '"
       . $notice
@@ -6250,9 +6255,7 @@ sub usage {
 ###########################################################################
 ###########################################################################
 
-## GET COMMAND LINE OPTIONS
-
-my ( $load_mode, $DumpFilename, $TTFilename );
+my ( $load_mode, $DumpFilename, $TTFilename, $dump_date_for_output );
 
 my @Options = (
     'load=s'       => \$load_mode,
@@ -6287,23 +6290,20 @@ if (
     exit(1);
 }
 
-# Check that a project name is given.
 if ( !defined($project) ) {
     usage();
     die("$0: No project name, for example: \"-p dewiki\"\n");
 }
+
+$language = $project;
+$language =~ s/source$//;
+$language =~ s/wiki$//;
 
 print "\n\n";
 print_line();
 two_column_display( 'Start time:',
     ( strftime "%a %b %e %H:%M:%S %Y", localtime ) );
 $time_found = strftime( '%F %T', gmtime() );
-
-$language = $project;
-$language =~ s/source$//;
-$language =~ s/wiki$//;
-
-my $dump_date_for_output;
 
 if ( defined($DumpFilename) ) {
     $dump_or_live = 'dump';
@@ -6357,10 +6357,11 @@ getErrors();
 readMetadata();
 
 # MAIN ROUTINE - SCAN PAGES FOR ERRORS
-scan_pages();    # Scan articles.
+scan_pages();
 
 updateDumpDate($dump_date_for_output) if ( $dump_or_live eq 'dump' );
 update_table_cw_error_from_dump();
+delete_deleted_article_from_db();
 
 close_db();
 
@@ -6384,6 +6385,7 @@ if ( defined($TTFile) ) {
 print_line();
 two_column_display( 'Articles checked:', $artcount );
 two_column_display( 'Errors found:',     ++$error_counter );
+
 $time_end = time() - $time_start;
 printf "Program run time:              %d hours, %d minutes and %d seconds\n\n",
   ( gmtime $time_end )[ 2, 1, 0 ];
