@@ -19,6 +19,7 @@ use strict;
 use warnings;
 
 use lib '/data/project/checkwiki/share/perl';
+use MediaWiki::DumpFile;
 use DBI;
 use File::Temp;
 use Getopt::Long
@@ -27,8 +28,8 @@ use LWP::UserAgent;
 use MediaWiki::DumpFile::Compat;
 use POSIX qw(strftime);
 use URI::Escape;
-use XML::LibXML;
-use Data::Dumper;
+
+#use XML::LibXML;
 use MediaWiki::API;
 use MediaWiki::Bot;
 
@@ -231,11 +232,10 @@ sub close_db {
 ###########################################################################
 
 sub clearDumpscanTable {
-    my $sql_text =
-      "DELETE FROM cw_dumpscan WHERE Project = '" . $project . "';";
-    my $sth = $dbh->prepare($sql_text)
+
+    my $sth = $dbh->prepare('DELETE FROM cw_dumpscan WHERE Project = ?;')
       || die "Can not prepare statement: $DBI::errstr\n";
-    $sth->execute or die "Cannot execute: " . $sth->errstr . "\n";
+    $sth->execute($project) or die "Cannot execute: " . $sth->errstr . "\n";
 
     return ();
 }
@@ -284,7 +284,8 @@ sub scan_pages {
             $text           = ${ $page->text };
             check_article();
 
-            #$end_of_dump = 'yes' if ( $artcount > 10000 );
+            $end_of_dump = 'yes' if ( $artcount > 10000 );
+
             #$end_of_dump = 'yes' if ( $error_counter > 40000 )
         }
     }
@@ -371,7 +372,7 @@ sub case_fixer {
 }
 
 ###########################################################################
-##
+## RESET VARIABLES BEFORE SCANNING A NEW ARTICLE
 ###########################################################################
 
 sub set_variables_for_article {
@@ -426,18 +427,15 @@ sub set_variables_for_article {
 sub update_table_cw_error_from_dump {
 
     if ( $dump_or_live eq 'dump' ) {
-        my $sql_text =
-          "DELETE FROM cw_error WHERE Project = '" . $project . "';";
-        my $sth = $dbh->prepare($sql_text)
-          || die "Can not prepare statement: $DBI::errstr\n";
-        $sth->execute or die "Cannot execute: " . $sth->errstr . "\n";
 
-        $sql_text =
-          "INSERT INTO cw_error (SELECT * FROM cw_dumpscan WHERE Project = '"
-          . $project . "');";
-        $sth = $dbh->prepare($sql_text)
+        my $sth = $dbh->prepare('DELETE FROM cw_error WHERE Project = ?;')
           || die "Can not prepare statement: $DBI::errstr\n";
-        $sth->execute or die "Cannot execute: " . $sth->errstr . "\n";
+        $sth->execute($project) or die "Cannot execute: " . $sth->errstr . "\n";
+
+        $sth = $dbh->prepare(
+            'INSERT INTO cw_error (SELECT * FROM cw_dumpscan WHERE Project = ?;'
+        ) || die "Can not prepare statement: $DBI::errstr\n";
+        $sth->execute($project) or die "Cannot execute: " . $sth->errstr . "\n";
 
     }
 
@@ -448,40 +446,34 @@ sub update_table_cw_error_from_dump {
 ## DELETE "DONE" ARTICLES FROM DB
 ###########################################################################
 
-sub delete_deleted_article_from_db {
+sub delete_done_article_from_db {
 
-    my $sql_text =
-      "DELETE /* SLOW_OK */ FROM cw_error WHERE ok = 1 and PROJECT = '"
-      . $project . "';";
-
-    my $sth = $dbh->prepare($sql_text)
+    my $sth =
+      $dbh->prepare('DELETE FROM cw_error WHERE ok = 1 and project = ?;')
       || die "Can not prepare statement: $DBI::errstr\n";
-    $sth->execute or die "Cannot execute: " . $sth->errstr . "\n";
+    $sth->execute($project) or die "Cannot execute: " . $sth->errstr . "\n";
 
     return ();
 }
 
 ###########################################################################
-##
+## GET @ErrorPriorityValue
 ###########################################################################
 
 sub getErrors {
     my $error_count                 = 0;
     my $number_of_error_description = 0;
 
-    my $sql_text =
-      "SELECT COUNT(*) FROM cw_error_desc WHERE project = '" . $project . "';";
-    my $sth = $dbh->prepare($sql_text)
+    my $sth =
+      $dbh->prepare('SELECT COUNT(*) FROM cw_error_desc WHERE project = ?;')
       || die "Can not prepare statement: $DBI::errstr\n";
-    $sth->execute or die "Cannot execute: " . $sth->errstr . "\n";
+    $sth->execute($project) or die "Cannot execute: " . $sth->errstr . "\n";
 
     $number_of_error_description = $sth->fetchrow();
 
-    $sql_text =
-      "SELECT prio FROM cw_error_desc WHERE project = '" . $project . "';";
-    $sth = $dbh->prepare($sql_text)
+    $sth = $dbh->prepare('SELECT prio FROM cw_error_desc WHERE project = ?;')
       || die "Can not prepare statement: $DBI::errstr\n";
-    $sth->execute or die "Cannot execute: " . $sth->errstr . "\n";
+    $sth->execute($project) or die "Cannot execute: " . $sth->errstr . "\n";
 
     foreach my $i ( 1 .. $number_of_error_description ) {
         $ErrorPriorityValue[$i] = $sth->fetchrow();
@@ -620,7 +612,7 @@ sub readMetadata {
 }
 
 ###########################################################################
-##
+## CHECK ARTICLES VIA A LIVE SCAN
 ###########################################################################
 
 sub live_scan {
@@ -645,11 +637,10 @@ sub live_scan {
     my @temp_titles = @live_titles;
     my $thing       = $bot->get_pages( \@live_titles );
     foreach my $page ( keys %$thing ) {
+        set_variables_for_article();
         $text  = $thing->{$page};
         $title = pop(@temp_titles);
         if ( defined($text) ) {
-            print $title . "\n";
-            set_variables_for_article();
             check_article();
         }
     }
@@ -663,6 +654,8 @@ sub live_scan {
 
 sub delay_scan {
 
+    my @title_array;
+    my $title_sql;
     $page_namespace = 0;
 
     my $bot = MediaWiki::Bot->new(
@@ -673,20 +666,31 @@ sub delay_scan {
         }
     );
 
+    # Get titles gathered from live_scan.pl
     my $sth = $dbh->prepare('SELECT Title FROM cw_new WHERE Project = ?;')
       || die "Can not prepare statement: $DBI::errstr\n";
     $sth->execute($project) or die "Cannot execute: " . $sth->errstr . "\n";
 
-    while ( $title = $sth->fetchrow() ) {
-        $text = $bot->get_text($title);
-        update_ui() if ++$artcount % 500 == 0;
-        set_variables_for_article();
-        check_article();
+    $sth->bind_col( 1, \$title_sql );
+    while ( $sth->fetchrow_arrayref ) {
+        push( @title_array, $title_sql );
     }
 
+    # Remove the articles. live_scan.pl is continuously adding new article.
+    # So, need to remove before doing anything else.
     $sth = $dbh->prepare('DELETE FROM cw_new WHERE Project = ?;')
       || die "Can not prepare statement: $DBI::errstr\n";
     $sth->execute($project) or die "Cannot execute: " . $sth->errstr . "\n";
+
+    foreach (@title_array) {
+        set_variables_for_article();
+        $title = $_;
+        $text  = $bot->get_text($title);
+        printf( "  %7d articles done\n", $artcount ) if ++$artcount % 500 == 0;
+        if ( defined($text) ) {    # Article may have been deleted
+            check_article();
+        }
+    }
 
     return ();
 }
@@ -946,7 +950,7 @@ sub delete_old_errors_in_db {
 }
 
 ###########################################################################
-## FIND MISSING COMMENTS TAGS AND REMOVE EVERYTHIGN BETWEEN THE TAGS
+## FIND MISSING COMMENTS TAGS AND REMOVE EVERYTHING BETWEEN THE TAGS
 ###########################################################################
 
 sub get_comments {
@@ -973,7 +977,7 @@ sub get_comments {
 }
 
 ###########################################################################
-## FIND MISSING NOWIKI TAGS AND REMOVE EVERYTHIGN BETWEEN THE TAGS
+## FIND MISSING NOWIKI TAGS AND REMOVE EVERYTHING BETWEEN THE TAGS
 ###########################################################################
 
 sub get_nowiki {
@@ -998,7 +1002,7 @@ sub get_nowiki {
 }
 
 ###########################################################################
-## FIND MISSING PRE TAGS AND REMOVE EVERYTHIGN BETWEEN THE TAGS
+## FIND MISSING PRE TAGS AND REMOVE EVERYTHING BETWEEN THE TAGS
 ###########################################################################
 
 sub get_pre {
@@ -1023,7 +1027,7 @@ sub get_pre {
 }
 
 ###########################################################################
-##
+## FIND MISSING MATH TAGS AND REMOVE EVERYTHING BETWEEN THE TAGS
 ###########################################################################
 
 sub get_math {
@@ -1048,7 +1052,7 @@ sub get_math {
 }
 
 ###########################################################################
-## FIND MISSING SOURCE TAGS AND REMOVE EVERYTHIGN BETWEEN THE TAGS
+## FIND MISSING SOURCE TAGS AND REMOVE EVERYTHING BETWEEN THE TAGS
 ###########################################################################
 
 sub get_source {
@@ -1073,7 +1077,7 @@ sub get_source {
 }
 
 ###########################################################################
-## FIND MISSING CODE TAGS AND REMOVE EVERYTHIGN BETWEEN THE TAGS
+## FIND MISSING CODE TAGS AND REMOVE EVERYTHING BETWEEN THE TAGS
 ###########################################################################
 
 sub get_code {
@@ -1098,7 +1102,7 @@ sub get_code {
 }
 
 ###########################################################################
-## FIND MISSING SYNTAXHIGHLIGHT TAGS AND REMOVE EVERYTHIGN BETWEEN THE TAGS
+## REMOVE EVERYTHIN BETWEEN THE SYNTAXHIGHLIGHT TAGS
 ###########################################################################
 
 sub get_syntaxhighlight {
@@ -1110,7 +1114,84 @@ sub get_syntaxhighlight {
 }
 
 ###########################################################################
-##
+## FIND MISSING GALLERY TAGS
+###########################################################################
+
+sub get_gallery {
+
+    my $test_text = lc($text);
+
+    if ( $test_text =~ /<gallery/ ) {
+        my $gallery_begin = 0;
+        my $gallery_end   = 0;
+
+        $gallery_begin = () = $test_text =~ /<gallery/g;
+        $gallery_end   = () = $test_text =~ /<\/gallery>/g;
+
+        #if ( $gallery_begin > $gallery_end ) {
+        #    my $snippet = get_broken_tag( '<gallery', '</gallery>' );
+        #    error_029_gallery_no_correct_end($snippet);
+        #}
+    }
+
+    return ();
+}
+
+###########################################################################
+## GET TABLES
+###########################################################################
+
+sub get_tables {
+
+    my $test_text = $text;
+
+    my $tag_open_num  = () = $test_text =~ /\{\|/g;
+    my $tag_close_num = () = $test_text =~ /\|\}/g;
+
+    my $diff = $tag_open_num - $tag_close_num;
+
+    if ( $diff > 0 ) {
+
+        my $pos_start        = 0;
+        my $pos_end          = 0;
+        my $look_ahead_open  = 0;
+        my $look_ahead_close = 0;
+        my $look_ahead       = 0;
+
+        my $pos_open  = index( $test_text, '{|' );
+        my $pos_open2 = index( $test_text, '{|', $pos_open + 2 );
+        my $pos_close = index( $test_text, '|}' );
+        while ( $diff > 0 ) {
+            if ( $pos_open2 == -1 ) {
+                error_028_table_no_correct_end(
+                    substr( $text, $pos_open, 40 ) );
+                $diff = -1;
+            }
+            elsif ( $pos_open2 < $pos_close and $look_ahead > 0 ) {
+                error_028_table_no_correct_end(
+                    substr( $text, $pos_open, 40 ) );
+                $diff--;
+            }
+            else {
+                $pos_open  = $pos_open2;
+                $pos_open2 = index( $test_text, '{|', $pos_open + 2 );
+                $pos_close = index( $test_text, '|}', $pos_close + 2 );
+                if ( $pos_open2 > 0 ) {
+                    $look_ahead_open =
+                      index( $test_text, '{|', $pos_open2 + 2 );
+                    $look_ahead_close =
+                      index( $test_text, '|}', $pos_close + 2 );
+                    $look_ahead = $look_ahead_close - $look_ahead_open;
+                }
+            }
+        }
+    }
+
+    return ();
+}
+
+###########################################################################
+## GET ISBN
 ###########################################################################
 
 sub get_isbn {
@@ -1131,13 +1212,10 @@ sub get_isbn {
         and $title ne 'Codice ISBN'
         and index( $title, 'ISBN' ) == -1
 
-        # better with show too interwiki !!!
-
       )
     {
         my $text_test = $text;
 
-       #print "\n\n".'###################################################'."\n";
         while ( $text_test =~ /ISBN([ ]|[-]|[=])/g ) {
             my $pos_start = pos($text_test) - 5;
 
@@ -1942,83 +2020,6 @@ sub get_images {
     if ( $found_error_text ne '' ) {
         error_030_image_without_description($found_error_text);
     }
-    return ();
-}
-
-###########################################################################
-##
-###########################################################################
-
-sub get_tables {
-
-    my $test_text = $text;
-
-    my $tag_open_num  = () = $test_text =~ /\{\|/g;
-    my $tag_close_num = () = $test_text =~ /\|\}/g;
-
-    my $diff = $tag_open_num - $tag_close_num;
-
-    if ( $diff > 0 ) {
-
-        my $pos_start        = 0;
-        my $pos_end          = 0;
-        my $look_ahead_open  = 0;
-        my $look_ahead_close = 0;
-        my $look_ahead       = 0;
-
-        my $pos_open  = index( $test_text, '{|' );
-        my $pos_open2 = index( $test_text, '{|', $pos_open + 2 );
-        my $pos_close = index( $test_text, '|}' );
-        while ( $diff > 0 ) {
-            if ( $pos_open2 == -1 ) {
-                error_028_table_no_correct_end(
-                    substr( $text, $pos_open, 40 ) );
-                $diff = -1;
-            }
-            elsif ( $pos_open2 < $pos_close and $look_ahead > 0 ) {
-                error_028_table_no_correct_end(
-                    substr( $text, $pos_open, 40 ) );
-                $diff--;
-            }
-            else {
-                $pos_open  = $pos_open2;
-                $pos_open2 = index( $test_text, '{|', $pos_open + 2 );
-                $pos_close = index( $test_text, '|}', $pos_close + 2 );
-                if ( $pos_open2 > 0 ) {
-                    $look_ahead_open =
-                      index( $test_text, '{|', $pos_open2 + 2 );
-                    $look_ahead_close =
-                      index( $test_text, '|}', $pos_close + 2 );
-                    $look_ahead = $look_ahead_close - $look_ahead_open;
-                }
-            }
-        }
-    }
-
-    return ();
-}
-
-###########################################################################
-##
-###########################################################################
-
-sub get_gallery {
-
-    my $test_text = lc($text);
-
-    if ( $test_text =~ /<gallery/ ) {
-        my $gallery_begin = 0;
-        my $gallery_end   = 0;
-
-        $gallery_begin = () = $test_text =~ /<gallery/g;
-        $gallery_end   = () = $test_text =~ /<\/gallery>/g;
-
-        #if ( $gallery_begin > $gallery_end ) {
-        #    my $snippet = get_broken_tag( '<gallery', '</gallery>' );
-        #    error_029_gallery_no_correct_end($snippet);
-        #}
-    }
-
     return ();
 }
 
@@ -6161,6 +6162,7 @@ sub insert_into_db {
       . $table_name
       . " VALUES ( '"
       . $project . "', "
+      . "0" . ", '"
       . $article_title . "', "
       . $code . ", '"
       . $notice
@@ -6361,7 +6363,7 @@ scan_pages();
 
 updateDumpDate($dump_date_for_output) if ( $dump_or_live eq 'dump' );
 update_table_cw_error_from_dump();
-delete_deleted_article_from_db();
+delete_done_article_from_db();
 
 close_db();
 
