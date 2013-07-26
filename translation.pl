@@ -8,11 +8,11 @@
 ##
 ##  DESCRIPTION: Updates translations and errors in the database
 ##
-##       AUTHOR: Stefan Kühn, Bryan White 
-##      LICENCE: GPLv3 
+##       AUTHOR: Stefan Kühn, Bryan White
+##      LICENCE: GPLv3
 ##      VERSION: 07/22/2013 10:06:16 PM
 ##
-###########################################################################     
+###########################################################################
 
 use strict;
 use warnings;
@@ -24,25 +24,26 @@ use Getopt::Long
 use LWP::UserAgent;
 use URI::Escape;
 
-binmode( STDOUT, ":encoding(UTF-8)" );
+binmode STDOUT, ":encoding(UTF-8)";
+
+our $OUTPUT_DIRECTORY       = "/data/project/checkwiki/public_html/Translation";
+our $TRANSLATION_FILE       = 'translation.txt';
+our $TOP_PRIORITY_SCRIPT    = 'Top priority';
+our $MIDDLE_PRIORITY_SCRIPT = 'Middle priority';
+our $LOWEST_PRIORITY_SCRIPT = 'Lowest priority';
 
 our @Projects;
 our $project;
-our $Output_Directory = "translations";
-our @error_description;
-our $number_of_error_description;
+our @ErrorDescription;
+our $Number_of_error_description;
 
-our $top_priority_script     = 'Top priority';
-our $top_priority_project    = q{};
-our $middle_priority_script  = 'Middle priority';
-our $middle_priority_project = q{};
-our $lowest_priority_script  = 'Lowest priority';
-our $lowest_priority_project = q{};
+our $Top_priority_project    = q{};
+our $Middle_priority_project = q{};
+our $Lowest_priority_project = q{};
 
-our $translation_file = 'translation.txt';
-our $start_text;
-our $description_text;
-our $category_text;
+our $StartText;
+our $DescriptionText;
+our $CategoryText;
 
 #Database configuration
 our $DbName;
@@ -50,6 +51,52 @@ our $DbServer;
 our $DbUsername;
 our $DbPassword;
 our $dbh;
+
+#------------------
+
+our %TranslationLocation = (
+    'afwiki' => 'Wikipedia:WikiProject Check Wikipedia/Translation',
+    'arwiki' => 'ﻮﻴﻜﻴﺒﻳﺪﻳﺍ:ﻒﺤﺻ_ﻮﻴﻜﻴﺒﻳﺪﻳﺍ/ﺕﺮﺠﻣﺓ',
+    'cawiki' => 'Viquipèdia:WikiProject Check Wikipedia/Translation',
+    'cswiki' => 'Wikipedie:WikiProjekt Check Wikipedia/Translation',
+    'commonswiki' => 'Commons:WikiProject Check Wikipedia/Translation',
+    'cywiki' => 'Wicipedia:WikiProject Check Wikipedia/Translation',
+    'dawiki' => 'Wikipedia:WikiProjekt Check Wikipedia/Oversættelse',
+    'dewiki' => 'Wikipedia:WikiProjekt Syntaxkorrektur/Übersetzung',
+    'enwiki' => 'Wikipedia:WikiProject Check Wikipedia/Translation',
+    'eowiki' => 'Projekto:Kontrolu Vikipedion/Tradukado',
+    'eswiki' => 'Wikiproyecto:Check Wikipedia/Translation',
+    'fiwiki' => 'Wikipedia:Wikiprojekti Check Wikipedia/Translation',
+    'frwiki' => 'Projet:Correction syntaxique/Traduction',
+    'fywiki' =>
+      'Meidogger:Stefan Kühn/WikiProject Check Wikipedia/Translation',
+    'hewiki' => 'Wikipedia:WikiProject Check Wikipedia/Translation',
+    'huwiki' => 'Wikipédia:Ellenőrzőműhely/Fordítás',
+    'idwiki' => 'Wikipedia:ProyekWiki Cek Wikipedia/Terjemahan',
+    'iswiki' => 'Wikipedia:WikiProject Check Wikipedia/Translation',
+    'itwiki' => 'Wikipedia:WikiProjekt Check Wikipedia/Translation',
+    'jawiki' => 'プロジェクト:ウィキ文法のチェック/Translation',
+    'lawiki' => 'Vicipaedia:WikiProject Check Wikipedia/Translation',
+    'ndswiki' => 'Wikipedia:Wikiproject Check Wikipedia/Translation',
+    'nds_nlwiki' => 'Wikipedie:WikiProject Check Wikipedia/Translation',
+    'nlwiki' => 'Wikipedia:Wikiproject/Check Wikipedia/Vertaling',
+    'nowiki' => 'Wikipedia:WikiProject Check Wikipedia/Translation',
+    'pdcwiki' => 'Wikipedia:WikiProject Check Wikipedia/Translation',
+    'plwiki' => 'Wikiprojekt:Check Wikipedia/Tłumaczenie',
+    'ptwiki' => 'Wikipedia:Projetos/Check Wikipedia/Tradução',
+    'ruwiki' => 'Википедия:Страницы с ошибками в викитексте/Перевод',
+    'rowiki' => 'Wikipedia:WikiProject Check Wikipedia/Translation',
+    'skwiki' => 'Wikipédia:WikiProjekt Check Wikipedia/Translation',
+    'svwiki' => 'Wikipedia:Projekt wikifiering/Syntaxfel/Translation',
+    'trwiki' => 'Vikipedi:Vikipedi proje kontrolü/Çeviri',
+    'ukwiki' => 'Вікіпедія:Проект:Check Wikipedia/Translation',
+    'yiwiki' => 'װיקיפּעדיע:קאנטראלירן_בלעטער/Translation'
+    'zhwiki' => '维基百科:错误检查专题/翻译',
+);
+
+##########################################################################
+## MAIN PROGRAM
+##########################################################################
 
 my @Options = (
     'database|d=s' => \$DbName,
@@ -70,12 +117,7 @@ GetOptions(
     }
 );
 
-##########################################################################
-## MAIN PROGRAM
-##########################################################################
-
-print '-' x 80;
-print "\n";
+#--------------------
 
 open_db();
 get_projects();
@@ -83,13 +125,12 @@ get_projects();
 foreach (@Projects) {
     $project = $_;
 
-    if ( $project ne 'enwiki' ) {
-        two_column_display( 'Working on:', $project);
-        get_error_description();
-        load_text_translation();
-        output_errors_desc_in_db();
-        output_text_translation_wiki();
-    }
+    print "\n\n";
+    two_column_display( 'Working on:', $project );
+    get_error_description();
+    load_text_translation();
+    output_errors_desc_in_db();
+    output_text_translation_wiki();
 }
 
 close_db();
@@ -103,12 +144,12 @@ sub open_db {
     $dbh = DBI->connect(
         'DBI:mysql:'
           . $DbName
-          . ( defined($DbServer) ? ':host=' . $DbServer : '' ),
+          . ( defined($DbServer) ? ':host=' . $DbServer : q{} ),
         $DbUsername,
         $DbPassword,
         {
             RaiseError => 1,
-            AutoCommit => 1
+            AutoCommit => 1,
         }
     ) or die( "Could not connect to database: " . DBI::errstr() . "\n" );
 
@@ -139,7 +180,7 @@ sub get_error_description {
       || die "Can not prepare statement: $DBI::errstr\n";
     $sth->execute or die "Cannot execute: " . $sth->errstr . "\n";
 
-    $number_of_error_description = $sth->fetchrow();
+    $Number_of_error_description = $sth->fetchrow();
 
     $sql_text =
       "SELECT prio, name, text FROM cw_error_desc WHERE project = 'enwiki';";
@@ -149,27 +190,27 @@ sub get_error_description {
 
     my @output;
 
-    foreach my $i ( 1 .. $number_of_error_description ) {
-        @output                   = $sth->fetchrow();
-        $error_description[$i][0] = $output[0];
-        $error_description[$i][1] = $output[1];
-        $error_description[$i][2] = $output[2];
+    foreach my $i ( 1 .. $Number_of_error_description ) {
+        @output                  = $sth->fetchrow();
+        $ErrorDescription[$i][0] = $output[0];
+        $ErrorDescription[$i][1] = $output[1];
+        $ErrorDescription[$i][2] = $output[2];
     }
 
     # set all known error description to a basic level
-    foreach my $i ( 1 .. $number_of_error_description ) {
-        $error_description[$i][3]  = 0;
-        $error_description[$i][4]  = -1;
-        $error_description[$i][5]  = '';
-        $error_description[$i][6]  = '';
-        $error_description[$i][7]  = 0;
-        $error_description[$i][8]  = 0;
-        $error_description[$i][9]  = '';
-        $error_description[$i][10] = '';
+    foreach my $i ( 1 .. $Number_of_error_description ) {
+        $ErrorDescription[$i][3]  = 0;
+        $ErrorDescription[$i][4]  = -1;
+        $ErrorDescription[$i][5]  = q{};
+        $ErrorDescription[$i][6]  = q{};
+        $ErrorDescription[$i][7]  = 0;
+        $ErrorDescription[$i][8]  = 0;
+        $ErrorDescription[$i][9]  = q{};
+        $ErrorDescription[$i][10] = q{};
     }
 
     two_column_display( '# of error descriptions:',
-        $number_of_error_description . ' in script' );
+        $Number_of_error_description . ' in script' );
 
     return ();
 }
@@ -206,150 +247,78 @@ sub get_projects {
 
 sub load_text_translation {
 
-    my $translation_page;
+    my $translation_input;
+    my $translation_page = $TranslationLocation{$project};
 
-    $translation_page = 'Wikipedia:WikiProject Check Wikipedia/Translation'
-      if ( $project eq 'afwiki' );
-    $translation_page = 'ﻮﻴﻜﻴﺒﻳﺪﻳﺍ:ﻒﺤﺻ_ﻮﻴﻜﻴﺒﻳﺪﻳﺍ/ﺕﺮﺠﻣﺓ'
-      if ( $project eq 'arwiki' );
-    $translation_page = 'Viquipèdia:WikiProject Check Wikipedia/Translation'
-      if ( $project eq 'cawiki' );
-    $translation_page = 'Wikipedie:WikiProjekt Check Wikipedia/Translation'
-      if ( $project eq 'cswiki' );
-    $translation_page = 'Commons:WikiProject Check Wikipedia/Translation'
-      if ( $project eq 'commonswiki' );
-    $translation_page = 'Wicipedia:WikiProject Check Wikipedia/Translation'
-      if ( $project eq 'cywiki' );
-    $translation_page = 'Wikipedia:WikiProjekt Check Wikipedia/Oversættelse'
-      if ( $project eq 'dawiki' );
-    $translation_page = 'Wikipedia:WikiProjekt Syntaxkorrektur/Übersetzung'
-      if ( $project eq 'dewiki' );
-    $translation_page = 'Wikipedia:WikiProject Check Wikipedia/Translation'
-      if ( $project eq 'enwiki' );
-    $translation_page = 'Projekto:Kontrolu Vikipedion/Tradukado'
-      if ( $project eq 'eowiki' );
-    $translation_page = 'Wikiproyecto:Check Wikipedia/Translation'
-      if ( $project eq 'eswiki' );
-    $translation_page = 'Wikipedia:Wikiprojekti Check Wikipedia/Translation'
-      if ( $project eq 'fiwiki' );
-    $translation_page = 'Projet:Correction syntaxique/Traduction'
-      if ( $project eq 'frwiki' );
-    $translation_page =
-      'Meidogger:Stefan Kühn/WikiProject Check Wikipedia/Translation'
-      if ( $project eq 'fywiki' );
-    $translation_page = 'Wikipedia:WikiProject Check Wikipedia/Translation'
-      if ( $project eq 'hewiki' );
-    $translation_page = 'Wikipédia:Ellenőrzőműhely/Fordítás'
-      if ( $project eq 'huwiki' );
-    $translation_page = 'Wikipedia:ProyekWiki Cek Wikipedia/Terjemahan'
-      if ( $project eq 'idwiki' );
-    $translation_page = 'Wikipedia:WikiProject Check Wikipedia/Translation'
-      if ( $project eq 'iswiki' );
-    $translation_page = 'Wikipedia:WikiProjekt Check Wikipedia/Translation'
-      if ( $project eq 'itwiki' );
-    $translation_page =
-      'プロジェクト:ウィキ文法のチェック/Translation'
-      if ( $project eq 'jawiki' );
-    $translation_page = 'Vicipaedia:WikiProject Check Wikipedia/Translation'
-      if ( $project eq 'lawiki' );
-    $translation_page = 'Wikipedia:Wikiproject Check Wikipedia/Translation'
-      if ( $project eq 'ndswiki' );
-    $translation_page = 'Wikipedie:WikiProject Check Wikipedia/Translation'
-      if ( $project eq 'nds_nlwiki' );
-    $translation_page = 'Wikipedia:Wikiproject/Check Wikipedia/Vertaling'
-      if ( $project eq 'nlwiki' );
-    $translation_page = 'Wikipedia:WikiProject Check Wikipedia/Translation'
-      if ( $project eq 'nowiki' );
-    $translation_page = 'Wikipedia:WikiProject Check Wikipedia/Translation'
-      if ( $project eq 'pdcwiki' );
-    $translation_page = 'Wikiprojekt:Check Wikipedia/Tłumaczenie'
-      if ( $project eq 'plwiki' );
-    $translation_page = 'Wikipedia:Projetos/Check Wikipedia/Tradução'
-      if ( $project eq 'ptwiki' );
-    $translation_page =
-'Википедия:Страницы с ошибками в викитексте/Перевод'
-      if ( $project eq 'ruwiki' );
-    $translation_page = 'Wikipedia:WikiProject Check Wikipedia/Translation'
-      if ( $project eq 'rowiki' );
-    $translation_page = 'Wikipédia:WikiProjekt Check Wikipedia/Translation'
-      if ( $project eq 'skwiki' );
-    $translation_page = 'Wikipedia:Projekt wikifiering/Syntaxfel/Translation'
-      if ( $project eq 'svwiki' );
-    $translation_page = 'Vikipedi:Vikipedi proje kontrolü/Çeviri'
-      if ( $project eq 'trwiki' );
-    $translation_page =
-      'Вікіпедія:Проект:Check Wikipedia/Translation'
-      if ( $project eq 'ukwiki' );
-    $translation_page =
-      'װיקיפּעדיע:קאנטראלירן_בלעטער/Translation'
-      if ( $project eq 'yiwiki' );
-    $translation_page = '维基百科:错误检查专题/翻译'
-      if ( $project eq 'zhwiki' );
+    if ( defined($translation_page) ) {
+        two_column_display( 'Translation input:', $translation_page );
+        $translation_input = raw_text($translation_page);
+        $translation_input = replace_special_letters($translation_input);
+    }
+    else {
+        $translation_input = q{};
+        two_column_display( 'Translation input:', 'None' );
+    }
 
-    two_column_display( 'Translation input:', $translation_page);
-
-    my $translation_input = raw_text($translation_page);
-    $translation_input = replace_special_letters($translation_input);
-
-    my $input_text = '';
+    my $input_text = q{};
 
     # start_text
     $input_text =
       get_translation_text( $translation_input, 'start_text_' . $project . '=',
         'END' );
-    $start_text = $input_text if ( $input_text ne '' );
+    $StartText = $input_text if ( $input_text ne q{} );
 
     # description_text
     $input_text = get_translation_text( $translation_input,
         'description_text_' . $project . '=', 'END' );
-    $description_text = $input_text if ( $input_text ne '' );
+    $DescriptionText = $input_text if ( $input_text ne q{} );
 
     # category_text
     $input_text =
       get_translation_text( $translation_input, 'category_001=', 'END' );
-    $category_text = $input_text if ( $input_text ne '' );
+    $CategoryText = $input_text if ( $input_text ne q{} );
 
     # priority
     $input_text = get_translation_text( $translation_input,
         'top_priority_' . $project . '=', 'END' );
-    $top_priority_project = $input_text if ( $input_text ne '' );
+    $Top_priority_project = $input_text if ( $input_text ne q{} );
     $input_text = get_translation_text( $translation_input,
         'middle_priority_' . $project . '=', 'END' );
-    $middle_priority_project = $input_text if ( $input_text ne '' );
+    $Middle_priority_project = $input_text if ( $input_text ne q{} );
     $input_text = get_translation_text( $translation_input,
         'lowest_priority_' . $project . '=', 'END' );
-    $lowest_priority_project = $input_text if ( $input_text ne '' );
+    $Lowest_priority_project = $input_text if ( $input_text ne q{} );
 
     # find error description
-    foreach my $i ( 1 .. $number_of_error_description ) {
+    foreach my $i ( 1 .. $Number_of_error_description ) {
         my $current_error_number = 'error_';
         $current_error_number = $current_error_number . '0' if ( $i < 10 );
         $current_error_number = $current_error_number . '0' if ( $i < 100 );
         $current_error_number = $current_error_number . $i;
 
         # Priority
-        $error_description[$i][4] = get_translation_text( $translation_input,
+        $ErrorDescription[$i][4] = get_translation_text( $translation_input,
             $current_error_number . '_prio_' . $project . '=', 'END' );
 
-        if ( $error_description[$i][4] ne '' ) {
+        if ( $ErrorDescription[$i][4] ne q{} ) {
 
             # if a translation was found
-            $error_description[$i][4] = int( $error_description[$i][4] );
+            $ErrorDescription[$i][4] = int( $ErrorDescription[$i][4] );
         }
         else {
             # if no translation was found
-            $error_description[$i][4] = $error_description[$i][0];
+            $ErrorDescription[$i][4] = $ErrorDescription[$i][0];
         }
 
-        if ( $error_description[$i][4] == -1 ) {
+        if ( $ErrorDescription[$i][4] == -1 ) {
 
             # in project unkown then use prio from script
-            $error_description[$i][4] = $error_description[$i][0];
+            $ErrorDescription[$i][4] = $ErrorDescription[$i][0];
         }
 
-        $error_description[$i][5] = get_translation_text( $translation_input,
+        $ErrorDescription[$i][5] = get_translation_text( $translation_input,
             $current_error_number . '_head_' . $project . '=', 'END' );
-        $error_description[$i][6] = get_translation_text( $translation_input,
+        $ErrorDescription[$i][6] = get_translation_text( $translation_input,
             $current_error_number . '_desc_' . $project . '=', 'END' );
 
     }
@@ -363,21 +332,21 @@ sub load_text_translation {
 
 sub output_errors_desc_in_db {
 
-    foreach my $i ( 1 .. $number_of_error_description ) {
-        my $sql_headline = $error_description[$i][1];
+    foreach my $i ( 1 .. $Number_of_error_description ) {
+        my $sql_headline = $ErrorDescription[$i][1];
         $sql_headline =~ s/'/\\'/g;
-        my $sql_desc = $error_description[$i][2];
+        my $sql_desc = $ErrorDescription[$i][2];
         $sql_desc =~ s/'/\\'/g;
         $sql_desc = substr( $sql_desc, 0, 3999 );
-        my $sql_headline_trans = $error_description[$i][5];
+        my $sql_headline_trans = $ErrorDescription[$i][5];
         $sql_headline_trans =~ s/'/\\'/g;
-        my $sql_desc_trans = $error_description[$i][6];
+        my $sql_desc_trans = $ErrorDescription[$i][6];
         $sql_desc_trans =~ s/'/\\'/g;
         $sql_desc = substr( $sql_desc_trans, 0, 3999 );
 
         # insert or update error
         my $sql_text = "UPDATE cw_error_desc
-        SET prio=" . $error_description[$i][4] . ",
+        SET prio=" . $ErrorDescription[$i][4] . ",
         name='" . $sql_headline . "' ,
         text='" . $sql_desc . "',
         name_trans='" . $sql_headline_trans . "' ,
@@ -396,7 +365,7 @@ sub output_errors_desc_in_db {
 "INSERT INTO cw_error_desc (project, id, prio, name, text, name_trans, text_trans) VALUES ('"
               . $project . "', "
               . $i . ", "
-              . $error_description[$i][4] . ", '"
+              . $ErrorDescription[$i][4] . ", '"
               . $sql_headline . "' ,'"
               . $sql_desc . "','"
               . $sql_headline_trans . "' ,'"
@@ -437,10 +406,10 @@ sub get_translation_text {
 
 sub output_text_translation_wiki {
 
-    my $filename = $Output_Directory . '/' . $project . '_' . $translation_file;
+    my $filename = $OUTPUT_DIRECTORY . '/' . $project . '_' . $TRANSLATION_FILE;
     two_column_display( 'Output translation text to:',
-        $project . '_' . $translation_file );
-    open( TRANSLATION, ">", $filename ) or die "unable to open: $!\n";
+        $project . '_' . $TRANSLATION_FILE );
+    open TRANSLATION, ">", $filename or die "unable to open: $filename\n";
 
     print TRANSLATION '<pre>' . "\n";
     print TRANSLATION
@@ -454,7 +423,7 @@ sub output_text_translation_wiki {
 
     print TRANSLATION ' project=' . $project . " END\n";
     print TRANSLATION ' category_001='
-      . $category_text
+      . $CategoryText
       . " END  #for example: [[Category:Wikipedia]] \n";
     print TRANSLATION "\n";
 
@@ -462,7 +431,7 @@ sub output_text_translation_wiki {
     print TRANSLATION '# start text' . "\n";
     print TRANSLATION '#########################' . "\n";
     print TRANSLATION "\n";
-    print TRANSLATION ' start_text_' . $project . '=' . $start_text . " END\n";
+    print TRANSLATION ' start_text_' . $project . '=' . $StartText . " END\n";
 
     print TRANSLATION '#########################' . "\n";
     print TRANSLATION '# description' . "\n";
@@ -470,7 +439,7 @@ sub output_text_translation_wiki {
     print TRANSLATION "\n";
     print TRANSLATION ' description_text_'
       . $project . '='
-      . $description_text
+      . $DescriptionText
       . " END\n";
 
     print TRANSLATION '#########################' . "\n";
@@ -478,33 +447,32 @@ sub output_text_translation_wiki {
     print TRANSLATION '#########################' . "\n";
     print TRANSLATION "\n";
 
-    print TRANSLATION ' top_priority_script=' . $top_priority_script . " END\n";
+    print TRANSLATION ' top_priority_script=' . $TOP_PRIORITY_SCRIPT . " END\n";
     print TRANSLATION ' top_priority_'
       . $project . '='
-      . $top_priority_project
+      . $Top_priority_project
       . " END\n";
     print TRANSLATION ' middle_priority_script='
-      . $middle_priority_script
+      . $MIDDLE_PRIORITY_SCRIPT
       . " END\n";
     print TRANSLATION ' middle_priority_'
       . $project . '='
-      . $middle_priority_project
+      . $Middle_priority_project
       . " END\n";
     print TRANSLATION ' lowest_priority_script='
-      . $lowest_priority_script
+      . $LOWEST_PRIORITY_SCRIPT
       . " END\n";
     print TRANSLATION ' lowest_priority_'
       . $project . '='
-      . $lowest_priority_project
+      . $Lowest_priority_project
       . " END\n";
     print TRANSLATION "\n";
-    print TRANSLATION " Please only translate the variables with …_"
-      . $project
-      . " at the end of the name. Not …_script= .\n";
+    print TRANSLATION " Please only translate the variables with _" . $project
+      . " at the end of the name. Not _script= .\n";
 
     ################
 
-    my $number_of_error_description_output = $number_of_error_description;
+    my $number_of_error_description_output = $Number_of_error_description;
     two_column_display( 'error description:',
         $number_of_error_description_output . ' error description total' );
 
@@ -518,7 +486,7 @@ sub output_text_translation_wiki {
     print TRANSLATION '# prio = 3  (lowest priority)' . "\n";
     print TRANSLATION "\n";
 
-    foreach my $i ( 1 .. $number_of_error_description ) {
+    foreach my $i ( 1 .. $Number_of_error_description ) {
 
         my $current_error_number = 'error_';
         $current_error_number = $current_error_number . '0' if ( $i < 10 );
@@ -527,35 +495,35 @@ sub output_text_translation_wiki {
         print TRANSLATION ' '
           . $current_error_number
           . '_prio_script='
-          . $error_description[$i][0]
+          . $ErrorDescription[$i][0]
           . " END\n";
         print TRANSLATION ' '
           . $current_error_number
           . '_head_script='
-          . $error_description[$i][1]
+          . $ErrorDescription[$i][1]
           . " END\n";
         print TRANSLATION ' '
           . $current_error_number
           . '_desc_script='
-          . $error_description[$i][2]
+          . $ErrorDescription[$i][2]
           . " END\n";
         print TRANSLATION ' '
           . $current_error_number
           . '_prio_'
           . $project . '='
-          . $error_description[$i][4]
+          . $ErrorDescription[$i][4]
           . " END\n";
         print TRANSLATION ' '
           . $current_error_number
           . '_head_'
           . $project . '='
-          . $error_description[$i][5]
+          . $ErrorDescription[$i][5]
           . " END\n";
         print TRANSLATION ' '
           . $current_error_number
           . '_desc_'
           . $project . '='
-          . $error_description[$i][6]
+          . $ErrorDescription[$i][6]
           . " END\n";
         print TRANSLATION "\n";
         print TRANSLATION
@@ -565,7 +533,7 @@ sub output_text_translation_wiki {
     }
 
     print TRANSLATION '</pre>' . "\n";
-    close(TRANSLATION);
+    close TRANSLATION;
 
     return ();
 }
@@ -643,7 +611,7 @@ sub raw_text {
     my $content2 = $response2->content;
     my $result2  = q{};
     if ($content2) {
-       $result2 = $content2
+        $result2 = $content2;
     }
 
     return ($result2);
