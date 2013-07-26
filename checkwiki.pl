@@ -634,12 +634,10 @@ sub live_scan {
         push( @live_titles, $hashref->{title} );
     }
 
-    my @temp_titles = @live_titles;
-    my $thing       = $bot->get_pages( \@live_titles );
-    foreach my $page ( keys %$thing ) {
+    foreach (@live_titles) {
         set_variables_for_article();
-        $text  = $thing->{$page};
-        $title = pop(@temp_titles);
+        $title = $_;
+        $text  = $bot->get_text($title);
         if ( defined($text) ) {
             check_article();
         }
@@ -3396,28 +3394,13 @@ sub error_026_html_text_style_elements {
     my $error_code = 26;
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
-        my $test      = 'no found';
-        my $test_line = q{};
         my $test_text = lc($text);
         if ( index( $test_text, '<b>' ) > -1 ) {
-            foreach (@lines) {
-                my $current_line    = $_;
-                my $current_line_lc = lc($current_line);
-
-                if (    ( $page_namespace == 0 or $page_namespace == 104 )
-                    and ( index( $current_line_lc, '<b>' ) > -1 ) )
-                {
-                    $test = 'found';
-                    $test_line = $current_line if ( $test_line eq '' );
-                }
+            if ( $page_namespace == 0 or $page_namespace == 104 ) {
+                my $pos = index( $test_text, '<b>' );
+                error_register( $error_code,
+                    '<nowiki>' . substr( $text, $pos, 40 ) . ' </nowiki>' );
             }
-        }
-
-        if ( $test eq 'found' ) {
-            $test_line = text_reduce( $test_line, 80 );
-            $test_line = $test_line . '…';
-            error_register( $error_code,
-                '<nowiki>' . $test_line . ' </nowiki>' );
         }
     }
 
@@ -3641,27 +3624,13 @@ sub error_033_html_text_style_elements_underline {
     my $error_code = 33;
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
-        my $test      = 'no found';
-        my $test_line = q{};
         my $test_text = lc($text);
         if ( index( $test_text, '<u>' ) > -1 ) {
-            foreach (@lines) {
-                my $current_line    = $_;
-                my $current_line_lc = lc($current_line);
-
-                if (    ( $page_namespace == 0 or $page_namespace == 104 )
-                    and ( index( $current_line_lc, '<u>' ) > -1 ) )
-                {
-                    $test = 'found';
-                    $test_line = $current_line if ( $test_line eq '' );
-                }
+            if ( $page_namespace == 0 or $page_namespace == 104 ) {
+                my $pos = index( $test_text, '<u>' );
+                error_register( $error_code,
+                    '<nowiki>' . substr( $text, $pos, 40 ) . ' </nowiki>' );
             }
-        }
-        if ( $test eq 'found' ) {
-            $test_line = text_reduce( $test_line, 80 );
-            $test_line = $test_line . '…';
-            error_register( $error_code,
-                '<nowiki>' . $test_line . ' </nowiki>' );
         }
     }
 
@@ -3871,29 +3840,12 @@ sub error_038_html_text_style_elements_italic {
     my $error_code = 38;
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
-        my $test      = 'no found';
-        my $test_line = q{};
         my $test_text = lc($text);
-        if ( $page_namespace == 0 or $page_namespace == 104 ) {
-            if ( index( $test_text, '<i>' ) > -1 ) {
-
-                foreach (@lines) {
-                    my $current_line    = $_;
-                    my $current_line_lc = lc($current_line);
-
-                    if ( index( $current_line_lc, '<i>' ) > -1 ) {
-                        $test = 'found';
-                        $test_line = $current_line if ( $test_line eq '' );
-
-                    }
-                }
-            }
-
-            if ( $test eq 'found' ) {
-                $test_line = text_reduce( $test_line, 80 );
-                $test_line = $test_line . '…';
+        if ( index( $test_text, '<i>' ) > -1 ) {
+            if ( $page_namespace == 0 or $page_namespace == 104 ) {
+                my $pos = index( $test_text, '<i>' );
                 error_register( $error_code,
-                    '<nowiki>' . $test_line . ' </nowiki>' );
+                    '<nowiki>' . substr( $text, $pos, 40 ) . ' </nowiki>' );
             }
         }
     }
@@ -3948,29 +3900,12 @@ sub error_040_html_text_style_elements_font {
     my $error_code = 40;
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
-        my $test      = 'no found';
-        my $test_line = q{};
         my $test_text = lc($text);
-        if ( $page_namespace == 0 or $page_namespace == 104 ) {
-            if ( index( $test_text, '<font' ) > -1 ) {
-                foreach (@lines) {
-                    my $current_line    = $_;
-                    my $current_line_lc = lc($current_line);
-
-                    if (   index( $current_line_lc, '<font ' ) > -1
-                        or index( $current_line_lc, '<font>' ) > -1 )
-                    {
-                        $test = 'found';
-                        $test_line = $current_line if ( $test_line eq '' );
-                    }
-                }
-            }
-
-            if ( $test eq 'found' ) {
-                $test_line = text_reduce( $test_line, 80 );
-                $test_line = $test_line . '…';
+        if ( index( $test_text, '<font' ) > -1 ) {
+            if ( $page_namespace == 0 or $page_namespace == 104 ) {
+                my $pos = index( $test_text, '<font' );
                 error_register( $error_code,
-                    '<nowiki>' . $test_line . ' </nowiki>' );
+                    '<nowiki>' . substr( $text, $pos, 40 ) . ' </nowiki>' );
             }
         }
     }
@@ -3986,26 +3921,12 @@ sub error_041_html_text_style_elements_big {
     my $error_code = 41;
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
-        my $test      = 'no found';
-        my $test_line = q{};
         my $test_text = lc($text);
-        if ( $page_namespace == 0 or $page_namespace == 104 ) {
-            if ( index( $test_text, '<big>' ) > -1 ) {
-                foreach (@lines) {
-                    my $current_line    = $_;
-                    my $current_line_lc = lc($current_line);
-
-                    if ( index( $current_line_lc, '<big>' ) > -1 ) {
-                        $test = 'found';
-                        $test_line = $current_line if ( $test_line eq '' );
-                    }
-                }
-            }
-            if ( $test eq 'found' ) {
-                $test_line = text_reduce( $test_line, 80 );
-                $test_line = $test_line . '…';
+        if ( index( $test_text, '<big>' ) > -1 ) {
+            if ( $page_namespace == 0 or $page_namespace == 104 ) {
+                my $pos = index( $test_text, '<big>' );
                 error_register( $error_code,
-                    '<nowiki>' . $test_line . ' </nowiki>' );
+                    '<nowiki>' . substr( $text, $pos, 40 ) . ' </nowiki>' );
             }
         }
     }
@@ -4021,27 +3942,12 @@ sub error_042_html_text_style_elements_small {
     my $error_code = 42;
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
-        my $test      = 'no found';
-        my $test_line = q{};
         my $test_text = lc($text);
-
-        if ( $page_namespace == 0 or $page_namespace == 104 ) {
-            if ( index( $test_text, '<small>' ) > -1 ) {
-                foreach (@lines) {
-                    my $current_line    = $_;
-                    my $current_line_lc = lc($current_line);
-
-                    if ( index( $current_line_lc, '<small>' ) > -1 ) {
-                        $test = 'found';
-                        $test_line = $current_line if ( $test_line eq '' );
-                    }
-                }
-            }
-            if ( $test eq 'found' ) {
-                $test_line = text_reduce( $test_line, 80 );
-                $test_line = $test_line . '…';
+        if ( index( $test_text, '<small>' ) > -1 ) {
+            if ( $page_namespace == 0 or $page_namespace == 104 ) {
+                my $pos = index( $test_text, '<small>' );
                 error_register( $error_code,
-                    '<nowiki>' . $test_line . ' </nowiki>' );
+                    '<nowiki>' . substr( $text, $pos, 40 ) . ' </nowiki>' );
             }
         }
     }
@@ -4296,7 +4202,7 @@ sub error_047_template_no_correct_begin {
                               . '</nowiki>' );
                         $diff = -1;
                     }
-                    elsif ( $pos_close2 > $pos_open and $look_ahead > 0 ) {
+                    elsif ( $pos_close2 > $pos_open and $look_ahead < 0 ) {
                         error_register( $error_code,
                                 '<nowiki>'
                               . substr( $text, $pos_close, 40 )
@@ -6161,8 +6067,7 @@ sub insert_into_db {
         "INSERT INTO "
       . $table_name
       . " VALUES ( '"
-      . $project . "', "
-      . "0" . ", '"
+      . $project . "', " . "0" . ", '"
       . $article_title . "', "
       . $code . ", '"
       . $notice
