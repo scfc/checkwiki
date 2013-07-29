@@ -90,7 +90,7 @@ our %TranslationLocation = (
     'svwiki' => 'Wikipedia:Projekt wikifiering/Syntaxfel/Translation',
     'trwiki' => 'Vikipedi:Vikipedi proje kontrolü/Çeviri',
     'ukwiki' => 'Вікіпедія:Проект:Check Wikipedia/Translation',
-    'yiwiki' => 'װיקיפּעדיע:קאנטראלירן_בלעטער/Translation'
+    'yiwiki' => 'װיקיפּעדיע:קאנטראלירן_בלעטער/Translation',
     'zhwiki' => '维基百科:错误检查专题/翻译',
 );
 
@@ -150,6 +150,7 @@ sub open_db {
         {
             RaiseError => 1,
             AutoCommit => 1,
+            mysql_enable_utf8 => 1
         }
     ) or die( "Could not connect to database: " . DBI::errstr() . "\n" );
 

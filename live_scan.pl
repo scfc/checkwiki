@@ -93,7 +93,6 @@ sub retrieveArticles {
         }
     );
 
-    my @rc = $bot->recentchanges(
         { ns => $page_namespace, limit => $Limit{$Project} } );
     foreach my $hashref (@rc) {
         push( @Titles, $hashref->{title} );
@@ -112,6 +111,11 @@ sub insert_db {
 
     foreach (@Titles) {
         $title = $_;
+
+        #problem: sql-command insert, apostrophe ' or backslash \ in text
+        $title =~ s/\\/\\\\/g;
+        $title =~ s/'/\\'/g;
+        
         my $sql_text =
             "INSERT INTO cw_new (Project, Title) VALUES ('"
           . $Project . "', '"
@@ -165,7 +169,8 @@ sub open_db {
         $DbPassword,
         {
             RaiseError => 1,
-            AutoCommit => 1
+            AutoCommit => 1,
+            mysql_enable_utf8 => 1
         }
     ) or die( "Could not connect to database: " . DBI::errstr() . "\n" );
 

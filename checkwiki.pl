@@ -209,7 +209,8 @@ sub open_db {
         $DbPassword,
         {
             RaiseError => 1,
-            AutoCommit => 1
+            AutoCommit => 1,
+            mysql_enable_utf8 => 1
         }
     ) or die( "Could not connect to database: " . DBI::errstr() . "\n" );
 
@@ -5997,12 +5998,12 @@ sub error_register {
 
     $notice =~ s/\n//g;
 
-    #print "\t" . $error_code . "\t" . $title . "\t" . $notice . "\n";
+    print "\t" . $error_code . "\t" . $title . "\t" . $notice . "\n";
 
     $Error_number_counter[$error_code] = $Error_number_counter[$error_code] + 1;
     $error_counter = $error_counter + 1;
 
-    insert_into_db( $error_code, $notice );
+    #insert_into_db( $error_code, $notice );
 
     return ();
 }
@@ -6064,10 +6065,10 @@ sub insert_into_db {
     }
 
     my $sql_text =
-        "INSERT INTO "
+        "INSERT IGNORE INTO "
       . $table_name
       . " VALUES ( '"
-      . $project . "', " . "0" . ", '"
+      . $project . "', '"
       . $article_title . "', "
       . $code . ", '"
       . $notice
@@ -6221,13 +6222,18 @@ if ( defined($DumpFilename) ) {
 s/^(?:.*\/)?\Q$project\E-(\d{4})(\d{2})(\d{2})-pages-articles\.xml\.bz2$/$1-$2-$3/;
 
     # GET DUMP FILE SIZE, UNCOMPRESS AND THEN OPEN VIA METAWIKI::DumpFile
-    my $dump;
+    #my $dump;
     $file_size = ( stat($DumpFilename) )[7];
 
-    open( $dump, '-|', 'bzcat', '-q', $DumpFilename )
-          or die("Couldn't open dump file '$DumpFilename'");
+    #open( $dump, '-|', 'bzcat', '-q', $DumpFilename )
+    #      or die("Couldn't open dump file '$DumpFilename'");
 
-    $pages = $pmwd->pages($dump);
+    $DumpFilename =
+      '/home/bgwhite/windows/enwiki/enwiki-20130708-pages-articles.xml';
+    $dump_date_for_output = '2013-07-08';
+    $pages                = $pmwd->pages($DumpFilename);
+
+    # $pages = $pmwd->pages($dump);
 
     # OPEN TEMPLATETIGER FILE
     if (
