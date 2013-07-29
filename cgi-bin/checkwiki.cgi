@@ -8,7 +8,7 @@
 # DESCRIPTION:
 #
 # AUTHOR:  Stefan Kühn
-# VERSION: 2013-07-01
+# VERSION: 2013-07-28
 # LICENSE: GPL
 #
 ###########################################################################
@@ -24,10 +24,10 @@ use DBI;
 set_message(
     'There is a problem in the script. 
 Send me a mail to (<a href="mailto:kuehn-s@gmx.net">kuehn-s@gmx.net</a>), 
-giving this error message and the time and date of the error.'
+giving this error message and the time and date of the error.',
 );
 
-our $VERSION = '2013-02-09';
+our $VERSION = '2013-07-28';
 
 our $script_name = 'checkwiki.cgi';
 
@@ -109,7 +109,8 @@ sub connect_database {
     my $user;
     my $password;
 
-    $dsn = "DBI:mysql:p50380g50450__checkwiki_p:tools-db;mysql_read_default_file=../replica.my.cnf";
+    $dsn =
+"DBI:mysql:p50380g50450__checkwiki_p:tools-db;mysql_read_default_file=../replica.my.cnf";
     $dbh = DBI->connect( $dsn, $user, $password )
       or die( "Could not connect to database: " . DBI::errstr() . "\n" );
 
@@ -152,9 +153,9 @@ if (    $param_project eq ''
 ##########################################################################
 
 if (    $param_project ne ''
-    and $param_view   eq 'project'
-    and $param_id     eq ''
-    and $param_title  eq '' )
+    and $param_view  eq 'project'
+    and $param_id    eq ''
+    and $param_title eq '' )
 {
     print '<p>→ <a href="'
       . $script_name
@@ -173,11 +174,6 @@ if (    $param_project ne ''
       . "\n";
     print get_number_of_prio();
     print '</table>';
-    print '<p>A list with <a href="'
-      . $script_name
-      . '?project='
-      . $param_project
-      . '&amp;view=list">all article</a> order by number of ideas.</p>' . "\n";
 
 }
 
@@ -266,9 +262,9 @@ if (    $param_project ne ''
 ##########################################################################
 
 if (    $param_project ne ''
-    and $param_view   =~ /^(detail|only)$/
-    and $param_title  =~ /^(.)+$/
-    and $param_id     =~ /^[0-9]+$/ )
+    and $param_view  =~ /^(detail|only)$/
+    and $param_title =~ /^(.)+$/
+    and $param_id    =~ /^[0-9]+$/ )
 {
     my $dbh = connect_database();
     my $sql_text =
@@ -357,9 +353,9 @@ if (    $param_project ne ''
     print '</p>' . "\n";
 
 ###########################################################################
-## SHOW ONLY ONE ERROR WITH ALL ARTICLES 
+## SHOW ONLY ONE ERROR WITH ALL ARTICLES
 ###########################################################################
-    
+
     if ( $param_view =~ /^only$/ ) {
         print '<p><a href="'
           . $script_name
@@ -372,9 +368,9 @@ if (    $param_project ne ''
     }
 
 ###########################################################################
-## SHOW ONLY ONE ERROR WITH ALL ARTICLES SET AS DONE 
+## SHOW ONLY ONE ERROR WITH ALL ARTICLES SET AS DONE
 ###########################################################################
- 
+
     if ( $param_view =~ /^onlydone$/ ) {
         print '<p><a href="'
           . $script_name
@@ -686,13 +682,13 @@ if (    $param_project ne ''
             $result = '' unless defined $result;
             if ( $result ne '' ) {
                 print '<p>Artikel: <a target "_blank" href="'
-                  . get_homepage($lang)
+                  . get_homepage($param_project)
                   . '/wiki/'
                   . $result . '">'
                   . $result
                   . '</a> - 
                      <a href="'
-                  . get_homepage($lang)
+                  . get_homepage($param_project)
                   . '/w/index.php?title='
                   . $result
                   . '&amp;action=edit">edit</a></p>';
@@ -718,12 +714,11 @@ if (    $param_project eq ''
 ##############################################################
 if ( $param_view ne 'bots' ) {
 
-    # Signatur
     print
-'<p><span style="font-size:10px;">Author: <a href="en.wikipedia.org/wiki/User:Stefan_Kühn" >Stefan Kühn</a> · 
-	<a href="de.wikipedia.org/wiki/Benutzer:Stefan_Kühn/Check_Wikipedia">projectpage</a> · 
-	<a href="de.wikipedia.org/w/index.php?title=Benutzer_Diskussion:Stefan_K%C3%BChn/Check_Wikipedia&amp;action=edit&amp;section=new">comments and bugs</a><br />
-	Version '
+      #'<p><span style="font-size:10px;"><a href="de.wikipedia.org/wiki/Benutzer:Stefan_Kühn/Check_Wikipedia">projectpage</a> ·
+      #<a href="de.wikipedia.org/w/index.php?title=Benutzer_Diskussion:Stefan_K%C3%BChn/Check_Wikipedia&amp;action=edit&amp;section=new">comments and bugs</a><br />
+      #	Version '
+      '<p><span style="font-size:10px;">Version '
       . $VERSION
       . ' · license: <a href="www.gnu.org/copyleft/gpl.html">GPL</a> · Powered by <a href="tools.wikimedia.de/">Wikimedia Toolserver</a> </span></p>'
       . "\n";
@@ -986,7 +981,7 @@ sub project_info {
     my $dbh       = connect_database();
     my @info;
 
-    my $sql_text = "SELECT project, lang,
+    my $sql_text = "SELECT project, 
     if(length(ifnull(wikipage,''))!=0,wikipage, 'no data') wikipage,
     if(length(ifnull(translation_page,''))!=0,translation_page, 'no data') translation_page,
     date_format(last_dump,'%Y-%m-%d') last_dump, 
@@ -994,37 +989,49 @@ sub project_info {
     FROM cw_project 
     WHERE project='" . $project . "' limit 1;";
 
-    my $sth = $dbh->prepare('SELECT project FROM cw_project ORDER BY project;')
+    my $sth = $dbh->prepare($sql_text)
       || die "Can not prepare statement: $DBI::errstr\n";
     $sth->execute or die "Cannot execute: " . $sth->errstr . "\n";
 
-    while ( my $arrayref = $sth->fetchrow_arrayref() ) {
-        foreach (@$arrayref) {
-            @info = @$arrayref;    # only one line possible, last line win
-        }
-    }
+    my (
+        $project_sql,  $wikipage_sql, $translation_sql,
+        $lastdump_sql, $dumpdate_sql
+    );
+    $sth->bind_col( 1, \$project_sql );
+    $sth->bind_col( 2, \$wikipage_sql );
+    $sth->bind_col( 3, \$translation_sql );
+    $sth->bind_col( 4, \$lastdump_sql );
+    $sth->bind_col( 5, \$dumpdate_sql );
+
+    $sth->fetchrow_arrayref;
+
+    my $homepage              = get_homepage($project_sql);
+    my $wikipage_sql_under    = $wikipage_sql;
+    my $translation_sql_under = $translation_sql;
+    $wikipage_sql_under    =~ tr/ /_/;
+    $translation_sql_under =~ tr/ /_/;
 
     $result .= '<ul>' . "\n";
     $result .=
-        '<li>local page: '
-      . '<a href="'
-      . get_homepage( $info[1] )
+        '<li>Local page: '
+      . '<a href="https://'
+      . $homepage
       . '/wiki/'
-      . $info[2] . '">'
-      . $info[2]
+      . $wikipage_sql_under . '">'
+      . $wikipage_sql
       . '</a></li>' . "\n";
     $result .=
-        '<li>translation page: '
-      . '<a href="'
-      . get_homepage( $info[1] )
+        '<li>Translation page: '
+      . '<a href="https://'
+      . $homepage
       . '/wiki/'
-      . $info[3]
+      . $translation_sql_under
       . '">here</a></li>' . "\n";
     $result .=
-        '<li>dump '
-      . $info[4] . ' ('
-      . $info[6]
-      . ' days old), status: last scanned</li>' . "\n";
+        '<li>Last scanned dump '
+      . $lastdump_sql . ' ('
+      . $dumpdate_sql
+      . ' days old)</li>' . "\n";
 
     $result .= '</ul>';
 
@@ -1070,7 +1077,7 @@ sub get_number_of_prio {
         }
         my $number_of_error = $i;
         $result .=
-            '<tr><td class="table" align="right"><a href="'
+            '<tr><td class="table" style="text-align:right;"><a href="'
           . $script_name
           . '?project='
           . $param_project
@@ -1083,9 +1090,9 @@ sub get_number_of_prio {
           if ( $output[0][1] == 2 );
         $result .= 'low" rel="nofollow">low priority' if ( $output[0][1] == 3 );
         $result .=
-            '</a></td><td class="table" align="right"  valign="middle">'
+'</a></td><td class="table" style="text-align:right; vertical-align:middle;">'
           . $output[0][0]
-          . '</td><td class="table" align="right"  valign="middle">'
+          . '</td><td class="table" style="text-align:right; vertical-align:middle;">'
           . $output[0][2]
           . '</td></tr>' . "\n";
         $sum_of_all    = $sum_of_all + $output[0][0];
@@ -1096,16 +1103,16 @@ sub get_number_of_prio {
             # summe -> all priorities
             my $result2 = q{};
             $result2 .=
-                '<tr><td class="table" align="right"><a href="'
+                '<tr><td class="table" style="text-align:right;"><a href="'
               . $script_name
               . '?project='
               . $param_project
               . '&amp;view=';
             $result2 .= 'all">all priorities';
             $result2 .=
-                '</a></td><td class="table" align="right"  valign="middle">'
+'</a></td><td class="table" style="text-align:right; vertical-align:middle;">'
               . $sum_of_all
-              . '</td><td class="table" align="right"  valign="middle">'
+              . '</td><td class="table" style="text-align:right; vertical-align:middle;">'
               . $sum_of_all_ok
               . '</td></tr>' . "\n";
 
@@ -1323,9 +1330,9 @@ sub get_prio_of_error {
     return ($result);
 }
 
-############################################################
-# show table for only one error
-############################################################
+##########################################################################
+## SHOW TABLE FOR ONLY ONE ERROR FOR ONE PROJECT
+##########################################################################
 
 sub get_article_of_error {
     my ($error) = @_;
@@ -1350,17 +1357,7 @@ sub get_article_of_error {
     $column_orderby = $column_orderby . ' ' . $column_sort
       if ( $column_orderby ne '' );
 
-    my $sql_text = "SELECT title, notice, error_id, 'more' more, found, project 
-    FROM cw_error 
-    WHERE error = " . $error . " 
-    AND ok=0 
-    AND project = '" . $param_project . "' 
-    " . ' ' . $column_orderby . ' ' . " 
-    LIMIT " . $param_offset . "," . $param_limit . ";";
-
-    my $sth = $dbh->prepare($sql_text)
-      || die "Can not prepare statement: $DBI::errstr\n";
-    $sth->execute or die "Cannot execute: " . $sth->errstr . "\n";
+    #------------------- ← 0 bis 25 →
 
     $result .= '<p>';
     $result .=
@@ -1399,6 +1396,9 @@ sub get_article_of_error {
     $result .= '</p>';
 
     $result .= '<table class="table">';
+
+    #------------------- ARTICLE TITLE
+
     $result .= '<tr>';
     $result .= '<th class="table">Article';
     $result .=
@@ -1426,7 +1426,13 @@ sub get_article_of_error {
       . $param_limit
       . '&amp;orderby=article&amp;sort=desc">↓</a>';
     $result .= '</th>';
+
+    #------------------- EDIT
+
     $result .= '<th class="table">Edit</th>';
+
+    #------------------- NOTICE
+
     $result .= '<th class="table">Notice';
     $result .=
         '<a href="'
@@ -1453,6 +1459,9 @@ sub get_article_of_error {
       . $param_limit
       . '&amp;orderby=notice&amp;sort=desc">↓</a>';
     $result .= '</th>';
+
+    #------------------- MORE
+
     $result .= '<th class="table">More';
     $result .=
         '<a href="'
@@ -1479,6 +1488,9 @@ sub get_article_of_error {
       . $param_limit
       . '&amp;orderby=more&amp;sort=desc">↓</a>';
     $result .= '</th>';
+
+    #------------------- FOUND
+
     $result .= '<th class="table">Found';
     $result .=
         '<a href="'
@@ -1505,72 +1517,84 @@ sub get_article_of_error {
       . $param_limit
       . '&amp;orderby=found&amp;sort=desc">↓</a>';
     $result .= '</th>';
+
+    #------------------- DONE
+
     $result .= '<th class="table">Done</th>';
     $result .= '</tr>' . "\n";
-    my $row_style = '';
 
-    while ( my $arrayref = $sth->fetchrow_arrayref() ) {
-        my @output;
-        my $i = 0;
-        my $j = 0;
-        foreach (@$arrayref) {
+    #--------- Main Table
 
-            #print $_."\n";
-            $output[$i][$j] = $_;
-            $output[$i][$j] = '' unless defined $output[$i][$j];
-            $j              = $j + 1;
-            if ( $j == 6 ) {
-                $j = 0;
-                $i++;
-            }
+    my $row_style = q{};
+    my $row_style_main;
 
-            #print $_."\n";
-        }
+    my $sql_text = "SELECT title, notice, found, project FROM cw_error
+    WHERE error = " . $error . " AND project = '" . $param_project . "'
+    AND ok=0 " . ' ' . $column_orderby . ' ' . " 
+    LIMIT " . $param_offset . "," . $param_limit . ";";
+
+    my $sth = $dbh->prepare($sql_text)
+      || die "Can not prepare statement: $DBI::errstr\n";
+    $sth->execute or die "Cannot execute: " . $sth->errstr . "\n";
+
+    my ( $title_sql, $notice_sql, $found_sql, $project_sql );
+    $sth->bind_col( 1, \$title_sql );
+    $sth->bind_col( 2, \$notice_sql );
+    $sth->bind_col( 3, \$found_sql );
+    $sth->bind_col( 4, \$project_sql );
+
+    while ( $sth->fetchrow_arrayref ) {
+        $title_sql   = q{} unless defined $title_sql;
+        $notice_sql  = q{} unless defined $notice_sql;
+        $found_sql   = q{} unless defined $found_sql;
+        $project_sql = q{} unless defined $project_sql;
+
+        my $title_sql_under = $title_sql;
+        $title_sql_under =~ tr/ /_/;
 
         my $article_project = $param_project;
         if ( $param_project eq 'all' ) {
-            $article_project = $output[0][5];
+            $article_project = $project_sql;
             $lang            = $article_project;
             $lang =~ s/wiki$//;
         }
 
-        if ( $row_style eq '' ) {
-            $row_style = 'style="background-color:#D0F5A9"';
+        my $homepage = get_homepage($article_project);
+
+        if ( $row_style eq q{} ) {
+            $row_style      = 'style="background-color:#D0F5A9;"';
+            $row_style_main = 'style="background-color:#D0F5A9; ';
         }
         else {
-            $row_style = '';
+            $row_style      = q{};
+            $row_style_main = 'style="';
         }
 
         $result .= '<tr>';
         $result .=
             '<td class="table" '
           . $row_style
-          . '><a href="'
-          . get_homepage($lang)
+          . '><a href="https://'
+          . $homepage
           . '/wiki/'
-          . $output[0][0] . '">'
-          . $output[0][0]
+          . $title_sql_under . '">'
+          . $title_sql
           . '</a></td>';
         $result .=
             '<td class="table" '
           . $row_style
-          . '><a href="'
-          . get_homepage($lang)
+          . '><a href="https://'
+          . $homepage
           . '/w/index.php?title='
-          . $output[0][0]
+          . $title_sql_under
           . '&amp;action=edit">edit</a></td>';
 
         $result .=
-          '<td class="table" ' . $row_style . '>' . $output[0][1] . '</td>';
+          '<td class="table" ' . $row_style . '>' . $notice_sql . '</td>';
         $result .=
             '<td class="table" '
-          . $row_style
-          . ' align="center"  valign="middle">';
-
-        #if ($output[0][3] == 1) {
-        # only one error
-        #} else {
-        # more other errors
+          . $row_style_main
+          . ' text-align:center; vertical-align:middle;">';
 
         $result .=
             '<a href="'
@@ -1578,19 +1602,18 @@ sub get_article_of_error {
           . '?project='
           . $article_project
           . '&amp;view=detail&amp;title='
-          . $output[0][0] . '">'
-          . $output[0][3] . '</a>';
+          . $title_sql . '">'
+          . 'more</a>';
 
-        #}
         $result .= '</td>';
         $result .=
             '<td class="table" '
           . $row_style . '>'
-          . time_string( $output[0][4] ) . '</td>';
+          . time_string($found_sql) . '</td>';
         $result .=
             '<td class="table" '
-          . $row_style
-          . ' align="center"  valign="middle">';
+          . $row_style_main
+          . ' text-align:center; vertical-align:middle;">';
         $result .=
             '<a href="'
           . $script_name
@@ -1599,7 +1622,7 @@ sub get_article_of_error {
           . '&amp;view=only&amp;id='
           . $error
           . '&amp;title='
-          . $output[0][0]
+          . $title_sql
           . '&amp;offset='
           . $param_offset
           . '&amp;limit='
@@ -1845,8 +1868,8 @@ sub get_done_article_of_error {
         $result .=
             '<td class="table" '
           . $row_style
-          . '><a href="'
-          . get_homepage($lang)
+          . '><a href="https://'
+          . get_homepage($article_project)
           . '/wiki/'
           . $output[0][0] . '">'
           . $output[0][0]
@@ -1854,8 +1877,8 @@ sub get_done_article_of_error {
         $result .=
             '<td class="table" '
           . $row_style
-          . '><a href="'
-          . get_homepage($lang)
+          . '><a href="https://'
+          . get_homepage($article_project)
           . '/w/index.php?title='
           . $output[0][0]
           . '&amp;action=history">history</a></td>';
@@ -1965,9 +1988,7 @@ sub get_list {
 "SELECT title, count(*) more, error_id FROM cw_error WHERE ok=0 AND project = '"
       . $param_project . "' 
         GROUP BY title ORDER BY "
-      . $column_orderby . " "
-      . $column_sort
-      . ", title 
+      . $column_orderby . " " . $column_sort . ", title 
         LIMIT " . $param_offset . "," . $param_limit . ";";
 
     #print $sql_text."\n";
@@ -2085,8 +2106,8 @@ sub get_list {
         $result .= '<tr><td class="table" align="right"  valign="middle">'
           . $output[0][1] . '</td>';
         $result .=
-            '<td class="table"><a href="'
-          . get_homepage($lang)
+            '<td class="table"><a href="https://'
+          . get_homepage($param_project)
           . '/wiki/'
           . $output[0][0] . '">'
           . $output[0][0]
@@ -2119,9 +2140,7 @@ sub get_all_error_of_article {
         FROM cw_error a JOIN cw_error_desc b 
         ON (a.error = b.id) 
         WHERE (a.error_id = "
-      . $id
-      . " AND a.project = '"
-      . $param_project . "')
+      . $id . " AND a.project = '" . $param_project . "')
         AND b.project = '" . $param_project . "'
         ORDER BY b.name;";
 
@@ -2237,17 +2256,22 @@ sub time_string {
 ###########################################################################
 
 sub get_homepage {
-    my ($language) = @_;
-    my $result = q{};
+    my ($result) = @_;
 
-    if ( $language eq 'commons' ) {
-        $result = $language . '.wikimedia.org';
-    }
-    else {
-        $result = $language . '.wikipedia.org';
-    }
-    if ( $param_project =~ /wikisource$/ ) {
-        $result = $language . '.wikisource.org';
+    if (
+        !(
+               $result =~ s/^nds_nlwiki$/nds-nl.wikipedia.org/
+            || $result =~ s/^commonswiki$/commons.wikimedia.org/
+            || $result =~ s/^([a-z]+)wiki$/$1.wikipedia.org/
+            || $result =~ s/^([a-z]+)wikisource$/$1.wikisource.org/
+            || $result =~ s/^([a-z]+)wikiversity$/$1.wikiversity.org/
+            || $result =~ s/^([a-z]+)wiktionary$/$1.wiktionary.org/
+        )
+      )
+    {
+        die(    "Couldn't calculate server name for project"
+              . $param_project
+              . "\n" );
     }
 
     return ($result);
@@ -2257,7 +2281,7 @@ sub get_homepage {
 
 sub get_style {
     my $result = '<style type="text/css">
-body { 
+    body { 
     
 	font-family: Verdana, Tahoma, Arial, Helvetica, sans-serif;
 	font-size:14px;
