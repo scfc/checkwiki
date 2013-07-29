@@ -22,23 +22,28 @@ CREATE TABLE IF NOT EXISTS cw_project
 
 -- Table cw_dumpscan.
 CREATE TABLE IF NOT EXISTS cw_dumpscan
-(Project VARCHAR(100),
- Error_ID INTEGER,
- Title VARCHAR(4000),
- Error INT,
- Notice VARCHAR(4000),
+(Project VARCHAR(20) NOT NULL,
+ Title VARCHAR(100) NOT NULL,
+ Error SMALLINT NOT NULL,
+ Notice VARCHAR(200),
  Ok INT,
- Found DATETIME);
+ Found DATETIME,
+ PRIMARY KEY (Project, Title, Error)
+);
 
 -- Table cw_error.
 CREATE TABLE IF NOT EXISTS cw_error
-(Project VARCHAR(100),
- Error_ID INT,
- Title VARCHAR(4000),
- Error INT,
- Notice VARCHAR(4000),
+(Project VARCHAR(20) NOT NULL,
+ Title VARCHAR(100) NOT NULL,
+ Error SMALLINT NOT NULL,
+ Notice VARCHAR(200),
  Ok INT,
- Found DATETIME);
+ Found DATETIME,
+ PRIMARY KEY (Project, Title, Error)
+);
+
+CREATE INDEX ProjectIndex
+ON cw_error (Project, Error);
 
 -- Table cw_error_desc.
 CREATE TABLE IF NOT EXISTS cw_error_desc
@@ -86,22 +91,12 @@ CREATE TABLE IF NOT EXISTS cw_statistic
  Daytime DATETIME,
  Errors BIGINT);
 
--- Table cw_starter.
-CREATE TABLE IF NOT EXISTS cw_starter
-(Project VARCHAR(100),
- Errors_Done BIGINT,
- Errors_New BIGINT,
- Errors_Dump BIGINT,
- Errors_Change BIGINT,
- Errors_Old BIGINT,
- Last_Run_Change VARCHAR(100));
-
 -- Table cw_new.
 CREATE TABLE IF NOT EXISTS cw_new
-(Project VARCHAR(100),
- Title VARCHAR(4000),
- Daytime DATETIME,
- Scan_Live BOOLEAN DEFAULT FALSE);
+(Project VARCHAR(20),
+ Title VARCHAR(100),
+ Daytime DATETIME
+);
 
 -- Table cw_change.
 CREATE TABLE IF NOT EXISTS cw_change
