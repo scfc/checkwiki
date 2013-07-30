@@ -51,12 +51,15 @@ close_db();
 
 sub setVariables {
 
-    @ProjectList = qw(enwiki dewiki eswiki);
+    @ProjectList = qw(enwiki dewiki eswiki frwiki arwiki cswiki);
 
     %Limit = (
-        enwiki => 10,
-        dewiki => 5,
-        eswiki => 2,
+        enwiki => 500,
+        dewiki => 300,
+        eswiki => 300,
+        frwiki => 300,
+        arwiki => 200,
+        cswiki => 200,
     );
 
     return ();
@@ -93,6 +96,7 @@ sub retrieveArticles {
         }
     );
 
+    my @rc = $bot->recentchanges(
         { ns => $page_namespace, limit => $Limit{$Project} } );
     foreach my $hashref (@rc) {
         push( @Titles, $hashref->{title} );
@@ -115,13 +119,12 @@ sub insert_db {
         #problem: sql-command insert, apostrophe ' or backslash \ in text
         $title =~ s/\\/\\\\/g;
         $title =~ s/'/\\'/g;
-        
+
         my $sql_text =
-            "INSERT INTO cw_new (Project, Title) VALUES ('"
+            "INSERT IGNORE INTO cw_new (Project, Title) VALUES ('"
           . $Project . "', '"
           . $title . "');";
 
-        print "SQL_TEXT: " . $sql_text . "\n";
         my $sth = $dbh->prepare($sql_text)
           || die "Can not prepare statement: $DBI::errstr\n";
         $sth->execute or die "Cannot execute: " . $sth->errstr . "\n";
@@ -170,7 +173,7 @@ sub open_db {
         {
             RaiseError => 1,
             AutoCommit => 1,
-            mysql_enable_utf8 => 1
+            mysql_enable_utf8 => 1,
         }
     ) or die( "Could not connect to database: " . DBI::errstr() . "\n" );
 
