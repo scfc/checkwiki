@@ -13,9 +13,9 @@
 #                priority_all.html and priority_low.html
 ##               Program should run just after update_db.pl
 ##
-## AUTHOR:  Stefan Kühn
-## VERSION: 2013-07-01
-## LICENSE: GPL
+## AUTHOR:  Stefan Kühn, Bryan White
+## VERSION: 2013-08-01
+## LICENSE: GPLv3
 ##
 ###########################################################################
 
@@ -59,6 +59,8 @@ GetOptions(
 ## MAIN PROGRAM
 ##########################################################################
 
+our $time = gmtime();
+
 open_db();
 build_start_page();
 get_all_projects();
@@ -87,8 +89,8 @@ sub open_db {
         $DbUsername,
         $DbPassword,
         {
-            RaiseError => 1,
-            AutoCommit => 1,
+            RaiseError        => 1,
+            AutoCommit        => 1,
             mysql_enable_utf8 => 1
         }
     ) or die( "Could not connect to database: " . DBI::errstr() . "\n" );
@@ -122,15 +124,14 @@ sub build_start_page {
     $result .= '<p>' . "\n";
     $result .= '<ul>' . "\n";
     $result .=
-'<li>More information at the <a href="http://de.wikipedia.org/wiki/Benutzer:Stefan_Kühn/Check_Wikipedia">projectpage</a></li>'
+'<li>More information at the <a href="http://de.wikipedia.org/wiki/Benutzer:Stefan_K&#252;hn/Check_Wikipedia">projectpage</a></li>'
       . "\n";
     $result .=
       '<li><a href="index.htm">FAQ</a> (be available soon)</li>' . "\n";
     $result .= '</ul>' . "\n";
 
-    my $time = gmtime();
     $result .=
-'<p>Choose your project! - <small>This table will updated every 15 minutes. Last update: '
+'<p>Choose your project! - <small>This table will updated every 30 minutes. Last update: '
       . $time
       . ' (UTC)</small></p>' . "\n";
     $result .= get_projects();
@@ -141,7 +142,8 @@ sub build_start_page {
 
     #print 'Output in:'."\t".$filename."\n";
 
-    open( my $file, ">", $filename ) or die "unable to open: $!\n";
+    open( my $file, ">:encoding(UTF-8)", $filename )
+      or die "unable to open: $!\n";
     print $file $result;
     close($file);
 
@@ -224,6 +226,7 @@ sub get_projects {
         $result .= '<td class="table">' . time_string( $output[7] ) . '</td>';
 
         # PRINT OUT "PAGE AT WIKIPEDIA" AND "TRANSLATION" COLUMNS
+        $output[5] =~ tr/ /_/;
         $result .=
 '<td class="table" style="text-align:center; vertical-align:middle;"><a href="https://'
           . $output[4]
@@ -231,7 +234,7 @@ sub get_projects {
           . $output[5]
           . '">here</a></td>' . "\n";
 
-        $output[6] =~ s/\s/%20/g;
+        $output[6] =~ tr/ /_/;
         $result .=
 '<td class="table" style="text-align:center; vertical-align:middle;"><a href="https://'
           . $output[4]
@@ -297,7 +300,7 @@ sub build_project_page {
             '<link rel="stylesheet" href="../css/style.css" type="text/css" />'
           . "\n";
         $result .= html_head_end();
-        $result .= '<p><a href="../index.htm">Homepage</a> → '
+        $result .= '<p><a href="../index.htm">Homepage</a> &rarr; '
           . $project . '</p>' . "\n";
 
         my $sql_text =
@@ -321,9 +324,13 @@ sub build_project_page {
             }
         }
 
-        $lang             = $output[0];
-        $project_page     = $output[1];
+        $lang         = $output[0];
+        $project_page = $output[1];
+        my $temp_page = $output[1];
+        $temp_page =~ tr/ /_/;
         $translation_page = $output[2];
+        my $temp1_page = $output[2];
+        $temp1_page =~ tr/ /_/;
 
         $result .= '<p>' . "\n";
         $result .= '<ul>' . "\n";
@@ -331,7 +338,7 @@ sub build_project_page {
             '<li>local page: <a href="https://'
           . $lang
           . '.wikipedia.org/wiki/'
-          . $project_page
+          . $temp_page
           . '" target="_blank">'
           . $project_page
           . '</a></li>' . "\n";
@@ -340,15 +347,15 @@ sub build_project_page {
             '<a href="https://'
           . $lang
           . '.wikipedia.org/wiki/'
-          . $translation_page
+          . $temp1_page
           . '" target="_blank">here</a>'
           if ( $translation_page ne '' );
         $result .= 'unknown!' if ( $translation_page eq '' );
-        $result .= '</li>' . "\n";
+        $result .= '</li>' . "\n" . '</ul>' . "\n";
 
         $result .=
-            '<p><small>This table will updated every 15 minutes. Last update: '
-          . $time 
+            '<p><small>This table will updated every 30 minutes. Last update: '
+          . $time
           . ' (UTC)</small></p>' . "\n";
 
         $result .= '<table class="table">';
@@ -361,7 +368,8 @@ sub build_project_page {
         $result .= html_end();
         my $filename = $output_directory . '/' . $project . '/' . 'index.htm';
 
-        open( my $file, ">", $filename ) or die "unable to open: $!\n";
+        open( my $file, ">:encoding(UTF-8)", $filename )
+          or die "unable to open: $!\n";
         print $file $result;
         close($file);
 
@@ -498,22 +506,23 @@ sub build_prio_page2 {
         '<link rel="stylesheet" href="../css/style.css" type="text/css" />'
       . "\n";
     $result .= html_head_end();
-    $result .= '<p><a href="../index.htm">Homepage</a> → ';
-    $result .= '<a href="index.htm">' . $project . '</a> → ';
+    $result .= '<p><a href="../index.htm">Homepage</a> &rarr; ';
+    $result .= '<a href="index.htm">' . $project . '</a> &rarr; ';
     $result .= $headline . '</p>' . "\n";
 
     $result .=
 '<p>Priorities: <a href="priority_all.htm">all</a> - <a href="priority_high.htm">high</a> - <a href="priority_middle.htm">middle</a> - <a href="priority_low.htm">low</a></p>'
       . "\n";
     $result .=
-      '<p><small>This table will updated every 15 minutes.</small></p>' . "\n";
+      '<p><small>This table will updated every 30 minutes.</small></p>' . "\n";
 
     $result .= get_number_error_and_desc_by_prio( $project, $prio );
     $result .= html_end();
 
     my $filename = $output_directory . '/' . $project . '/' . $file_name;
 
-    open( my $file, ">", $filename ) or die "unable to open: $!\n";
+    open( my $file, ">:encoding(UTF-8)", $filename )
+      or die "unable to open: $!\n";
     print $file $result;
     close($file);
 
@@ -631,7 +640,6 @@ sub time_string {
 }
 
 ###########################################################################
-
 sub html_head_start {
     my $result = "<!DOCTYPE html>\n<head>\n<meta charset=\"UTF-8\" />\n";
 
@@ -648,17 +656,14 @@ sub html_end {
     my $result = q{};
     $result .= '<p><span style="font-size:10px;">' . "\n";
     $result .=
-'Author: <a href="http://en.wikipedia.org/wiki/User:Stefan_Kühn" >Stefan Kühn</a> · '
+'<a href="http://de.wikipedia.org/wiki/Benutzer:Stefan_K&#252;hn/Check_Wikipedia">projectpage</a> &middot; '
       . "\n";
     $result .=
-'<a href="http://de.wikipedia.org/wiki/Benutzer:Stefan_Kühn/Check_Wikipedia">projectpage</a> · '
+'<a href="http://de.wikipedia.org/w/index.php?title=Benutzer_Diskussion:Stefan_K&#252;hn/Check_Wikipedia&amp;action=edit&amp;section=new">comments and bugs</a><br />'
       . "\n";
+    $result .= 'Version 2013-08-01 &middot; ' . "\n";
     $result .=
-'<a href="http://de.wikipedia.org/w/index.php?title=Benutzer_Diskussion:Stefan_Kühn/Check_Wikipedia&amp;action=edit&amp;section=new">comments and bugs</a><br />'
-      . "\n";
-    $result .= 'Version 2013-08-01 · ' . "\n";
-    $result .=
-        'license: <a href="http://www.gnu.org/copyleft/gpl.html">GPLv3</a> · '
+'license: <a href="http://www.gnu.org/copyleft/gpl.html">GPLv3</a> &middot; '
       . "\n";
     $result .=
 'Powered by <a href="https://www.mediawiki.org/wiki/Wikimedia_Labs">Wikimedia Labs</a> '
