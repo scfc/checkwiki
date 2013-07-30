@@ -114,9 +114,9 @@ if (    $param_project ne q{}
     and $param_id    eq q{}
     and $param_title eq q{} )
 {
-    print '<p>→ <a href="'
+    print '<p>&rarr; <a href="'
       . $script_name
-      . '">Homepage</a> → '
+      . '">Homepage</a> &rarr; '
       . $param_project . '</p>' . "\n";
 
     print project_info($param_project);
@@ -173,14 +173,14 @@ if (
         $html_page = 'priority_all.htm';
     }
 
-    print '<p>→ <a href="' . $script_name . '">Homepage</a> → ';
+    print '<p>&larr; <a href="' . $script_name . '">Homepage</a> &rarr; ';
     print '<a href="'
       . $script_name
       . '?project='
       . $param_project
       . '&amp;view=project">'
       . $param_project
-      . '</a> → '
+      . '</a> &rarr; '
       . $headline . '</p>' . "\n";
     print
 '<p><span style="font-size:10px;">This table will updated every 15 minutes.</span></p>'
@@ -248,18 +248,19 @@ if (    $param_project ne ''
       . '&amp;view=low">low priority</a>'
       if ( $prio eq '3' );
 
-    print '<p>→ <a href="' . $script_name . '">Homepage</a> → ';
+    print '<p>&rarr; <a href="' . $script_name . '">Homepage</a> &rarr; ';
     print '<a href="'
       . $script_name
       . '?project='
       . $param_project
       . '&amp;view=project">'
       . $param_project
-      . '</a> → '
-      . $prio . ' → '
+      . '</a> &rarr; '
+      . $prio
+      . ' &rarr; '
       . $headline . '</p>' . "\n";
 
-    print '<p>' . get_description($param_id) . '</p>' . "\n";
+    print get_description($param_id) . "\n";
     print '<p>To do: <b>' . get_number_of_error($param_id) . '</b>, ';
     print 'Done: <b>'
       . get_number_of_ok_of_error($param_id)
@@ -364,15 +365,16 @@ if (    $param_project ne ''
       . '&amp;view=low">low priority</a>'
       if ( $prio eq '3' );
 
-    print '<p>→ <a href="' . $script_name . '">Homepage</a> → ';
+    print '<p>&rarr; <a href="' . $script_name . '">Homepage</a> &rarr; ';
     print '<a href="'
       . $script_name
       . '?project='
       . $param_project
       . '&amp;view=project">'
       . $param_project
-      . '</a> → '
-      . $prio . ' → '
+      . '</a> &rarr; '
+      . $prio
+      . ' &rarr; '
       . $headline . '</p>' . "\n";
 
     print
@@ -452,15 +454,16 @@ if (    $param_project ne ''
       . '&amp;view=low">low priority</a>'
       if ( $prio eq '3' );
 
-    print '<p>→ <a href="' . $script_name . '">Homepage</a> → ';
+    print '<p>&rarr; <a href="' . $script_name . '">Homepage</a> &rarr; ';
     print '<a href="'
       . $script_name
       . '?project='
       . $param_project
       . '&amp;view=project">'
       . $param_project
-      . '</a> → '
-      . $prio . ' → '
+      . '</a> &rarr; '
+      . $prio
+      . ' &rarr; '
       . $headline . '</p>' . "\n";
 
     print
@@ -544,15 +547,16 @@ if (    $param_project ne ''
       . '&amp;view=low">low priority</a>'
       if ( $prio eq '3' );
 
-    print '<p>→ <a href="' . $script_name . '">Homepage</a> → ';
+    print '<p>&rarr; <a href="' . $script_name . '">Homepage</a> &rarr; ';
     print '<a href="'
       . $script_name
       . '?project='
       . $param_project
       . '&amp;view=project">'
       . $param_project
-      . '</a> → '
-      . $prio . ' → '
+      . '</a> &rarr; '
+      . $prio
+      . ' &rarr; '
       . $headline . '</p>' . "\n";
 
     print '<p>All <b>'
@@ -580,19 +584,19 @@ if (    $param_project ne ''
     and $param_view eq 'detail'
     and $param_title =~ /^(.)+$/ )
 {
-    print '<p>→ <a href="' . $script_name . '">Homepage</a> → ';
+    print '<p>&rarr; <a href="' . $script_name . '">Homepage</a> &rarr; ';
     print '<a href="'
       . $script_name
       . '?project='
       . $param_project
       . '&amp;view=project">'
       . $param_project
-      . '</a> → ';
+      . '</a> &rarr; ';
     print '<a href="'
       . $script_name
       . '?project='
       . $param_project
-      . '&amp;view=list">List</a> → Details</p>' . "\n";
+      . '&amp;view=list">List</a> &rarr; Details</p>' . "\n";
 
     my $dbh = connect_database();
     my $sql_text =
@@ -611,10 +615,13 @@ if (    $param_project ne ''
             my $result = $_;
             $result = q{} unless defined $result;
             if ( $result ne '' ) {
-                print '<p>Article: <a target "_blank" href="'
+                my $result_under = $result;
+                $result_under =~ tr/ /_/;
+
+                print '<p>Article: <a href="'
                   . get_homepage($param_project)
                   . '/wiki/'
-                  . $result . '">'
+                  . $result_under . '">'
                   . $result
                   . '</a> - 
                      <a href="'
@@ -636,7 +643,7 @@ if ( $param_view ne 'bots' ) {
     print
 
 #'<p><span style="font-size:10px;"><a href="de.wikipedia.org/wiki/Benutzer:Stefan_Kühn/Check_Wikipedia">projectpage</a> ·
-#<a href="de.wikipedia.org/w/index.php?title=Benutzer_Diskussion:Stefan_K%C3%BChn/Check_Wikipedia&amp;action=edit&amp;section=new">comments and bugs</a><br />
+#<a href="de.wikipedia.org/w/index.php?title=Benutzer_Diskussion:Stefan_K%C3%BChn/Check_Wikipedia&amp;action=edit&amp;section=new">comments and bugs</a><br>
 #	Version '
       '<p><span style="font-size:10px;">Version '
       . $VERSION
@@ -746,8 +753,8 @@ sub get_projects {
     $result .= '<th class="table">Project</th>' . "\n";
     $result .= '<th class="table">To-do</th>' . "\n";
     $result .= '<th class="table">Done</th>' . "\n";
-    $result .= '<th class="table">Change to<br />yesterday</th>' . "\n";
-    $result .= '<th class="table">Change to<br />last week</th>' . "\n";
+    $result .= '<th class="table">Change to<br>yesterday</th>' . "\n";
+    $result .= '<th class="table">Change to<br>last week</th>' . "\n";
     $result .= '<th class="table">Last dump</th>' . "\n";
     $result .= '<th class="table">Last update</th>' . "\n";
     $result .= '<th class="table">Page at Wikipedia</th>' . "\n";
@@ -766,29 +773,35 @@ sub get_projects {
           . $h->{'Project'}
           . '&amp;view=project" rel="nofollow">'
           . $h->{'Project'} . '</td>' . "\n";
-        $result .= '<td class="table" align="right"  valign="middle">'
+        $result .=
+          '<td class="table" style="text-align:right; vertical-align:middle;">'
           . $h->{'Errors'} . '</td>' . "\n";
-        $result .= '<td class="table" align="right"  valign="middle">'
+        $result .=
+          '<td class="table" style="text-align:right; vertical-align:middle;">'
           . $h->{'Done'} . '</td>' . "\n";
 
         #change
-        $result .= '<td class="table" align="right"  valign="middle">' . 'dunno'
-          . '</td>' . "\n";
-        $result .= '<td class="table" align="right"  valign="middle">' . 'dunno'
-          . '</td>' . "\n";
+        $result .=
+          '<td class="table" style="text-align:right; vertical-align:middle;">'
+          . 'dunno' . '</td>' . "\n";
+        $result .=
+          '<td class="table" style="text-align:right; vertical-align:middle;">'
+          . 'dunno' . '</td>' . "\n";
 
         #last dump
-        $result .= '<td class="table" align="right"  valign="middle">'
+        $result .=
+          '<td class="table" style="text-align:right; vertical-align:middle;">'
           . $h->{'DATE(Last_Dump)'} . '</td>' . "\n";
+
         $result .= '<td class="table">' . $h->{'Last_Update'} . '</td>';
         $result .=
-            '<td class="table" align="center"  valign="middle"><a href="'
+'<td class="table" style="text-align:right; vertical-align:middle;"><a href="'
           . $h->{'lang'}
           . '.wikipedia.org/wiki/'
           . $h->{'Project_Page'}
           . '">here</a></td>' . "\n";
         $result .=
-            '<td class="table" align="center"  valign="middle"><a href="'
+'<td class="table" style="text-align:right; vertical-align:middle;"><a href="'
           . $h->{'lang'}
           . '.wikipedia.org/wiki/'
           . $h->{'Translation_Page'}
@@ -1139,9 +1152,11 @@ sub get_number_error_and_desc_by_prio {
         }
 
         $result .= '<tr>';
-        $result .= '<td class="table" align="right"  valign="middle">'
+        $result .=
+          '<td class="table" style="text-align:right; vertical-align:middle;">'
           . $errors_sql . '</td>';
-        $result .= '<td class="table" align="right"  valign="middle">'
+        $result .=
+          '<td class="table" style="text-align:right; vertical-align:middle;">'
           . $ok_sql . '</td>';
         $result .=
             '<td class="table"><a href="'
@@ -1153,7 +1168,8 @@ sub get_number_error_and_desc_by_prio {
           . '" rel="nofollow">'
           . $headline
           . '</a></td>';
-        $result .= '<td class="table" align="right"  valign="middle">'
+        $result .=
+          '<td class="table" style="text-align:right; vertical-align:middle;">'
           . $id_sql . '</td>';
         $result .= '</tr>' . "\n";
 
@@ -1315,7 +1331,7 @@ sub get_article_of_error {
       . $param_orderby
       . '&amp;sort='
       . $param_sort
-      . '">←</a>';
+      . '">&larr;</a>';
     $result .= ' ' . $param_offset . ' to ' . $offset_end . ' ';
     $result .=
         '<a href="'
@@ -1332,7 +1348,7 @@ sub get_article_of_error {
       . $param_orderby
       . '&amp;sort='
       . $param_sort
-      . '">→</a>';
+      . '">&rarr;</a>';
     $result .= '</p>';
 
     #------------------- ARTICLE TITLE
@@ -1351,7 +1367,7 @@ sub get_article_of_error {
       . $param_offset
       . '&amp;limit='
       . $param_limit
-      . '&amp;orderby=article&amp;sort=asc">↑</a>';
+      . '&amp;orderby=article&amp;sort=asc">&uarr;</a>';
     $result .=
         '<a href="'
       . $script_name
@@ -1363,7 +1379,7 @@ sub get_article_of_error {
       . $param_offset
       . '&amp;limit='
       . $param_limit
-      . '&amp;orderby=article&amp;sort=desc">↓</a>';
+      . '&amp;orderby=article&amp;sort=desc">&darr;</a>';
     $result .= '</th>';
 
     #------------------- EDIT
@@ -1384,7 +1400,7 @@ sub get_article_of_error {
       . $param_offset
       . '&amp;limit='
       . $param_limit
-      . '&amp;orderby=notice&amp;sort=asc">↑</a>';
+      . '&amp;orderby=notice&amp;sort=asc">&uarr;</a>';
     $result .=
         '<a href="'
       . $script_name
@@ -1396,7 +1412,7 @@ sub get_article_of_error {
       . $param_offset
       . '&amp;limit='
       . $param_limit
-      . '&amp;orderby=notice&amp;sort=desc">↓</a>';
+      . '&amp;orderby=notice&amp;sort=desc">&darr;</a>';
     $result .= '</th>';
 
     #------------------- MORE
@@ -1413,7 +1429,7 @@ sub get_article_of_error {
       . $param_offset
       . '&amp;limit='
       . $param_limit
-      . '&amp;orderby=more&amp;sort=asc">↑</a>';
+      . '&amp;orderby=more&amp;sort=asc">&uarr;</a>';
     $result .=
         '<a href="'
       . $script_name
@@ -1425,7 +1441,7 @@ sub get_article_of_error {
       . $param_offset
       . '&amp;limit='
       . $param_limit
-      . '&amp;orderby=more&amp;sort=desc">↓</a>';
+      . '&amp;orderby=more&amp;sort=desc">&darr;</a>';
     $result .= '</th>';
 
     #------------------- FOUND
@@ -1442,7 +1458,7 @@ sub get_article_of_error {
       . $param_offset
       . '&amp;limit='
       . $param_limit
-      . '&amp;orderby=found&amp;sort=asc">↑</a>';
+      . '&amp;orderby=found&amp;sort=asc">&uarr;</a>';
     $result .=
         '<a href="'
       . $script_name
@@ -1454,7 +1470,7 @@ sub get_article_of_error {
       . $param_offset
       . '&amp;limit='
       . $param_limit
-      . '&amp;orderby=found&amp;sort=desc">↓</a>';
+      . '&amp;orderby=found&amp;sort=desc">&darr;</a>';
     $result .= '</th>';
 
     #------------------- DONE
@@ -1563,13 +1579,15 @@ sub get_article_of_error {
           . '&amp;offset='
           . $param_offset
           . '&amp;limit='
-          . $param_limit
-          . '&amp;orderby='
-          . $param_orderby
-          . '&amp;sort='
-          . $param_sort
-          . '" rel="nofollow">Done</a>';
-        $result .= '</td></tr>' . "\n";
+          . $param_limit;
+
+        if ( $param_orderby ne q{} ) {
+            $result .= '&amp;orderby=' . $param_orderby;
+        }
+        if ( $param_sort ne q{} ) {
+            $result .= '&amp;sort=' . $param_sort;
+        }
+        $result .= '">Done</a></td></tr>' . "\n\n";
 
     }
     $result .= '</table>';
@@ -1611,7 +1629,7 @@ sub get_done_article_of_error {
       . $param_orderby
       . '&amp;sort='
       . $param_sort
-      . '">←</a>';
+      . '">&larr;</a>';
     $result .= ' ' . $param_offset . ' to ' . $offset_end . ' ';
     $result .=
         '<a href="'
@@ -1628,7 +1646,7 @@ sub get_done_article_of_error {
       . $param_orderby
       . '&amp;sort='
       . $param_sort
-      . '">→</a>';
+      . '">&rarr;</a>';
     $result .= '</p>';
 
     #------------------- ARTICLE TITLE
@@ -1647,7 +1665,7 @@ sub get_done_article_of_error {
       . $param_offset
       . '&amp;limit='
       . $param_limit
-      . '&amp;orderby=article&amp;sort=asc">↑</a>';
+      . '&amp;orderby=article&amp;sort=asc">&uarr;</a>';
     $result .=
         '<a href="'
       . $script_name
@@ -1659,7 +1677,7 @@ sub get_done_article_of_error {
       . $param_offset
       . '&amp;limit='
       . $param_limit
-      . '&amp;orderby=article&amp;sort=desc">↓</a>';
+      . '&amp;orderby=article&amp;sort=desc">&darr;</a>';
     $result .= '</th>';
 
     #------------------- VERSION
@@ -1680,7 +1698,7 @@ sub get_done_article_of_error {
       . $param_offset
       . '&amp;limit='
       . $param_limit
-      . '&amp;orderby=notice&amp;sort=asc">↑</a>';
+      . '&amp;orderby=notice&amp;sort=asc">&uarr;</a>';
     $result .=
         '<a href="'
       . $script_name
@@ -1692,7 +1710,7 @@ sub get_done_article_of_error {
       . $param_offset
       . '&amp;limit='
       . $param_limit
-      . '&amp;orderby=notice&amp;sort=desc">↓</a>';
+      . '&amp;orderby=notice&amp;sort=desc">&darr;</a>';
     $result .= '</th>';
 
     #------------------- FOUND
@@ -1709,7 +1727,7 @@ sub get_done_article_of_error {
       . $param_offset
       . '&amp;limit='
       . $param_limit
-      . '&amp;orderby=found&amp;sort=asc">↑</a>';
+      . '&amp;orderby=found&amp;sort=asc">&uarr;</a>';
     $result .=
         '<a href="'
       . $script_name
@@ -1721,7 +1739,7 @@ sub get_done_article_of_error {
       . $param_offset
       . '&amp;limit='
       . $param_limit
-      . '&amp;orderby=found&amp;sort=desc">↓</a>';
+      . '&amp;orderby=found&amp;sort=desc">&darr;</a>';
     $result .= '</th>';
 
     #------------------- DONE
@@ -1782,12 +1800,14 @@ sub get_done_article_of_error {
         my $homepage = get_homepage($article_project);
 
         if ( $row_style eq q{} ) {
-            $row_style      = 'style="background-color:#D0F5A9"';
-            $row_style_main = 'style="background-color:#D0F5A9; ';
+            $row_style = 'style="background-color:#D0F5A9;"';
+            $row_style_main =
+'style="background-color:#D0F5A9; text-align:right; vertical-align:middle;"';
         }
         else {
-            $row_style      = q{};
-            $row_style_main = 'style="';
+            $row_style = q{};
+            $row_style_main =
+              'style="text-align:right; vertical-align:middle;"';
         }
 
         $result .= '<tr>';
@@ -1815,13 +1835,10 @@ sub get_done_article_of_error {
             '<td class="table" '
           . $row_style . '>'
           . time_string($found_sql) . '</td>';
-        $result .=
-            '<td class="table" '
-          . $row_style
-          . ' align="center"  valign="middle">';
+        $result .= '<td class="table" ' . $row_style_main . '>';
 
         $result .= 'ok';
-        $result .= '</td></tr>' . "\n";
+        $result .= '</td></tr>' . "\n\n";
 
     }
     $result .= '</table>';
@@ -1868,7 +1885,7 @@ sub connect_database {
 
     $dsn =
 "DBI:mysql:p50380g50450__checkwiki_p:tools-db;mysql_read_default_file=../replica.my.cnf";
-    $dbh = DBI->connect( $dsn, $user, $password { mysql_enable_utf8 => 1 } )
+    $dbh = DBI->connect( $dsn, $user, $password, { mysql_enable_utf8 => 1 } )
       or die( "Could not connect to database: " . DBI::errstr() . "\n" );
 
     return ($dbh);
@@ -1934,7 +1951,8 @@ sub get_all_error_of_article {
         }
         $result .= '</a></td>';
         $result .= '<td class="table">' . $notice_sql . '</td>';
-        $result .= '<td class="table" align="center"  valign="middle">';
+        $result .=
+          '<td class="table" style="text-align:right; vertical-align:middle;">';
         if ( $ok_sql eq '0' ) {
             $result .=
                 '<a href="'
