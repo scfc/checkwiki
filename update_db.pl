@@ -14,9 +14,9 @@
 #               cw_overview_errors contains data for most webpages.
 #               cw_overview contains data for main index.html page.
 #
-# AUTHOR:  Stefan Kühn
-# VERSION: 2013-06-30
-# LICENSE: GPL
+# AUTHOR:  Stefan Kühn, Bryan White
+# VERSION: 2013-08-01
+# LICENSE: GPLv3
 #
 ##########################################################################
 
@@ -96,8 +96,8 @@ sub open_db {
         $DbUsername,
         $DbPassword,
         {
-            RaiseError => 1,
-            AutoCommit => 1,
+            RaiseError        => 1,
+            AutoCommit        => 1,
             mysql_enable_utf8 => 1
         }
     ) or die( "Could not connect to database: " . DBI::errstr() . "\n" );
@@ -219,13 +219,13 @@ sub cw_overview_errors_update_errors {
 ###########################################################################
 
 sub cw_overview_errors_update_done {
-
     $time_start = time();
-    print "Group and count the done articles in cw_error -> update cw_overview_error\n";
+    print "Group and count the done in cw_error -> update cw_overview_error\n";
 
     foreach (@projects) {
         my $project = $_;
 
+        #print "\t\t" . $project . "\n";
         my $sql_text = "UPDATE cw_overview_errors, (
         SELECT a.project, a.id , b.done FROM cw_error_desc a
         LEFT OUTER JOIN (
@@ -241,6 +241,7 @@ sub cw_overview_errors_update_done {
         AND cw_overview_errors.project =  '" . $project . "'
         AND cw_overview_errors.id = basis.id;";
 
+        #print $sql_text . "\n\n\n";
         my $sth = $dbh->prepare($sql_text)
           || die "Can not prepare statement: $DBI::errstr\n";
         $sth->execute or die "Cannot execute: " . $sth->errstr . "\n";
@@ -256,13 +257,13 @@ sub cw_overview_errors_update_done {
 ###########################################################################
 
 sub cw_overview_errors_update_error_number {
-
     $time_start = time();
-    print "Group and count the errors in cw_error -> update cw_overview_error\n";
+    print "Group and count the error in cw_error -> update cw_overview_error\n";
 
     foreach (@projects) {
         my $project = $_;
 
+        #print "\t\t" . $project . "\n";
         my $sql_text = "UPDATE cw_overview_errors, (
         SELECT a.project, a.id, b.errors errors  
         FROM cw_error_desc a
@@ -309,6 +310,7 @@ sub cw_overview_insert_new_projects {
 	ON (a.id = b.id)
 	WHERE b.project is NULL);";
 
+    #print $sql_text . "\n\n\n";
     my $sth = $dbh->prepare($sql_text)
       || die "Can not prepare statement: $DBI::errstr\n";
     $sth->execute or die "Cannot execute: " . $sth->errstr . "\n";

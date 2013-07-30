@@ -208,9 +208,9 @@ sub open_db {
         $DbUsername,
         $DbPassword,
         {
-            RaiseError => 1,
-            AutoCommit => 1,
-            mysql_enable_utf8 => 1
+            RaiseError        => 1,
+            AutoCommit        => 1,
+            mysql_enable_utf8 => 1,
         }
     ) or die( "Could not connect to database: " . DBI::errstr() . "\n" );
 
@@ -963,10 +963,10 @@ sub get_comments {
         $comments_end   = () = $test_text =~ /-->/g;
 
         # TURN OFF. FOR SOME REASON IT CAUSES PROGRAM TO HANG
-        #if ( $comments_begin > $comments_end ) {
-        #    my $snippet = get_broken_tag( '<!--', '-->' );
-        #    error_005_Comment_no_correct_end($snippet);
-        #}
+        if ( $comments_begin > $comments_end ) {
+            my $snippet = get_broken_tag( '<!--', '-->' );
+            error_005_Comment_no_correct_end($snippet);
+        }
 
         $text =~ s/<!--(.*?)-->//sg;
     }
@@ -1406,7 +1406,6 @@ sub check_isbn {
             else {
                 $found_text_13 =
                     $current_isbn
-                  . '</nowiki> || <nowiki>'
                   . substr( $test_isbn, 12, 1 ) . ' vs. '
                   . $checker;
             }
@@ -1440,7 +1439,6 @@ sub check_isbn {
                 # check wrong and 10 or more characters
                 $found_text_10 =
                     $current_isbn
-                  . '</nowiki> || <nowiki>'
                   . substr( $test_isbn, 9, 1 ) . ' vs. '
                   . $checker . ' ('
                   . $checksum
@@ -1479,8 +1477,7 @@ sub check_isbn {
             and length($test_isbn) != 0 )
         {
             $result = 'no';
-            error_070_isbn_wrong_length(
-                $current_isbn . '</nowiki> || <nowiki>' . length($test_isbn) );
+            error_070_isbn_wrong_length( $current_isbn . length($test_isbn) );
         }
     }
 
@@ -1552,7 +1549,7 @@ sub get_templates {
         }
         else {
             # template has no correct end
-            $temp_text = text_reduce( $temp_text, 80 );
+            $temp_text = text_reduce( $temp_text, 40 );
             error_043_template_no_correct_end($temp_text);
 
             #print 'Error: '.$title.' '.$temp_text."\n";
@@ -1835,7 +1832,7 @@ sub get_links {
         }
         else {
             # template has no correct end
-            $link_text = text_reduce( $link_text, 80 );
+            $link_text = text_reduce( $link_text, 40 );
             error_010_count_square_breaks($link_text);
         }
     }
@@ -2504,8 +2501,7 @@ sub error_002_have_br {
                 $test_line = substr( $text, $pos, 40 );
                 $test_line =~ s/[\n\r]//mg;
 
-                error_register( $error_code,
-                    '<nowiki>' . $test_line . ' </nowiki>' );
+                error_register( $error_code, $test_line );
             }
         }
     }
@@ -2686,7 +2682,7 @@ sub error_005_Comment_no_correct_end {
                 or $page_namespace == 104 )
           )
         {
-            error_register( $error_code, '<nowiki>' . $comment . '</nowiki>' );
+            error_register( $error_code, $comment );
         }
     }
 
@@ -2772,15 +2768,10 @@ s/[АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЬЫЪЭЮЯабвгде�
                       #or ($testtext ne '' and $page_namespace != 0 and index($text, '{{DEFAULTSORT') > -1 )		# if not an article then wiht {{ }}
                   )
                 {
-                    $testtext   = text_reduce( $testtext,   80 );
-                    $testtext_2 = text_reduce( $testtext_2, 80 );
+                    $testtext   = text_reduce( $testtext,   40 );
+                    $testtext_2 = text_reduce( $testtext_2, 40 );
 
-                    error_register( $error_code,
-                            '<nowiki>'
-                          . $testtext
-                          . '</nowiki> || <nowiki>'
-                          . $testtext_2
-                          . '</nowiki>' );
+                    error_register( $error_code, $testtext . $testtext_2 );
                 }
             }
         }
@@ -2810,8 +2801,7 @@ sub error_007_headline_only_three {
                     }
                 }
                 if ( $found_level_two eq 'no' ) {
-                    error_register( $error_code,
-                        '<nowiki>' . $headlines[0] . '</nowiki>' );
+                    error_register( $error_code, $headlines[0] );
                 }
             }
         }
@@ -2842,9 +2832,8 @@ sub error_008_headline_start_end {
                 and index( $current_line, '<ref' ) == -1
                 and ( $page_namespace == 0 or $page_namespace == 104 ) )
             {
-                $current_line = text_reduce( $current_line, 80 );
-                error_register( $error_code,
-                    '<nowiki>' . $current_line . '</nowiki>' );
+                $current_line = text_reduce( $current_line, 40 );
+                error_register( $error_code, $current_line );
             }
         }
     }
@@ -2871,8 +2860,7 @@ sub error_009_more_then_one_category_in_a_line {
                 $cat_number = () = $current_line =~ /\[\[\s*($cat_regex):/ig;
                 if ( $cat_number > 1 ) {
                     $error_line = $current_line;
-                    error_register( $error_code,
-                        '<nowiki>' . $error_line . '</nowiki>' );
+                    error_register( $error_code, $error_line );
                 }
             }
         }
@@ -2897,8 +2885,7 @@ sub error_010_count_square_breaks {
                 or $page_namespace == 104 )
           )
         {
-            $comment = text_reduce( $comment, 80 );
-            error_register( $error_code, '<nowiki>' . $comment . '</nowiki>' );
+            error_register( $error_code, text_reduce( $comment, 40 ) );
         }
     }
 
@@ -2965,10 +2952,9 @@ sub error_011_html_names_entities {
 
             if ( $pos > -1 ) {
                 my $found_text = substr( $text, $pos );
-                $found_text = text_reduce( $found_text, 80 );
+                $found_text = text_reduce( $found_text, 40 );
                 $found_text =~ s/&/&amp;/g;
-                error_register( $error_code,
-                    '<nowiki>' . $found_text . '</nowiki>' );
+                error_register( $error_code, $found_text );
             }
         }
     }
@@ -3018,9 +3004,7 @@ sub error_012_html_list_elements {
             }
         }
         if ( $test eq 'found' ) {
-            $test_line = text_reduce( $test_line, 80 );
-            error_register( $error_code,
-                '<nowiki>' . $test_line . ' </nowiki>' );
+            error_register( $error_code, text_reduce( $test_line, 40 ) );
         }
     }
 
@@ -3037,7 +3021,7 @@ sub error_013_Math_no_correct_end {
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $comment ne '' ) {
-            error_register( $error_code, '<nowiki>' . $comment . '</nowiki>' );
+            error_register( $error_code, $comment );
         }
     }
 
@@ -3054,7 +3038,7 @@ sub error_014_Source_no_correct_end {
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $comment ne '' ) {
-            error_register( $error_code, '<nowiki>' . $comment . '</nowiki>' );
+            error_register( $error_code, $comment );
         }
     }
 
@@ -3071,7 +3055,7 @@ sub error_015_Code_no_correct_end {
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $comment ne '' ) {
-            error_register( $error_code, '<nowiki>' . $comment . '</nowiki>' );
+            error_register( $error_code, $comment );
         }
     }
 
@@ -3105,8 +3089,7 @@ sub error_016_unicode_control_characters {
                 my $pos = index( $test_text, $1 );
                 $test_text = substr( $test_text, $pos, 40 );
 
-                error_register( $error_code,
-                    '<nowiki>' . $test_text . '</nowiki>' );
+                error_register( $error_code, $test_text );
             }
         }
     }
@@ -3154,8 +3137,7 @@ sub error_017_category_double {
                             and
                             ( $page_namespace == 0 or $page_namespace == 104 ) )
                         {
-                            error_register( $error_code,
-                                '<nowiki>' . $category[$i][2] . '</nowiki>' );
+                            error_register( $error_code, $category[$i][2] );
                         }
                     }
                 }
@@ -3180,8 +3162,7 @@ sub error_018_category_first_letter_small {
             for ( my $i = 0 ; $i <= $category_counter ; $i++ ) {
                 my $test_letter = substr( $category[$i][2], 0, 1 );
                 if ( $test_letter =~ /([a-z]|ä|ö|ü)/ ) {
-                    error_register( $error_code,
-                        '<nowiki>' . $category[$i][2] . '</nowiki>' );
+                    error_register( $error_code, $category[$i][2] );
                 }
             }
         }
@@ -3202,8 +3183,7 @@ sub error_019_headline_only_one {
             and ( $page_namespace == 0 or $page_namespace == 104 ) )
         {
             if ( $headlines[0] =~ /^=[^=]/ ) {
-                error_register( $error_code,
-                    '<nowiki>' . $headlines[0] . '</nowiki>' );
+                error_register( $error_code, $headlines[0] );
             }
         }
     }
@@ -3224,9 +3204,7 @@ sub error_020_symbol_for_dead {
             and ( $page_namespace == 0 or $page_namespace == 104 ) )
         {
             my $test_text = substr( $text, $pos, 100 );
-            $test_text = text_reduce( $test_text, 50 );
-            error_register( $error_code,
-                '<nowiki>…' . $test_text . '…</nowiki>' );
+            error_register( $error_code, text_reduce( $test_text, 40 ) );
         }
     }
 
@@ -3250,8 +3228,7 @@ sub error_021_category_is_english {
                 my $current_cat = lc( $category[$i][4] );
 
                 if ( index( $current_cat, lc( $namespace_cat[1] ) ) > -1 ) {
-                    error_register( $error_code,
-                        '<nowiki>' . $current_cat . '</nowiki>' );
+                    error_register( $error_code, $current_cat );
                 }
             }
         }
@@ -3282,8 +3259,7 @@ sub error_022_category_with_space {
                     #or $category[$i][4] =~ /\[\[[^:]+: /
                   )
                 {
-                    error_register( $error_code,
-                        '<nowiki>' . $category[$i][4] . '</nowiki>' );
+                    error_register( $error_code, $category[$i][4] );
                 }
             }
         }
@@ -3308,7 +3284,7 @@ sub error_023_nowiki_no_correct_end {
                 or $page_namespace == 104 )
           )
         {
-            error_register( $error_code, '<nowiki>' . $comment . '</nowiki>' );
+            error_register( $error_code, $comment );
         }
     }
 
@@ -3331,7 +3307,7 @@ sub error_024_pre_no_correct_end {
                 or $page_namespace == 104 )
           )
         {
-            error_register( $error_code, '<nowiki>' . $comment . '</nowiki>' );
+            error_register( $error_code, $comment );
         }
     }
 
@@ -3373,11 +3349,7 @@ sub error_025_headline_hierarchy {
                         and ( $level_new - $level_old ) > 1 )
                     {
                         error_register( $error_code,
-                                '<nowiki>'
-                              . $old_headline
-                              . '</nowiki><br /><nowiki>'
-                              . $new_headline
-                              . '</nowiki>' );
+                            $old_headline . '<br>' . $new_headline );
                     }
                 }
             }
@@ -3399,8 +3371,7 @@ sub error_026_html_text_style_elements {
         if ( index( $test_text, '<b>' ) > -1 ) {
             if ( $page_namespace == 0 or $page_namespace == 104 ) {
                 my $pos = index( $test_text, '<b>' );
-                error_register( $error_code,
-                    '<nowiki>' . substr( $text, $pos, 40 ) . ' </nowiki>' );
+                error_register( $error_code, substr( $text, $pos, 40 ) );
             }
         }
     }
@@ -3429,9 +3400,7 @@ sub error_027_unicode_syntax {
 
             if ( $pos > -1 ) {
                 my $found_text = substr( $text, $pos );
-                $found_text = text_reduce( $found_text, 80 );
-                error_register( $error_code,
-                    '<nowiki>' . $found_text . '</nowiki>' );
+                error_register( $error_code, text_reduce( $found_text, 40 ) );
             }
         }
     }
@@ -3471,8 +3440,7 @@ sub error_028_table_no_correct_end {
             and index( $text, '{{WNBA roster footer' ) == -1
             and index( $text, '{{NBA roster footer' ) == -1 )
         {
-            error_register( $error_code,
-                '<nowiki> ' . $comment . '…  </nowiki>' );
+            error_register( $error_code, $comment );
         }
     }
 
@@ -3495,7 +3463,7 @@ sub error_029_gallery_no_correct_end {
                 or $page_namespace == 104 )
           )
         {
-            error_register( $error_code, '<nowiki>' . $comment . '</nowiki>' );
+            error_register( $error_code, $comment );
         }
     }
 
@@ -3516,8 +3484,7 @@ sub error_030_image_without_description {
                 or $page_namespace == 6
                 or $page_namespace == 104 )
             {
-                error_register( $error_code,
-                    '<nowiki>' . $comment . '</nowiki>' );
+                error_register( $error_code, $comment );
             }
         }
     }
@@ -3567,14 +3534,7 @@ sub error_031_html_table_elements {
             if ( $test eq 'found' ) {
 
                 # http://aktuell.de.selfhtml.org/artikel/cgiperl/html-in-html/
-                $test_line = text_reduce( $test_line, 80 );
-                $test_line =~ s/\&/&amp;/g;
-                $test_line =~ s/</&lt;/g;
-                $test_line =~ s/>/&gt;/g;
-                $test_line =~ s/\"/&quot;/g;
-
-                error_register( $error_code,
-                    '<nowiki>' . $test_line . ' </nowiki>' );
+                error_register( $error_code, text_reduce( $test_line, 40 ) );
             }
         }
     }
@@ -3606,9 +3566,8 @@ sub error_032_double_pipe_in_link {
                         $first_part = '[[' . $_;  # find last link in first_part
                     }
                     $current_line = $first_part . $second_part;
-                    $current_line = text_reduce( $current_line, 80 );
-                    error_register( $error_code,
-                        '<nowiki>' . $current_line . ' </nowiki>' );
+                    $current_line = text_reduce( $current_line, 40 );
+                    error_register( $error_code, $current_line );
                 }
             }
         }
@@ -3629,8 +3588,7 @@ sub error_033_html_text_style_elements_underline {
         if ( index( $test_text, '<u>' ) > -1 ) {
             if ( $page_namespace == 0 or $page_namespace == 104 ) {
                 my $pos = index( $test_text, '<u>' );
-                error_register( $error_code,
-                    '<nowiki>' . substr( $text, $pos, 40 ) . ' </nowiki>' );
+                error_register( $error_code, substr( $text, $pos, 40 ) );
             }
         }
     }
@@ -3658,8 +3616,7 @@ sub error_034_template_programming_elements {
                 $test_line = substr( $text, $pos, 40 );
                 $test_line =~ s/[\n\r]//mg;
 
-                error_register( $error_code,
-                    '<nowiki>' . $test_line . ' </nowiki>' );
+                error_register( $error_code, $test_line );
             }
         }
     }
@@ -3703,8 +3660,7 @@ sub error_035_gallery_without_description {
                 }
             }
             if ( $test eq 'found' ) {
-                error_register( $error_code,
-                    '<nowiki>' . $test_line . ' </nowiki>' );
+                error_register( $error_code, $test_line );
             }
         }
     }
@@ -3722,10 +3678,8 @@ sub error_036_redirect_not_correct {
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_is_redirect eq 'yes' ) {
             if ( lc($text) =~ /#redirect[ ]?+[^ :\[][ ]?+\[/ ) {
-                my $output_text = text_reduce( $text, 80 );
 
-                error_register( $error_code,
-                    '<nowiki>' . $output_text . ' </nowiki>' );
+                error_register( $error_code, text_reduce( $text, 40 ) );
             }
         }
     }
@@ -3845,8 +3799,7 @@ sub error_038_html_text_style_elements_italic {
         if ( index( $test_text, '<i>' ) > -1 ) {
             if ( $page_namespace == 0 or $page_namespace == 104 ) {
                 my $pos = index( $test_text, '<i>' );
-                error_register( $error_code,
-                    '<nowiki>' . substr( $text, $pos, 40 ) . ' </nowiki>' );
+                error_register( $error_code, substr( $text, $pos, 40 ) );
             }
         }
     }
@@ -3874,16 +3827,12 @@ sub error_039_html_text_style_elements_paragraph {
                     my $pos = index( $test_text, '<p>' );
                     if ( $pos > -1 ) {
                         error_register( $error_code,
-                                '<nowiki>'
-                              . substr( $text, $pos, 40 )
-                              . ' </nowiki>' );
+                            substr( $text, $pos, 40 ) );
                     }
                     $pos = index( $test_text, '<p ' );
                     if ( $pos > -1 ) {
                         error_register( $error_code,
-                                '<nowiki>'
-                              . substr( $text, $pos, 40 )
-                              . ' </nowiki>' );
+                            substr( $text, $pos, 40 ) );
                     }
                 }
             }
@@ -3905,8 +3854,7 @@ sub error_040_html_text_style_elements_font {
         if ( index( $test_text, '<font' ) > -1 ) {
             if ( $page_namespace == 0 or $page_namespace == 104 ) {
                 my $pos = index( $test_text, '<font' );
-                error_register( $error_code,
-                    '<nowiki>' . substr( $text, $pos, 40 ) . ' </nowiki>' );
+                error_register( $error_code, substr( $text, $pos, 40 ) );
             }
         }
     }
@@ -3926,8 +3874,7 @@ sub error_041_html_text_style_elements_big {
         if ( index( $test_text, '<big>' ) > -1 ) {
             if ( $page_namespace == 0 or $page_namespace == 104 ) {
                 my $pos = index( $test_text, '<big>' );
-                error_register( $error_code,
-                    '<nowiki>' . substr( $text, $pos, 40 ) . ' </nowiki>' );
+                error_register( $error_code, substr( $text, $pos, 40 ) );
             }
         }
     }
@@ -3947,8 +3894,7 @@ sub error_042_html_text_style_elements_small {
         if ( index( $test_text, '<small>' ) > -1 ) {
             if ( $page_namespace == 0 or $page_namespace == 104 ) {
                 my $pos = index( $test_text, '<small>' );
-                error_register( $error_code,
-                    '<nowiki>' . substr( $text, $pos, 40 ) . ' </nowiki>' );
+                error_register( $error_code, substr( $text, $pos, 40 ) );
             }
         }
     }
@@ -3972,7 +3918,7 @@ sub error_043_template_no_correct_end {
                 or $page_namespace == 104 )
           )
         {
-            error_register( $error_code, '<nowiki>' . $comment . '</nowiki>' );
+            error_register( $error_code, $comment );
         }
     }
 
@@ -4014,9 +3960,8 @@ sub error_044_headline_with_bold {
                         }
                     }
                     if ( $bold_ok eq 'no' ) {
-                        $current_line = text_reduce( $current_line, 80 );
-                        error_register( $error_code,
-                            '<nowiki>' . $current_line . '</nowiki>' );
+                        $current_line = text_reduce( $current_line, 40 );
+                        error_register( $error_code, $current_line );
                     }
                 }
             }
@@ -4053,11 +3998,7 @@ sub error_045_interwiki_double {
 
                         if ( $test1 eq $test2 ) {
                             $found_double =
-                                '<nowiki>'
-                              . $interwiki[$i][4]
-                              . '</nowiki><br /><nowiki>'
-                              . $interwiki[$j][4]
-                              . '</nowiki>' . "\n";
+                              $interwiki[$i][4] . '<br>' . $interwiki[$j][4];
                         }
 
                     }
@@ -4150,8 +4091,7 @@ sub error_046_count_square_breaks_begin {
                 }
 
                 if ( $found_text ne '' ) {
-                    error_register( $error_code,
-                        '<nowiki>' . $found_text . '</nowiki>' );
+                    error_register( $error_code, $found_text );
                 }
             }
         }
@@ -4198,16 +4138,12 @@ sub error_047_template_no_correct_begin {
                 while ( $diff > 0 ) {
                     if ( $pos_close2 == -1 ) {
                         error_register( $error_code,
-                                '<nowiki>'
-                              . substr( $text, $pos_close, 40 )
-                              . '</nowiki>' );
+                            substr( $text, $pos_close, 40 ) );
                         $diff = -1;
                     }
                     elsif ( $pos_close2 > $pos_open and $look_ahead < 0 ) {
                         error_register( $error_code,
-                                '<nowiki>'
-                              . substr( $text, $pos_close, 40 )
-                              . '</nowiki>' );
+                            substr( $text, $pos_close, 40 ) );
                         $diff--;
                     }
                     else {
@@ -4256,10 +4192,9 @@ sub error_048_title_in_text {
 
             if ( $pos != -1 ) {
                 my $found_text = substr( $text_test, $pos );
-                $found_text = text_reduce( $found_text, 50 );
+                $found_text = text_reduce( $found_text, 40 );
                 $found_text =~ s/\n//g;
-                error_register( $error_code,
-                    '<nowiki>' . $found_text . '</nowiki>' );
+                error_register( $error_code, $found_text );
             }
         }
     }
@@ -4295,10 +4230,9 @@ sub error_049_headline_with_html {
             $pos = index( $text_test, '</h6>' ) if ( $pos == -1 );
             if ( $pos != -1 ) {
                 my $found_text = substr( $text_test, $pos );
-                $found_text = text_reduce( $found_text, 50 );
+                $found_text = text_reduce( $found_text, 40 );
                 $found_text =~ s/\n//g;
-                error_register( $error_code,
-                    '<nowiki>' . $found_text . '</nowiki>' );
+                error_register( $error_code, $found_text );
             }
         }
     }
@@ -4323,10 +4257,7 @@ sub error_050_dash {
         {
             my $found_text = substr( $text, $pos );
             $found_text =~ s/\n//g;
-            $found_text = text_reduce( $found_text, 50 );
-            $found_text =~ s/^&/&amp;/g;
-            error_register( $error_code,
-                '<nowiki>…' . $found_text . '…</nowiki>' );
+            error_register( $error_code, text_reduce( $found_text, 40 ) );
         }
     }
 
@@ -4369,10 +4300,7 @@ sub error_051_interwiki_before_last_headline {
             }
 
             if ( $found_text ne '' ) {
-
-                #$found_text = text_reduce($found_text, 50);
-                error_register( $error_code,
-                    '<nowiki>' . $found_text . '</nowiki>' );
+                error_register( $error_code, text_reduce( $found_text, 40 ) );
             }
         }
     }
@@ -4413,10 +4341,7 @@ sub error_052_category_before_last_headline {
             }
 
             if ( $found_text ne '' ) {
-
-                #$found_text = text_reduce($found_text, 50);
-                error_register( $error_code,
-                    '<nowiki>' . $found_text . '</nowiki>' );
+                error_register( $error_code, text_reduce( $found_text, 40 ) );
             }
         }
     }
@@ -4453,8 +4378,7 @@ sub error_053_interwiki_before_category {
                 $found = 'true' if ( $pos_interwiki < $category[$i][0] );
             }
             if ( $found eq 'true' ) {
-                error_register( $error_code,
-                    '<nowiki>' . $found_text . '</nowiki>' );
+                error_register( $error_code, $found_text );
             }
 
         }
@@ -4499,8 +4423,7 @@ sub error_054_break_in_list {
                         substr( $found_text, 0, 30 ) . ' … '
                       . substr( $found_text, length($found_text) - 30 );
                 }
-                error_register( $error_code,
-                    '<nowiki>' . $found_text . '</nowiki>' );
+                error_register( $error_code, $found_text );
             }
         }
     }
@@ -4549,9 +4472,8 @@ sub error_055_html_text_style_elements_small_double {
                       text_reduce( substr( $text, $pos ), 30 );    #text after
                     my $found_text = $found_text_1 . $found_text_2;
                     $found_text =~ s/\n//g;
-                    $found_text = text_reduce( $found_text, 80 );
                     error_register( $error_code,
-                        '<nowiki>' . $found_text . ' </nowiki>' );
+                        text_reduce( $found_text, 40 ) );
                 }
             }
         }
@@ -4578,9 +4500,7 @@ sub error_056_arrow_as_ASCII_art {
             if ( $pos > -1 ) {
                 my $test_text = substr( $text, $pos - 10, 100 );
                 $test_text =~ s/\n//g;
-                $test_text = text_reduce( $test_text, 50 );
-                error_register( $error_code,
-                    '<nowiki>…' . $test_text . '…</nowiki>' );
+                error_register( $error_code, text_reduce( $test_text, 40 ) );
             }
         }
     }
@@ -4600,11 +4520,9 @@ sub error_057_headline_end_with_colon {
             foreach (@headlines) {
                 my $current_line = $_;
 
-                #print $current_line."\n";
                 if ( $current_line =~ /:[ ]?[ ]?[ ]?[=]+([ ]+)?$/ ) {
-                    $current_line = text_reduce( $current_line, 80 );
-                    error_register( $error_code,
-                        '<nowiki>' . $current_line . '</nowiki>' );
+                    $current_line = text_reduce( $current_line, 40 );
+                    error_register( $error_code, $current_line );
                 }
             }
         }
@@ -4675,9 +4593,7 @@ sub error_058_headline_with_capitalization {
                 -1    # de:TV total
               )
             {
-                $found_text = text_reduce( $found_text, 80 );
-                error_register( $error_code,
-                    '<nowiki>' . $found_text . '</nowiki>' );
+                error_register( $error_code, text_reduce( $found_text, 40 ) );
             }
         }
     }
@@ -4710,8 +4626,7 @@ sub error_059_template_value_end_with_br {
                 }
             }
             if ( $found_text ne '' ) {
-                error_register( $error_code,
-                    '<nowiki>' . $found_text . '</nowiki>' );
+                error_register( $error_code, $found_text );
             }
         }
     }
@@ -4740,8 +4655,7 @@ sub error_060_template_parameter_with_problem {
                 }
             }
             if ( $found_text ne '' ) {
-                error_register( $error_code,
-                    '<nowiki>' . $found_text . '</nowiki>' );
+                error_register( $error_code, $found_text );
             }
         }
     }
@@ -4775,9 +4689,7 @@ sub error_061_reference_with_punctuation {
 
             if ( $pos > -1 ) {
                 my $found_text = substr( $text, $pos );
-                $found_text = text_reduce( $found_text, 50 );
-                error_register( $error_code,
-                    '<nowiki>' . $found_text . '</nowiki>' );
+                error_register( $error_code, text_reduce( $found_text, 40 ) );
             }
         }
     }
@@ -4866,8 +4778,7 @@ sub error_062_headline_alone {
                 }
             }
             if ( $found_txt ne '' ) {
-                error_register( $error_code,
-                    '<nowiki>' . $found_txt . '</nowiki>' );
+                error_register( $error_code, $found_txt );
             }
         }
     }
@@ -4916,10 +4827,8 @@ sub error_063_html_text_style_elements_small_ref_sub_sup {
                     my $found_text = $found_text_1 . $found_text_2;
                     $found_text =~ s/\n//g;
 
-                    #print $found_text."\n";
-                    $found_text = text_reduce( $found_text, 80 );
                     error_register( $error_code,
-                        '<nowiki>' . $found_text . ' </nowiki>' );
+                        text_reduce( $found_text, 40 ) );
                 }
             }
         }
@@ -4942,8 +4851,7 @@ sub error_064_link_equal_linktext {
             my $temp_text = $text;
             if ( $temp_text =~ /\[\[([^|:]*)\|\1\]\]/ ) {
                 my $found_text = '[[' . $1 . '|' . $1 . ']]';
-                error_register( $error_code,
-                    '<nowiki>' . $found_text . ' </nowiki>' );
+                error_register( $error_code, $found_text );
             }
         }
     }
@@ -4975,8 +4883,7 @@ sub error_065_image_description_with_break {
                 }
             }
             if ( $found_text ne '' ) {
-                error_register( $error_code,
-                    '<nowiki>' . $found_text . ' </nowiki>' );
+                error_register( $error_code, $found_text );
             }
         }
     }
@@ -5008,8 +4915,7 @@ sub error_066_image_description_with_full_small {
                 }
             }
             if ( $found_text ne '' ) {
-                error_register( $error_code,
-                    '<nowiki>' . $found_text . ' </nowiki>' );
+                error_register( $error_code, $found_text );
             }
         }
     }
@@ -5043,9 +4949,7 @@ sub error_067_reference_after_punctuation {
 
             if ( $pos > -1 ) {
                 $found_text = substr( $text, $pos );
-                $found_text = text_reduce( $found_text, 50 );
-                error_register( $error_code,
-                    '<nowiki>' . $found_text . '</nowiki>' );
+                error_register( $error_code, text_reduce( $found_text, 40 ) );
             }
         }
     }
@@ -5079,8 +4983,7 @@ sub error_068_link_to_other_language {
                 }
             }
             if ( $found_text ne '' ) {
-                error_register( $error_code,
-                    '<nowiki>' . $found_text . ' </nowiki>' );
+                error_register( $error_code, $found_text );
             }
         }
     }
@@ -5100,8 +5003,7 @@ sub error_069_isbn_wrong_syntax {
         if ( ( $page_namespace == 0 or $page_namespace == 104 )
             and $found_text ne '' )
         {
-            error_register( $error_code,
-                '<nowiki>' . $found_text . ' </nowiki>' );
+            error_register( $error_code, $found_text );
         }
     }
 
@@ -5120,8 +5022,7 @@ sub error_070_isbn_wrong_length {
         if ( ( $page_namespace == 0 or $page_namespace == 104 )
             and $found_text ne '' )
         {
-            error_register( $error_code,
-                '<nowiki>' . $found_text . ' </nowiki>' );
+            error_register( $error_code, $found_text );
         }
     }
 
@@ -5141,8 +5042,7 @@ sub error_071_isbn_wrong_pos_X {
         if ( ( $page_namespace == 0 or $page_namespace == 104 )
             and $found_text ne '' )
         {
-            error_register( $error_code,
-                '<nowiki>' . $found_text . ' </nowiki>' );
+            error_register( $error_code, $found_text );
         }
     }
 
@@ -5161,8 +5061,7 @@ sub error_072_isbn_10_wrong_checksum {
         if ( ( $page_namespace == 0 or $page_namespace == 104 )
             and $found_text ne '' )
         {
-            error_register( $error_code,
-                '<nowiki>' . $found_text . ' </nowiki>' );
+            error_register( $error_code, $found_text );
         }
     }
 
@@ -5181,8 +5080,7 @@ sub error_073_isbn_13_wrong_checksum {
         if ( ( $page_namespace == 0 or $page_namespace == 104 )
             and $found_text ne '' )
         {
-            error_register( $error_code,
-                '<nowiki>' . $found_text . ' </nowiki>' );
+            error_register( $error_code, $found_text );
         }
     }
 
@@ -5210,8 +5108,7 @@ sub error_074_link_with_no_target {
                 }
             }
             if ( $found_text ne '' ) {
-                error_register( $error_code,
-                    '<nowiki>' . $found_text . ' </nowiki>' );
+                error_register( $error_code, $found_text );
             }
         }
     }
@@ -5237,15 +5134,11 @@ sub error_075_indented_list {
                     or substr( $current_line, 0, 2 ) eq ':·' )
                 {
                     $found_text = $current_line if ( $found_text eq '' );
-
-                    #print "\t".'Found:'."\t".$current_line_lc."\n";
                 }
             }
 
             if ( $found_text ne '' ) {
-                $found_text = text_reduce( $found_text, 50 );
-                error_register( $error_code,
-                    '<nowiki>' . $found_text . '</nowiki>' );
+                error_register( $error_code, text_reduce( $found_text, 40 ) );
             }
         }
     }
@@ -5274,8 +5167,7 @@ sub error_076_link_with_no_space {
                 }
             }
             if ( $found_text ne '' ) {
-                error_register( $error_code,
-                    '<nowiki>' . $found_text . ' </nowiki>' );
+                error_register( $error_code, $found_text );
             }
         }
     }
@@ -5307,8 +5199,7 @@ sub error_077_image_description_with_partial_small {
                 }
             }
             if ( $found_text ne '' ) {
-                error_register( $error_code,
-                    '<nowiki>' . $found_text . ' </nowiki>' );
+                error_register( $error_code, $found_text );
             }
         }
     }
@@ -5346,13 +5237,11 @@ sub error_078_reference_double {
                 $test_text = $text;
                 $test_text =~ s/\n/ /g;
                 my $found_text = substr( $test_text, 0, $pos_first );
-                $found_text = text_reduce_to_end( $found_text, 50 );
+                $found_text = text_reduce_to_end( $found_text, 40 );
                 my $found_text2 = substr( $test_text, 0, $pos_second );
-                $found_text2 = text_reduce_to_end( $found_text2, 50 );
-                $found_text =
-                  $found_text . "</nowiki><br /><nowiki>" . $found_text2;
-                error_register( $error_code,
-                    '<nowiki>' . $found_text . ' </nowiki>' );
+                $found_text2 = text_reduce_to_end( $found_text2, 40 );
+                $found_text = $found_text . '<br>' . $found_text2;
+                error_register( $error_code, $found_text );
             }
         }
     }
@@ -5410,9 +5299,7 @@ sub error_079_external_link_without_description {
             }
 
             if ( $found_text ne '' ) {
-                $found_text = text_reduce( $found_text, 80 );
-                error_register( $error_code,
-                    '<nowiki>' . $found_text . ' </nowiki>' );
+                error_register( $error_code, text_reduce( $found_text, 40 ) );
             }
         }
     }
@@ -5450,14 +5337,10 @@ sub error_080_external_link_with_line_break {
                   if ( ( $next_pos == -1 and $pos3 > -1 )
                     or ( $pos3 > -1 and $next_pos > $pos3 ) );
 
-                #print 'next_pos '.$next_pos."\n";
                 my $pos_end = index( $test_text, ']', $next_pos );
 
-                #print 'pos_end '.$pos_end."\n";
                 my $weblink =
                   substr( $text, $next_pos, $pos_end - $next_pos + 1 );
-
-                #print $weblink."\n";
 
                 if ( $weblink =~ /\n/ ) {
                     $found_text = $weblink if ( $found_text eq '' );
@@ -5466,9 +5349,7 @@ sub error_080_external_link_with_line_break {
             }
 
             if ( $found_text ne '' ) {
-                $found_text = text_reduce( $found_text, 80 );
-                error_register( $error_code,
-                    '<nowiki>' . $found_text . ' </nowiki>' );
+                error_register( $error_code, text_reduce( $found_text, 40 ) );
             }
         }
     }
@@ -5489,25 +5370,18 @@ sub error_081_ref_double {
             my $found_text    = q{};
             for ( my $i = 0 ; $i < $number_of_ref - 1 ; $i++ ) {
 
-                #print $i ."\t".$ref[$i]."\n";
                 for ( my $j = $i + 1 ; $j < $number_of_ref ; $j++ ) {
 
-                    #print $i." ".$j."\n";
                     if (    $ref[$i] eq $ref[$j]
                         and $found_text eq '' )
                     {
                         #found a double ref
                         $found_text = $ref[$i];
-
-                        #print 'found'."\n";
                     }
                 }
             }
             if ( $found_text ne '' ) {
-
-                #$found_text   = text_reduce($found_text, 80);
-                error_register( $error_code,
-                    '<nowiki>' . $found_text . ' </nowiki>' );
+                error_register( $error_code, text_reduce( $found_text, 40 ) );
             }
         }
     }
@@ -5542,8 +5416,7 @@ sub error_082_link_to_other_wikiproject {
                 }
             }
             if ( $found_text ne '' ) {
-                error_register( $error_code,
-                    '<nowiki>' . $found_text . ' </nowiki>' );
+                error_register( $error_code, $found_text );
             }
         }
     }
@@ -5571,8 +5444,7 @@ sub error_083_headline_only_three_and_later_level_two {
                     }
                 }
                 if ( $found_level_two eq 'yes' ) {
-                    error_register( $error_code,
-                        '<nowiki>' . $headlines[0] . '</nowiki>' );
+                    error_register( $error_code, $headlines[0] );
                 }
             }
         }
@@ -5629,8 +5501,7 @@ sub error_084_section_without_text {
                     $test_text =~ s/\t//g;
 
                     if ( $test_text eq q{} ) {
-                        error_register( $error_code,
-                            '<nowiki>' . $headlines[$i] . '</nowiki>' );
+                        error_register( $error_code, $headlines[$i] );
                     }
                 }
             }
@@ -5673,10 +5544,9 @@ sub error_085_tag_without_content {
 
             if ( $found_pos != -1 ) {
                 $found_text = substr( $text, $found_pos );
-                $found_text = text_reduce( $found_text, 80 );
                 $found_text =~ s/\n//g;
-                error_register( $error_code,
-                    '<nowiki>' . $found_text . '</nowiki>' );
+                $found_text = text_reduce( $found_text, 40 );
+                error_register( $error_code, text_reduce( $found_text, 40 ) );
             }
         }
     }
@@ -5695,7 +5565,7 @@ sub error_086_link_with_two_brackets_to_external_source {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
             my $test_text = lc($text);
             if ( $test_text =~ /\[\[\s*(https?:\/\/[^\]:]*)/ ) {
-                error_register( $error_code, '<nowiki>' . $1 . ' </nowiki>' );
+                error_register( $error_code, $1 );
             }
         }
     }
@@ -5764,11 +5634,7 @@ sub error_087_html_names_entities_without_semicolon {
 
             if ( $pos > -1 ) {
                 my $found_text = substr( $text, $pos );
-                $found_text = text_reduce( $found_text, 50 );
-
-                error_register( $error_code,
-                    '<nowiki>' . $found_text . '</nowiki>' );
-                die if ( $title eq 'Anthropology' );
+                error_register( $error_code, text_reduce( $found_text, 40 ) );
             }
         }
     }
@@ -5814,8 +5680,7 @@ sub error_088_defaultsort_with_first_blank {
 
                 if ( index( $sortkey, ' ' ) == 0 ) {
                     my $found_text = $testtext;
-                    error_register( $error_code,
-                        '<nowiki>' . $found_text . '</nowiki>' );
+                    error_register( $error_code, $found_text );
                 }
             }
         }
@@ -5861,8 +5726,7 @@ sub error_089_defaultsort_with_capitalization_in_the_middle_of_the_word {
 
                 if ( $sortkey =~ /[a-z][A-Z]/ ) {
                     my $found_text = $testtext;
-                    error_register( $error_code,
-                        '<nowiki>' . $found_text . '</nowiki>' );
+                    error_register( $error_code, $found_text );
                 }
             }
         }
@@ -5908,8 +5772,7 @@ sub error_090_defaultsort_with_lowercase_letters {
 
                 if ( $sortkey =~ /[ -][a-z]/ ) {
                     my $found_text = $testtext;
-                    error_register( $error_code,
-                        '<nowiki>' . $found_text . '</nowiki>' );
+                    error_register( $error_code, $found_text );
                 }
             }
         }
@@ -5980,8 +5843,7 @@ sub error_092_headline_double {
                 }
             }
             if ( $found_text ne '' ) {
-                error_register( $error_code,
-                    '<nowiki>' . $found_text . '</nowiki>' );
+                error_register( $error_code, $found_text );
             }
         }
     }
@@ -5998,12 +5860,12 @@ sub error_register {
 
     $notice =~ s/\n//g;
 
-    print "\t" . $error_code . "\t" . $title . "\t" . $notice . "\n";
+    #print "\t" . $error_code . "\t" . $title . "\t" . $notice . "\n";
 
     $Error_number_counter[$error_code] = $Error_number_counter[$error_code] + 1;
     $error_counter = $error_counter + 1;
 
-    #insert_into_db( $error_code, $notice );
+    insert_into_db( $error_code, $notice );
 
     return ();
 }
@@ -6041,7 +5903,6 @@ sub get_broken_tag {
 
 ######################################################################}
 
-# Insert error into database.
 sub insert_into_db {
     my ( $code, $notice ) = @_;
     my ( $table_name, $date_found, $article_title );
@@ -6054,6 +5915,11 @@ sub insert_into_db {
     $article_title =~ s/'/\\'/g;
     $notice        =~ s/\\/\\\\/g;
     $notice        =~ s/'/\\'/g;
+
+    $notice =~ s/\&/&amp;/g;
+    $notice =~ s/</&lt;/g;
+    $notice =~ s/>/&gt;/g;
+    $notice =~ s/\"/&quot;/g;
 
     if ( $dump_or_live eq 'live' or $dump_or_live eq 'delay' ) {
         $table_name = 'cw_error';
@@ -6222,18 +6088,13 @@ if ( defined($DumpFilename) ) {
 s/^(?:.*\/)?\Q$project\E-(\d{4})(\d{2})(\d{2})-pages-articles\.xml\.bz2$/$1-$2-$3/;
 
     # GET DUMP FILE SIZE, UNCOMPRESS AND THEN OPEN VIA METAWIKI::DumpFile
-    #my $dump;
+    my $dump;
     $file_size = ( stat($DumpFilename) )[7];
 
-    #open( $dump, '-|', 'bzcat', '-q', $DumpFilename )
-    #      or die("Couldn't open dump file '$DumpFilename'");
+    open( $dump, '-|', 'bzcat', '-q', $DumpFilename )
+      or die("Couldn't open dump file '$DumpFilename'");
 
-    $DumpFilename =
-      '/home/bgwhite/windows/enwiki/enwiki-20130708-pages-articles.xml';
-    $dump_date_for_output = '2013-07-08';
-    $pages                = $pmwd->pages($DumpFilename);
-
-    # $pages = $pmwd->pages($dump);
+    $pages = $pmwd->pages($dump);
 
     # OPEN TEMPLATETIGER FILE
     if (
