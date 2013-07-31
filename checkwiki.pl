@@ -86,7 +86,7 @@ our @namespace_templates;    # All namespaces for templates
 our $image_regex = q{};      # Regex used in get_images()
 our $cat_regex   = q{};      # Regex used in get_categories()
 
-our @magicword_defaultsort;
+our $magicword_defaultsort;
 
 our @magicword_img_thumbnail;
 our @magicword_img_manualthumb;
@@ -434,7 +434,7 @@ sub update_table_cw_error_from_dump {
         $sth->execute($project) or die "Cannot execute: " . $sth->errstr . "\n";
 
         $sth = $dbh->prepare(
-            'INSERT INTO cw_error (SELECT * FROM cw_dumpscan WHERE Project = ?;'
+'INSERT INTO cw_error (SELECT * FROM cw_dumpscan WHERE Project = ?);'
         ) || die "Can not prepare statement: $DBI::errstr\n";
         $sth->execute($project) or die "Cannot execute: " . $sth->errstr . "\n";
 
@@ -584,7 +584,7 @@ sub readMetadata {
     foreach my $id ( @{ $res->{query}->{magicwords} } ) {
         my $aliases = $id->{aliases};
         my $name    = $id->{name};
-        @magicword_defaultsort     = $aliases if ( $name eq 'defaultsort' );
+        $magicword_defaultsort     = $aliases if ( $name eq 'defaultsort' );
         @magicword_img_thumbnail   = $aliases if ( $name eq 'img_thumbnail' );
         @magicword_img_manualthumb = $aliases if ( $name eq 'img_manualthumb' );
         @magicword_img_right       = $aliases if ( $name eq 'img_right' );
@@ -2352,7 +2352,7 @@ sub get_headlines {
 
 sub error_check {
     if ( $CheckOnlyOne > 0 ) {
-        error_084_section_without_text();
+        error_037_title_with_special_letters_and_no_defaultsort();
     }
     else {
         #error_001_no_bold_title();        # does´t work - deactivated
@@ -2451,9 +2451,10 @@ sub error_check {
         error_086_link_with_two_brackets_to_external_source();
         error_087_html_names_entities_without_semicolon();
         error_088_defaultsort_with_first_blank();
-        error_089_defaultsort_with_capitalization_in_the_middle_of_the_word();
-        error_090_defaultsort_with_lowercase_letters();
-        error_091_title_with_lowercase_letters_and_no_defaultsort();
+
+        #error_089_defaultsort_with_capitalization_in_the_middle_of_the_word();
+        #error_090_defaultsort_with_lowercase_letters();
+        #error_091_title_with_lowercase_letters_and_no_defaultsort();
         error_092_headline_double();
     }
 
@@ -2704,9 +2705,6 @@ sub error_006_defaultsort_with_special_letters {
     #* in ro is allowed ăîâşţ
     #* in ru: Ё → Е, ё → е
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
-
-        # {{DEFAULTSORT:Mueller, Kai}}
-        # {{ORDENA:Alfons I}}
         if (
                 ( $page_namespace == 0 or $page_namespace == 104 )
             and $project ne 'arwiki'
@@ -2719,60 +2717,60 @@ sub error_006_defaultsort_with_special_letters {
           )
         {
 
-            my $pos1 = -1;
-            foreach (@magicword_defaultsort) {
-                $pos1 = index( $text, $_ ) if ( $pos1 == -1 );
+            # Is DEFAULTSORT found in article?
+            my $isDefaultsort = -1;
+            foreach ( @{ $magicword_defaultsort } ) {
+                $isDefaultsort = index( $text, $_ ) if ( $isDefaultsort == -1 );
             }
 
-            if ( $pos1 > -1 ) {
-                my $pos2 = index( substr( $text, $pos1 ), '}}' );
-                my $testtext = substr( $text, $pos1, $pos2 );
+            if ( $isDefaultsort > -1 ) {
+                my $pos2 = index( substr( $text, $isDefaultsort ), '}}' );
+                my $test_text = substr( $text, $isDefaultsort, $pos2 );
 
-                my $testtext_2 = $testtext;
+                my $test_text2 = $test_text;
 
-                #my $testtext =~ s/{{DEFAULTSORT\s*:(.*)}}/$1/;
-                #print $testtext."\n";
-                $testtext =~ s/[-—–:,\.0-9 A-Za-z!\?']//g;
-                $testtext =~ s/[&]//g;
-                $testtext =~ s/#//g;
-                $testtext =~ s/\///g;
-                $testtext =~ s/\(//g;
-                $testtext =~ s/\)//g;
-                $testtext =~ s/\*//g;
-                $testtext =~ s/[ÅÄÖåäö]//g
-                  if ( $project eq 'svwiki' )
-                  ;    # For Swedish, ÅÄÖ should also be allowed
-                $testtext =~ s/[ÅÄÖåäö]//g
-                  if ( $project eq 'fiwiki' )
-                  ;    # For Finnish, ÅÄÖ should also be allowed
-                $testtext =~ s/[čďěňřšťžČĎŇŘŠŤŽ]//g
-                  if ( $project eq 'cswiki' );
-                $testtext =~ s/[ÆØÅæøå]//g if ( $project eq 'dawiki' );
-                $testtext =~ s/[ÆØÅæøå]//g if ( $project eq 'nowiki' );
-                $testtext =~ s/[ÆØÅæøå]//g if ( $project eq 'nnwiki' );
-                $testtext =~ s/[ăîâşţ]//g   if ( $project eq 'rowiki' );
-                $testtext =~
-s/[АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЬЫЪЭЮЯабвгдежзийклмнопрстуфхцчшщьыъэюя]//g
-                  if ( $project eq 'ruwiki' );
-                $testtext =~
-s/[АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЬЫЪЭЮЯабвгдежзийклмнопрстуфхцчшщьыъэюяіїґ]//g
-                  if ( $project eq 'ukwiki' );
-                $testtext =~ s/[~]//g
-                  if ( $project eq 'huwiki' );    # ~ for special letters
+                # Remove ok letters
+                $test_text =~ s/[-:,\.\/\(\)0-9 A-Za-z!\?']//g;
 
-                #if ($testtext ne '') error_register(…);
+                # Too many to figure out what is right or not
+                $test_text =~ tr/#//d;
+                $test_text =~ tr/+//d;
 
-                #print $testtext."\n";
-                if (
-                    ( $testtext ne '' )    # normal article
-                      #or ($testtext ne '' and $page_namespace != 0 and index($text, '{{DEFAULTSORT') > -1 )		# if not an article then wiht {{ }}
-                  )
-                {
-                    $testtext   = text_reduce( $testtext,   40 );
-                    $testtext_2 = text_reduce( $testtext_2, 40 );
-
-                    error_register( $error_code, $testtext . $testtext_2 );
+                if ( $project eq 'svwiki' ) {
+                    $test_text =~ s/[ÅÄÖåäö]//g;
                 }
+                if ( $project eq 'fiwiki' ) {
+                    $test_text =~ s/[ÅÄÖåäö]//g;
+                }
+                if ( $project eq 'cswiki' ) {
+                    $test_text =~ s/[čďěňřšťžČĎŇŘŠŤŽ]//g;
+                }
+                if ( $project eq 'dawiki' ) {
+                    $test_text =~ s/[ÆØÅæøå]//g;
+                }
+                if ( $project eq 'nowiki' ) {
+                    $test_text =~ s/[ÆØÅæøå]//g;
+                }
+                if ( $project eq 'nnwiki' ) {
+                    $test_text =~ s/[ÆØÅæøå]//g;
+                }
+                if ( $project eq 'rowiki' ) {
+                    $test_text =~ s/[ăîâşţ]//g;
+                }
+                if ( $project eq 'ruwiki' ) {
+                    $test_text =~
+s/[АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЬЫЪЭЮЯабвгдежзийклмнопрстуфхцчшщьыъэюя]//g;
+                }
+                if ( $project eq 'ukwiki' ) {
+                    $test_text =~
+s/[АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЬЫЪЭЮЯабвгдежзийклмнопрстуфхцчшщьыъэюяiїґ]//g;
+                }
+
+                if ( $test_text ne '' ) {
+                    $test_text2 = "{{" . $test_text2 . "}}";
+                    error_register( $error_code, $test_text2 );
+                }
+
             }
         }
     }
@@ -3707,78 +3705,59 @@ sub error_037_title_with_special_letters_and_no_defaultsort {
             and length($title) > 2 )
         {
 
-            # test of magicword_defaultsort
-            my $pos1 = -1;
-            foreach (@magicword_defaultsort) {
-                $pos1 = index( $text, $_ ) if ( $pos1 == -1 );
+            # Is DEFAULTSORT found in article?
+            my $isDefaultsort = -1;
+            foreach ( @{ $magicword_defaultsort } ) {
+                $isDefaultsort = index( $text, $_ ) if ( $isDefaultsort == -1 );
             }
 
-            if ( $pos1 == -1 ) {
+            if ( $isDefaultsort == -1 ) {
 
-                # no defaultsort in article
-                # now test title
-                #print 'No defaultsort'."\n";
+                my $test_title = $title;
 
-                my $test = $title;
-                if ( index( $test, '(' ) > -1 ) {
+                # Titles such as 'Madonna (singer)' are OK
+                $test_title =~ tr/(//d;
+                $test_title =~ tr/)//d;
 
-                    # only text of title before bracket
-                    $test = substr( $test, 0, index( $test, '(' ) - 1 );
-                    $test =~ s/ $//g;
+                # Remove ok letters
+                $test_title =~ s/[-:,\.\/0-9 A-Za-z!\?']//g;
+
+                # Too many to figure out what is right or not
+                $test_title =~ tr/#//d;
+                $test_title =~ tr/+//d;
+
+                if ( $project eq 'svwiki' ) {
+                    $test_title =~ s/[ÅÄÖåäö]//g;
+                }
+                if ( $project eq 'fiwiki' ) {
+                    $test_title =~ s/[ÅÄÖåäö]//g;
+                }
+                if ( $project eq 'cswiki' ) {
+                    $test_title =~ s/[čďěňřšťžČĎŇŘŠŤŽ]//g;
+                }
+                if ( $project eq 'dawiki' ) {
+                    $test_title =~ s/[ÆØÅæøå]//g;
+                }
+                if ( $project eq 'nowiki' ) {
+                    $test_title =~ s/[ÆØÅæøå]//g;
+                }
+                if ( $project eq 'nnwiki' ) {
+                    $test_title =~ s/[ÆØÅæøå]//g;
+                }
+                if ( $project eq 'rowiki' ) {
+                    $test_title =~ s/[ăîâşţ]//g;
+                }
+                if ( $project eq 'ruwiki' ) {
+                    $test_title =~
+s/[АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЬЫЪЭЮЯабвгдежзийклмнопрстуфхцчшщьыъэюя]//g;
+                }
+                if ( $project eq 'ukwiki' ) {
+                    $test_title =~
+s/[АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЬЫЪЭЮЯабвгдежзийклмнопрстуфхцчшщьыъэюяiїґ]//g;
                 }
 
-                my $testtext = $test;
-                $testtext = substr( $testtext, 0, 3 );
-                $testtext = substr( $testtext, 0, 1 )
-                  if ( $project eq 'frwiki' );    #request from fr:User:Laddo
-                      #print "\t".'Testtext0'.$testtext."\n";
-
-                $testtext =~ s/[-—–:,\.0-9 A-Za-z!\?']//g;
-                $testtext =~ s/[&]//g;
-                $testtext =~ s/\+//g;
-                $testtext =~ s/#//g;
-                $testtext =~ s/\///g;
-                $testtext =~ s/\(//g;
-                $testtext =~ s/\)//g;
-                $testtext =~ s/[ÅÄÖåäö]//g
-                  if ( $project eq 'svwiki' )
-                  ;    # For Swedish, ÅÄÖ should also be allowed
-                $testtext =~ s/[ÅÄÖåäö]//g
-                  if ( $project eq 'fiwiki' )
-                  ;    # For Finnish, ÅÄÖ should also be allowed
-                $testtext =~ s/[čďěňřšťžČĎŇŘŠŤŽ]//g
-                  if ( $project eq 'cswiki' );
-                $testtext =~ s/[ÆØÅæøå]//g if ( $project eq 'dawiki' );
-                $testtext =~ s/[ÆØÅæøå]//g if ( $project eq 'nowiki' );
-                $testtext =~ s/[ÆØÅæøå]//g if ( $project eq 'nnwiki' );
-                $testtext =~ s/[ăîâşţ]//g   if ( $project eq 'rowiki' );
-                $testtext =~
-s/[АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЬЫЪЭЮЯабвгдежзийклмнопрстуфхцчшщьыъэюя]//g
-                  if ( $project eq 'ruwiki' );
-                $testtext =~
-s/[АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЬЫЪЭЮЯабвгдежзийклмнопрстуфхцчшщьыъэюяiїґ]//g
-                  if ( $project eq 'ukwiki' );
-
-                #print "\t".'Testtext1'.$testtext."\n";
-                if ( $testtext ne '' ) {
-
-                    #print "\t".'Testtext2'.$testtext."\n";
-                    my $found = 'no';
-                    for ( my $i = 0 ; $i <= $category_counter ; $i++ ) {
-                        $found = "yes"
-                          if ( $category[$i][3] eq ''
-                            and index( $category[$i][4], '|' ) == -1 );
-                    }
-
-                    if ( $found eq 'yes' ) {
-
-                        #print "\t".$title."\n";
-                        #print "\t".$test."\n";
-                        #for (my $i=0; $i <= $category_counter; $i++) {
-                        #	print $category[$i][4]."\n";
-                        #}
-                        error_register( $error_code, '' );
-                    }
+                if ( $test_title ne '' ) {
+                    error_register( $error_code, q{} );
                 }
             }
         }
@@ -5659,28 +5638,27 @@ sub error_088_defaultsort_with_first_blank {
             and $project ne 'yiwiki'
             and $project ne 'zhwiki' )
         {
-            my $pos1              = -1;
+
+            # Is DEFAULTSORT found in article?
+            my $isDefaultsort     = -1;
             my $current_magicword = q{};
-            foreach (@magicword_defaultsort) {
-                if ( $pos1 == -1 and index( $text, $_ ) > -1 ) {
-                    $pos1 = index( $text, $_ );
+            foreach ( @{ $magicword_defaultsort } ) {
+                if ( $isDefaultsort == -1 and index( $text, $_ ) > -1 ) {
+                    $isDefaultsort = index( $text, $_ );
                     $current_magicword = $_;
                 }
             }
-            if ( $pos1 > -1 ) {
-                my $pos2 = index( substr( $text, $pos1 ), '}}' );
-                my $testtext = substr( $text, $pos1, $pos2 );
 
-                #print $testtext."\n";
-                my $sortkey = $testtext;
+            if ( $isDefaultsort > -1 ) {
+                my $pos2 = index( substr( $text, $isDefaultsort ), '}}' );
+                my $test_text = substr( $text, $isDefaultsort, $pos2 );
+
+                my $sortkey = $test_text;
                 $sortkey =~ s/^([ ]+)?$current_magicword//;
                 $sortkey =~ s/^([ ]+)?://;
 
-                #print '-'.$sortkey."-\n";
-
                 if ( index( $sortkey, ' ' ) == 0 ) {
-                    my $found_text = $testtext;
-                    error_register( $error_code, $found_text );
+                    error_register( $error_code, $test_text );
                 }
             }
         }
@@ -5707,7 +5685,7 @@ sub error_089_defaultsort_with_capitalization_in_the_middle_of_the_word {
         {
             my $pos1              = -1;
             my $current_magicword = q{};
-            foreach (@magicword_defaultsort) {
+            foreach ( @{ $magicword_defaultsort } ) {
                 if ( $pos1 == -1 and index( $text, $_ ) > -1 ) {
                     $pos1 = index( $text, $_ );
                     $current_magicword = $_;
@@ -5753,7 +5731,7 @@ sub error_090_defaultsort_with_lowercase_letters {
         {
             my $pos1              = -1;
             my $current_magicword = q{};
-            foreach (@magicword_defaultsort) {
+            foreach ( @{ $magicword_defaultsort } ) {
                 if ( $pos1 == -1 and index( $text, $_ ) > -1 ) {
                     $pos1 = index( $text, $_ );
                     $current_magicword = $_;
@@ -5801,7 +5779,7 @@ sub error_091_title_with_lowercase_letters_and_no_defaultsort {
 
             my $pos1              = -1;
             my $current_magicword = q{};
-            foreach (@magicword_defaultsort) {
+            foreach ( @{ $magicword_defaultsort } ) {
                 if ( $pos1 == -1 and index( $text, $_ ) > -1 ) {
                     $pos1 = index( $text, $_ );
                     $current_magicword = $_;
