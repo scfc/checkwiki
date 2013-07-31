@@ -1,152 +1,179 @@
-#!/usr/bin/perl -w
+#!/usr/bin/perl -T
 
-#################################################################
-# Program:	checkwiki_bots.cgi
-# Descrition:	features for bots for Wikipedia-Project "Check Wikipedia"
-# Author:	Stefan Kühn / Nicolas Vervelle
-# Licence:	GPL
-#################################################################
-
-our $VERSION = '2013-02-13';
+###########################################################################
+##
+##         FILE: checkwiki_bots.pl
+##
+##        USAGE: ./checkwiki_bots.pl
+##
+##  DESCRIPTION: Method for WikipediaCleaner tor retrieve articles
+##
+##       AUTHOR: Stefan Kühn, Nicolas Vervelle, Bryan White
+##      LICENCE: GPLv3
+##      VERSION: 08/01/2013
+##
+###########################################################################
 
 use strict;
 use warnings;
 
+use CGI qw(:standard);
 use DBI;
-use CGI;
 
+our $MAX_LIMIT = 500;
 
-# Get parameters from CGI
-our $request = CGI->new;
+###########################################################################
+## GET PARAMETERS FROM CGI
+###########################################################################
 
-our $param_project = $request->param('project'); # Project
-our $param_action  = $request->param('action');  # Action requested: list, mark
-our $param_id      = $request->param('id');      # Id of improvement
-our $param_offset  = $request->param('offset');  # Offset for the list of articles
-our $param_limit   = $request->param('limit');   # Limit to the number of articles in the list
-our $param_pageid  = $request->param('pageid');  # PageId of an article
+our $param_project = param('project');    # Project
+our $param_action  = param('action');     # Action requested: list, mark
+our $param_id      = param('id');         # Error number requested
+our $param_offset  = param('offset');     # Offset for the list of articles
+our $param_limit   = param('limit');      # Limit number of articles in the list
+our $param_title   = param('title');      # Article title
 
-$param_project = '' unless defined $param_project;
-$param_action  = '' unless defined $param_action;
-$param_id      = '' unless defined $param_id;
-$param_offset  = '' unless defined $param_offset;
-$param_limit   = '' unless defined $param_limit;
-$param_pageid  = '' unless defined $param_pageid;
+$param_project = q{} unless defined $param_project;
+$param_action  = q{} unless defined $param_action;
+$param_id      = q{} unless defined $param_id;
+$param_offset  = q{} unless defined $param_offset;
+$param_limit   = q{} unless defined $param_limit;
+$param_title   = q{} unless defined $param_title;
 
-if ($param_offset =~ /^[0-9]+$/) {} else {
-	$param_offset = 0;
-}
-if ($param_limit =~ /^[0-9]+$/) {} else {
-	$param_limit = 25;
-}
-$param_limit = 500 if ($param_limit > 500);
-
-
-# Process request
-if (    $param_project ne ''
-    and $param_action  eq 'list'
-    and $param_id      =~ /^[0-9]+$/) {
-	# Action : List articles
-	list_articles($request, $param_project, $param_id, $param_offset, $param_limit);
-
-} elsif (    $param_project ne ''
-         and $param_action  eq 'mark'
-         and $param_id      =~ /^[0-9]+$/
-         and $param_pageid  =~ /^[0-9]+$/) {
-	# Action : Mark error as fixed
-	mark_article_done($request, $param_project, $param_id, $param_pageid);
-
-} else {
-	# Incorrect usage
-	show_usage($request);
+if ( $param_offset =~ /^[0-9]+$/ ) { }
+else {
+    $param_offset = 0;
 }
 
+if ( $param_limit =~ /^[0-9]+$/ ) { }
+else {
+    $param_limit = 25;
+}
+
+if ( $param_limit > $MAX_LIMIT ) {
+     $param_limit = $MAX_LIMIT;
+}
+
+##########################################################################
+## MAIN PROGRAM
+##########################################################################
 
 # List articles
-sub list_articles{
-	my $request = shift;
-	my $project = shift;
-	my $error = shift;
-	my $offset = shift;
-	my $limit = shift;
-	
-
-	# Execute request to retrieve list of articles
-	my $dbh = connect_database();
-	my $sql_text =	 "
-		select a.title, a.notice , a.error_id, count(*)
-		from (	select title, notice, error_id from cw_error where error=".$error." and ok=0 and project = '".$project."') a
-		join cw_error b
-		on (a.title = b.title)
-		where b.ok = 0
-		and b.project = '".$project."'
-		group by a.title, a.notice, a.error_id
-		limit ".$offset.",".$limit.";";
-
-	my $sth = $dbh->prepare( $sql_text )  ||  die "Kann Statement nicht vorbereiten: $DBI::errstr\n";
-	$sth->execute or die $sth->errstr; # hier geschieht die Anfrage an die DB
-
-	# Send result
-	print $request->header(-type => 'text/text');
-	while (my $arrayref = $sth->fetchrow_arrayref()) {	
-		my @output;
-		my $i = 0;
-		my $j = 0;
-		foreach(@$arrayref) {
-			$output[$i][$j] = $_;
-			$output[$i][$j] = '' unless defined $output[$i][$j];
-			$j = $j +1;
-			if ($j == 4) {
-				$j= 0;
-				$i ++;
-			}
-		}
-
-		print 'pageid='.$output[0][2].'|title='.$output[0][0].'\n';
-	}
+if (    $param_project ne q{}
+    and $param_action  eq 'list'
+    and $param_id      =~ /^[0-9]+$/ )
+{
+    list_articles();
 }
 
-
-# Mark article as done
-sub mark_article_done{
-	my $request = shift;
-	my $project = shift;
-	my $error = shift;
-	my $pageid = shift;
-
-	# Execute request to mark article as done
-	my $dbh = connect_database();
-	my $sql_text = "update cw_error set ok=1 where error_id=".$pageid." and error=".$error." and project = '".$project."';";
-	my $sth = $dbh->prepare( $sql_text )  ||  die "Kann Statement nicht vorbereiten: $DBI::errstr\n";
-	$sth->execute or die $sth->errstr; # hier geschieht die Anfrage an die DB	
-
-	# Send result
-	print $request->header(-type => 'text/text');
-	print 'Article with pageid='.$pageid.' has been marked as done.';
+# Mark error as fixed
+elsif ( $param_project ne q{}
+    and $param_action  eq 'mark'
+    and $param_id      =~ /^[0-9]+$/
+    and $param_title   ne q{} )
+{
+    mark_article_done();
+}
+else {
+    show_usage();
 }
 
+##########################################################################
+## LIST ARTICLES
+##########################################################################
 
-# Show usage of the script
-sub show_usage{
-	my $request = shift;
-	print $request->header(-type => 'text/text');
-	print 'This script can be used with the following parameters:\n';
-	print '  project=... : name of the project (enwiki, ...)\n';
-	print '  id=... : id of improvement\n';
-	print '  action=... : action requested, among the following values:\n';
-	print '    list: list articles for the given improvement. The following parameters can also be used:\n';
-	print '      offset=... : offset in the list of articles\n';
-	print '      limit=... : maximum number of articles in the list\n';
-	print '    mark: mark an article as fixed for the given improvement. The following parameters can also be used:\n';
-	print '      pageid=... : page identifier of the article that has been fixed\n';
+sub list_articles {
+    my $dbh = connect_database();
+
+    print "Content-type: text/text;charset=UTF-8\n\n";
+
+    my $sql_text =
+        "SELECT title FROM cw_error WHERE error = "
+      . $param_id
+      . " AND project = '"
+      . $param_project
+      . "' AND ok=0 LIMIT "
+      . $param_offset . ","
+      . $param_limit . ";";
+
+    my $sth = $dbh->prepare($sql_text)
+      || die "Can not prepare statement: $DBI::errstr\n";
+    $sth->execute or die "Cannot execute: " . $sth->errstr . "\n";
+
+    my $title_sql;
+    $sth->bind_col( 1, \$title_sql );
+
+    while ( $sth->fetchrow_arrayref ) {
+        print 'title=' . $title_sql . "\n";
+    }
+
+    return ();
 }
 
+##########################################################################
+## MARK ARTICLE AS DONE
+##########################################################################
 
-# Connect to database
+sub mark_article_done {
+    my $dbh = connect_database();
+
+    my $sql_text =
+        "UPDATE cw_error SET ok=1 WHERE title="
+      . $param_title
+      . " AND error="
+      . $param_id
+      . " AND project = '"
+      . $param_project . "';";
+
+    my $sth = $dbh->prepare($sql_text)
+      || die "Can not prepare statement: $DBI::errstr\n";
+    $sth->execute or die "Cannot execute: " . $sth->errstr . "\n";
+
+    print "Content-type: text/text\n\n";
+    print 'Article ' . $param_title . ' has been marked as done.';
+
+    return ();
+}
+
+##########################################################################
+##  SHOW SCRIPT USAGE
+##########################################################################
+
+sub show_usage {
+
+    print "Content-type: text/text\n\n";
+    print "This script can be used with the following parameters:\n";
+    print "  project=  : name of the project (enwiki, ...)\n";
+    print "  id=       : Error number (04, 10, 80, ...)\n";
+    print "  title=    : title of the article that has been fixed\n";
+    print "  action=   : action requested, among the following values:\n";
+    print "    list: list articles for the given improvement. The following parameters can also be used:\n";
+    print "    mark: mark an article as fixed for the given improvement. The following parameters can also be used:\n";
+    print "  offset=   : offset in the list of articles\n";
+    print "  limit=    : maximum number of articles in the list\n";
+
+    return ();
+}
+
+##########################################################################
+##  CONNECT TO THE DATABASE
+##########################################################################
+
 sub connect_database {
-	my $dbh;
 
-	$dbh = DBI->connect ('DBI:mysql:database=p50380g50450__checkwiki_p;host=tools-db;mysql_read_default_group=client;mysql_read_default_file=' . (getpwuid ($<)) [7] . '/.my.cnf', undef, undef, { RaiseError => 1, AutoCommit => 1 }) or die ("Database connection not made: " . DBI::errstr ());
+    my ( $dbh, $dsn, $user, $password );
 
-	return $dbh;
+    $dsn =
+"DBI:mysql:p50380g50450__checkwiki_p:tools-db;mysql_read_default_file=../replica.my.cnf";
+    $dbh = DBI->connect(
+        $dsn, $user,
+        $password,
+        {
+            RaiseError        => 1,
+            AutoCommit        => 1,
+            mysql_enable_utf8 => 1,
+        }
+    ) or die( "Could not connect to database: " . DBI::errstr() . "\n" );
+
+    return ($dbh);
 }
