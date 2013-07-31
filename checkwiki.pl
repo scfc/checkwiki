@@ -2352,10 +2352,10 @@ sub get_headlines {
 
 sub error_check {
     if ( $CheckOnlyOne > 0 ) {
-        error_037_title_with_special_letters_and_no_defaultsort();
+        error_075_indented_list();
     }
     else {
-        #error_001_no_bold_title();        # does´t work - deactivated
+        #error_001_no_bold_title();        # DEACTIVATED - Doesn't work
         error_002_have_br();
         error_003_have_ref();
         error_004_have_html_and_no_topic();
@@ -2402,7 +2402,8 @@ sub error_check {
         error_039_html_text_style_elements_paragraph();
         error_040_html_text_style_elements_font();
         error_041_html_text_style_elements_big();
-        error_042_html_text_style_elements_small();
+
+        #error_042_html_text_style_elements_small(); # DEACTIVATED - valid html5
 
         #error_043_template_no_correct_end('');     # get_templates()
         error_044_headline_with_bold();
@@ -2452,6 +2453,7 @@ sub error_check {
         error_087_html_names_entities_without_semicolon();
         error_088_defaultsort_with_first_blank();
 
+        # DEACTIVATED - Mediawiki software changed, so no longer a problem.
         #error_089_defaultsort_with_capitalization_in_the_middle_of_the_word();
         #error_090_defaultsort_with_lowercase_letters();
         #error_091_title_with_lowercase_letters_and_no_defaultsort();
@@ -2719,7 +2721,7 @@ sub error_006_defaultsort_with_special_letters {
 
             # Is DEFAULTSORT found in article?
             my $isDefaultsort = -1;
-            foreach ( @{ $magicword_defaultsort } ) {
+            foreach ( @{$magicword_defaultsort} ) {
                 $isDefaultsort = index( $text, $_ ) if ( $isDefaultsort == -1 );
             }
 
@@ -3707,7 +3709,7 @@ sub error_037_title_with_special_letters_and_no_defaultsort {
 
             # Is DEFAULTSORT found in article?
             my $isDefaultsort = -1;
-            foreach ( @{ $magicword_defaultsort } ) {
+            foreach ( @{$magicword_defaultsort} ) {
                 $isDefaultsort = index( $text, $_ ) if ( $isDefaultsort == -1 );
             }
 
@@ -5103,21 +5105,29 @@ sub error_075_indented_list {
     my $error_code = 75;
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
-        if ( $page_namespace == 0 or $page_namespace == 104 ) {
-            my $found_text = q{};
-            foreach (@lines) {
-                my $current_line = $_;
-                if (   substr( $current_line, 0, 2 ) eq ':*'
-                    or substr( $current_line, 0, 2 ) eq ':-'
-                    or substr( $current_line, 0, 2 ) eq ':#'
-                    or substr( $current_line, 0, 2 ) eq ':·' )
-                {
-                    $found_text = $current_line if ( $found_text eq '' );
-                }
-            }
+        if (    ( $page_namespace == 0 or $page_namespace == 104 )
+            and ( $text =~ /:\*/ or $text =~ /:#/ ) )
+        {
+            my $test_text = q{};
+            my $list      = 0;
 
-            if ( $found_text ne '' ) {
-                error_register( $error_code, text_reduce( $found_text, 40 ) );
+            foreach (@lines) {
+                $test_text = substr( $_, 0, 2 );
+
+                if ( $test_text =~ /^\*/ or $test_text =~ /^#/ ) {
+                    $list = 1;
+                }
+                elsif ( $list == 1
+                    and ( $test_text ne q{} and $test_text !~ /^:/ ) )
+                {
+                    $list = 0;
+                }
+
+                if ( $list == 1
+                    and ( $test_text eq ':*' or $test_text eq ':#' ) )
+                {
+                    error_register( $error_code, text_reduce( $_, 40 ) );
+                }
             }
         }
     }
@@ -5642,7 +5652,7 @@ sub error_088_defaultsort_with_first_blank {
             # Is DEFAULTSORT found in article?
             my $isDefaultsort     = -1;
             my $current_magicword = q{};
-            foreach ( @{ $magicword_defaultsort } ) {
+            foreach ( @{$magicword_defaultsort} ) {
                 if ( $isDefaultsort == -1 and index( $text, $_ ) > -1 ) {
                     $isDefaultsort = index( $text, $_ );
                     $current_magicword = $_;
@@ -5685,7 +5695,7 @@ sub error_089_defaultsort_with_capitalization_in_the_middle_of_the_word {
         {
             my $pos1              = -1;
             my $current_magicword = q{};
-            foreach ( @{ $magicword_defaultsort } ) {
+            foreach ( @{$magicword_defaultsort} ) {
                 if ( $pos1 == -1 and index( $text, $_ ) > -1 ) {
                     $pos1 = index( $text, $_ );
                     $current_magicword = $_;
@@ -5731,7 +5741,7 @@ sub error_090_defaultsort_with_lowercase_letters {
         {
             my $pos1              = -1;
             my $current_magicword = q{};
-            foreach ( @{ $magicword_defaultsort } ) {
+            foreach ( @{$magicword_defaultsort} ) {
                 if ( $pos1 == -1 and index( $text, $_ ) > -1 ) {
                     $pos1 = index( $text, $_ );
                     $current_magicword = $_;
@@ -5779,7 +5789,7 @@ sub error_091_title_with_lowercase_letters_and_no_defaultsort {
 
             my $pos1              = -1;
             my $current_magicword = q{};
-            foreach ( @{ $magicword_defaultsort } ) {
+            foreach ( @{$magicword_defaultsort} ) {
                 if ( $pos1 == -1 and index( $text, $_ ) > -1 ) {
                     $pos1 = index( $text, $_ );
                     $current_magicword = $_;
