@@ -2352,7 +2352,7 @@ sub get_headlines {
 
 sub error_check {
     if ( $CheckOnlyOne > 0 ) {
-        error_075_indented_list();
+        error_087_html_names_entities_without_semicolon();
     }
     else {
         #error_001_no_bold_title();        # DEACTIVATED - Doesn't work
@@ -5574,9 +5574,15 @@ sub error_087_html_names_entities_without_semicolon {
             or $page_namespace == 6
             or $page_namespace == 104 )
         {
+
             my $pos       = -1;
             my $test_text = lc($text);
-            $test_text =~ s/<ref(.*?)ref>//sg;    # REFS USE & FOR INPUT
+
+            # REFS USE & FOR INPUT
+            $test_text =~ s/<ref>(.*?)ref>//sg;
+            $test_text =~ s/<ref name(.*?)ref>//sg;
+            $test_text =~ s/\[http(.*?)\]//sg;
+            $test_text =~ s/\{\{cite(.*?)\}\}//sg;
 
             # see http://turner.faculty.swau.edu/webstuff/htmlsymbols.html
             while ( $test_text =~ /&sup2[^;]/g )   { $pos = pos($test_text) }
@@ -5622,8 +5628,8 @@ sub error_087_html_names_entities_without_semicolon {
             while ( $test_text =~ /&harr[^;]/g )  { $pos = pos($test_text) }
 
             if ( $pos > -1 ) {
-                my $found_text = substr( $text, $pos );
-                error_register( $error_code, text_reduce( $found_text, 40 ) );
+                $test_text = substr( $test_text, ( $pos - 6 ) );
+                error_register( $error_code, text_reduce( $test_text, 40 ) );
             }
         }
     }
