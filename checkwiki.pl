@@ -2352,7 +2352,7 @@ sub get_headlines {
 
 sub error_check {
     if ( $CheckOnlyOne > 0 ) {
-        error_087_html_names_entities_without_semicolon();
+        error_012_html_list_elements();
     }
     else {
         #error_001_no_bold_title();        # DEACTIVATED - Doesn't work
@@ -2970,44 +2970,45 @@ sub error_012_html_list_elements {
     my $error_code = 12;
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
-        my $test      = 'no found';
-        my $test_line = q{};
-        my $test_text = lc($text);
-        if (   index( $test_text, '<ol' ) > -1
-            or index( $test_text, '<ul' ) > -1
-            or index( $test_text, '<li>' ) > -1 )
-        {
-            foreach (@lines) {
-                my $current_line    = $_;
-                my $current_line_lc = lc($current_line);
+        if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
-                #get position of categorie
+            my $test_text = lc($text);
 
-                if (
-                        ( $page_namespace == 0 or $page_namespace == 104 )
-                    and index( $text, '<ol start' ) == -1
-                    and index( $text, '<ol type' ) == -1
-                    and
-                    index( $text, '<ol style="list-style-type:lower-roman">' )
-                    == -1
-                    and
-                    index( $text, '<ol style="list-style-type:lower-alpha">' )
-                    == -1
-                    and (  index( $current_line_lc, '<ol>' ) > -1
-                        or index( $current_line_lc, '<ul>' ) > -1
-                        or index( $current_line_lc, '<li>' ) > -1 )
-                  )
+            if (   index( $test_text, '<ol>' ) > -1
+                or index( $test_text, '<ul>' ) > -1
+                or index( $test_text, '<li>' ) > -1 )
+            {
+
+                # only search for <ol>. <ol type an <ol start can be used.
+                if (    index( $test_text, '<ol start' ) == -1
+                    and index( $test_text, '<ol type' ) == -1
+                    and index( $test_text, '<ol reversed' ) == -1 )
                 {
-                    $test = 'found';
-                    $test_line = $current_line if ( $test_line eq '' );
+
+                    # <ul> or <li> in templates can be only way to do a list.
+                    $test_text = $text;
+                    foreach (@templates_all) {
+                        $test_text =~ s/\Q$_\E//s;
+                    }
+
+                    my $test_text_lc = lc($test_text);
+                    my $pos = index( $test_text_lc, '<ol>' );
+
+                    if ( $pos == -1 ) {
+                        $pos = index( $test_text_lc, '<ul>' );
+                    }
+                    if ( $pos == -1 ) {
+                        $pos = index( $test_text_lc, '<li>' );
+                    }
+
+                    if ( $pos > -1 ) {
+                        $test_text = substr( $test_text_lc, $pos, 40 );
+                        error_register( $error_code, $test_text );
+                    }
                 }
             }
         }
-        if ( $test eq 'found' ) {
-            error_register( $error_code, text_reduce( $test_line, 40 ) );
-        }
     }
-
     return ();
 }
 
@@ -3500,41 +3501,27 @@ sub error_031_html_table_elements {
     my $error_code = 31;
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
-        my $test      = 'no found';
-        my $test_line = q{};
-        my $test_text = lc($text);
         if (   $page_namespace == 0
             or $page_namespace == 6
             or $page_namespace == 104 )
         {
-            if ( index( $test_text, '<t' ) > -1 ) {
-                foreach (@lines) {
-                    my $current_line    = $_;
-                    my $current_line_lc = lc($current_line);
+            my $test_text = lc($text);
 
-                    if (
-                        $page_namespace == 0
-                        and (
-                            #index( $current_line_lc, '<table>') > -1
-                            #or index( $current_line_lc, '<td>') > -1
-                            #or index( $current_line_lc, '<th>') > -1
-                            #or index( $current_line_lc, '<tr>') > -1
-                            #or
-                            $current_line_lc =~
-/<(table|tr|td|th)(>| border| align| bgcolor| style)/
+            if ( index( $test_text, '<table' ) > -1 ) {
 
-                        )
-                      )
-                    {
-                        $test = 'found';
-                        $test_line = $current_line if ( $test_line eq '' );
-                    }
+                # <table> in templates can be the only way to do a table.
+                $test_text = $text;
+                foreach (@templates_all) {
+                    $test_text =~ s/\Q$_\E//s;
                 }
-            }
-            if ( $test eq 'found' ) {
 
-                # http://aktuell.de.selfhtml.org/artikel/cgiperl/html-in-html/
-                error_register( $error_code, text_reduce( $test_line, 40 ) );
+                my $test_text_lc = lc($test_text);
+                my $pos = index( $test_text_lc, '<table' );
+
+                if ( $pos > -1 ) {
+                    $test_text = substr( $test_text_lc, $pos, 40 );
+                    error_register( $error_code, $test_text );
+                }
             }
         }
     }
