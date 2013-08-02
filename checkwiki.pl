@@ -2304,27 +2304,28 @@ sub get_headlines {
 
 sub error_check {
     if ( $CheckOnlyOne > 0 ) {
-        error_037_title_with_special_letters_and_no_defaultsort();
+        error_061_reference_with_punctuation();
     }
     else {
-        #error_001_no_bold_title();        # DEACTIVATED - Doesn't work
+        #error_001_no_bold_title();                        # DEACTIVATED
         error_002_have_br();
         error_003_have_ref();
-        error_004_have_html_and_no_topic();
 
-        #error_005_Comment_no_correct_end('');      # get_comments()
+        #error_004_have_html_and_no_topic();               # DEACTIVATED
+
+        #error_005_Comment_no_correct_end('');             # get_comments()
         error_006_defaultsort_with_special_letters();
         error_007_headline_only_three();
         error_008_headline_start_end();
         error_009_more_then_one_category_in_a_line();
 
-        #error_010_count_square_breaks('');         # get_links()
+        #error_010_count_square_breaks('');                # get_links()
         error_011_html_names_entities();
         error_012_html_list_elements();
 
-        #error_013_Math_no_correct_end('');         # get_math
-        #error_014_Source_no_correct_end('');       # get_source()
-        #error_015_Code_no_correct_end('');         # get_code()
+        #error_013_Math_no_correct_end('');                # get_math
+        #error_014_Source_no_correct_end('');              # get_source()
+        #error_015_Code_no_correct_end('');                # get_code()
         error_016_unicode_control_characters();
         error_017_category_double();
         error_018_category_first_letter_small();
@@ -2333,21 +2334,21 @@ sub error_check {
         error_021_category_is_english();
         error_022_category_with_space();
 
-        #error_023_nowiki_no_correct_end('');       # get_nowiki()
-        #error_024_pre_no_correct_end('');          # get_pre()
+        #error_023_nowiki_no_correct_end('');              # get_nowiki()
+        #error_024_pre_no_correct_end('');                 # get_pre()
         error_025_headline_hierarchy();
         error_026_html_text_style_elements();
         error_027_unicode_syntax();
 
-        #error_028_table_no_correct_end('');        # get_tables()
-        #error_029_gallery_no_correct_end('');      # get_gallery()
-        #error_030_image_without_description('');   # get_images()
+        #error_028_table_no_correct_end('');               # get_tables()
+        #error_029_gallery_no_correct_end('');             # get_gallery()
+        #error_030_image_without_description('');          # get_images()
         error_031_html_table_elements();
         error_032_double_pipe_in_link();
         error_033_html_text_style_elements_underline();
         error_034_template_programming_elements();
 
-        #error_035_gallery_without_description(''); # get_gallery()
+        #error_035_gallery_without_description('');        # get_gallery()
         error_036_redirect_not_correct();
         error_037_title_with_special_letters_and_no_defaultsort();
         error_038_html_text_style_elements_italic();
@@ -2355,9 +2356,9 @@ sub error_check {
         error_040_html_text_style_elements_font();
         error_041_html_text_style_elements_big();
 
-        #error_042_html_text_style_elements_small(); # DEACTIVATED - valid html5
+        #error_042_html_text_style_elements_small();       # DEACTIVATED
 
-        #error_043_template_no_correct_end('');     # get_templates()
+        #error_043_template_no_correct_end('');            # get_templates()
         error_044_headline_with_bold();
         error_045_interwiki_double();
         error_046_count_square_breaks_begin();
@@ -2381,14 +2382,14 @@ sub error_check {
         error_064_link_equal_linktext();
         error_065_image_description_with_break();
         error_066_image_description_with_full_small();
-        error_067_reference_after_punctuation();
+        error_067_reference_after_punctuation();    # DEACTIVATED
         error_068_link_to_other_language();
 
-        #error_069_isbn_wrong_syntax('');           # get_isbn()
-        #error_070_isbn_wrong_length('');           # get_isbn()
-        #error_071_isbn_wrong_pos_X('');            # get_isbn()
-        #error_072_isbn_10_wrong_checksum('');      # get_isbn()
-        #error_073_isbn_13_wrong_checksum('');      # get_isbn()
+        #error_069_isbn_wrong_syntax('');                  # get_isbn()
+        #error_070_isbn_wrong_length('');                  # get_isbn()
+        #error_071_isbn_wrong_pos_X('');                   # get_isbn()
+        #error_072_isbn_10_wrong_checksum('');             # get_isbn()
+        #error_073_isbn_13_wrong_checksum('');             # get_isbn()
         error_074_link_with_no_target();
         error_075_indented_list();
         error_076_link_with_no_space();
@@ -2420,16 +2421,6 @@ sub error_check {
 ###########################################################################
 
 sub error_001_no_bold_title {
-    my $error_code = 1;
-
-    if ( $ErrorPriorityValue[$error_code] > 0 ) {
-        if (    $page_namespace == 0
-            and index( $text, "'''" ) == -1
-            and $page_is_redirect eq 'no' )
-        {
-            error_register( $error_code, '' );
-        }
-    }
 
     return ();
 }
@@ -2604,20 +2595,6 @@ sub error_003_have_ref {
 ###########################################################################
 
 sub error_004_have_html_and_no_topic {
-    my $error_code = 4;
-
-    if ( $ErrorPriorityValue[$error_code] > 0 ) {
-        if (    ( $page_namespace == 0 or $page_namespace == 104 )
-            and index( $text, 'http://' ) > -1
-            and index( $text, '==' ) == -1
-            and index( $text, '{{' ) == -1
-            and $project eq 'dewiki'
-            and index( $text, '<references' ) == -1
-            and index( $text, '<ref>' ) == -1 )
-        {
-            error_register( $error_code, '' );
-        }
-    }
 
     return ();
 }
@@ -2867,9 +2844,6 @@ sub error_011_html_names_entities {
             $pos = index( $test_text, '&szlig;' )  if ( $pos == -1 );
             $pos = index( $test_text, '&aring;' )  if ( $pos == -1 );    # åÅ
             $pos = index( $test_text, '&hellip;' ) if ( $pos == -1 );    # …
-                #$pos = index( $test_text, '&lt;') if ($pos == -1);						# for example, &lt;em> produces <em> for use in examples
-                #$pos = index( $test_text, '&gt;') if ($pos == -1);
-                #$pos = index( $test_text, '&amp;') if ($pos == -1);					# For example, in en:Beta (letter), the code: &amp;beta; is used to add "&beta" to the page's display, rather than the unicode character β.
             $pos = index( $test_text, '&quot;' )   if ( $pos == -1 );
             $pos = index( $test_text, '&minus;' )  if ( $pos == -1 );
             $pos = index( $test_text, '&oline;' )  if ( $pos == -1 );
@@ -2904,8 +2878,7 @@ sub error_011_html_names_entities {
             $pos = index( $test_text, '&harr;' )  if ( $pos == -1 );
 
             if ( $pos > -1 ) {
-                my $found_text = substr( $text, $pos );
-                $found_text = text_reduce( $found_text, 40 );
+                my $found_text = substr( $text, $pos, 40 );
                 $found_text =~ s/&/&amp;/g;
                 error_register( $error_code, $found_text );
             }
@@ -3810,17 +3783,6 @@ sub error_041_html_text_style_elements_big {
 ###########################################################################
 
 sub error_042_html_text_style_elements_small {
-    my $error_code = 42;
-
-    if ( $ErrorPriorityValue[$error_code] > 0 ) {
-        my $test_text = lc($text);
-        if ( index( $test_text, '<small>' ) > -1 ) {
-            if ( $page_namespace == 0 or $page_namespace == 104 ) {
-                my $pos = index( $test_text, '<small>' );
-                error_register( $error_code, substr( $text, $pos, 40 ) );
-            }
-        }
-    }
 
     return ();
 }
@@ -4561,19 +4523,33 @@ sub error_061_reference_with_punctuation {
             $pos = index( $text, '</ref>.' )    if ( $pos == -1 );
             $pos = index( $text, '</ref> .' )   if ( $pos == -1 );
             $pos = index( $text, '</ref>  .' )  if ( $pos == -1 );
-            $pos = index( $text, '</ref>   .' ) if ( $pos == -1 );
-            $pos = index( $text, '</ref>!' )    if ( $pos == -1 );
-            $pos = index( $text, '</ref> !' )   if ( $pos == -1 );
-            $pos = index( $text, '</ref>  !' )  if ( $pos == -1 );
-            $pos = index( $text, '</ref>   !' ) if ( $pos == -1 );
+            $pos = index( $text, '</ref>! ' )   if ( $pos == -1 );
+            $pos = index( $text, '</ref> ! ' )  if ( $pos == -1 );
+            $pos = index( $text, '</ref>  ! ' ) if ( $pos == -1 );
             $pos = index( $text, '</ref>?' )    if ( $pos == -1 );
             $pos = index( $text, '</ref> ?' )   if ( $pos == -1 );
             $pos = index( $text, '</ref>  ?' )  if ( $pos == -1 );
-            $pos = index( $text, '</ref>   ?' ) if ( $pos == -1 );
+            $pos = index( $text, '</ref>,' )    if ( $pos == -1 );
+            $pos = index( $text, '</ref> ,' )   if ( $pos == -1 );
+            $pos = index( $text, '</ref>  ,' )  if ( $pos == -1 );
+            $pos = index( $text, '</ref>:' )    if ( $pos == -1 );
+            $pos = index( $text, '</ref> :' )   if ( $pos == -1 );
+            $pos = index( $text, '</ref>  :' )  if ( $pos == -1 );
 
             if ( $pos > -1 ) {
-                my $found_text = substr( $text, $pos );
-                error_register( $error_code, text_reduce( $found_text, 40 ) );
+                error_register( $error_code, substr( $text, $pos, 40 ) );
+            }
+            else {
+                if ( $text =~ /(<ref name(.*?)\/>\.)/ ) {
+                    $pos = index( $text, $1 );
+                }
+                elsif ( $text =~ /(<ref name(.*?)\/>,)/ ) {
+                    $pos = index( $text, $1 );
+                }
+
+                if ( $pos > 0 ) {
+                    error_register( $error_code, substr( $text, $pos, 40 ) );
+                }
             }
         }
     }
@@ -4800,32 +4776,6 @@ sub error_066_image_description_with_full_small {
 ###########################################################################
 
 sub error_067_reference_after_punctuation {
-    my $error_code = 67;
-
-    if ( $ErrorPriorityValue[$error_code] > 0 ) {
-        if ( $page_namespace == 0 or $page_namespace == 104 ) {
-
-            my $found_text = q{};
-            my $pos        = -1;
-            $pos = index( $text, '.<ref' )    if ( $pos == -1 );
-            $pos = index( $text, '. <ref' )   if ( $pos == -1 );
-            $pos = index( $text, '.  <ref' )  if ( $pos == -1 );
-            $pos = index( $text, '.   <ref' ) if ( $pos == -1 );
-            $pos = index( $text, '!<ref' )    if ( $pos == -1 );
-            $pos = index( $text, '! <ref' )   if ( $pos == -1 );
-            $pos = index( $text, '!  <ref' )  if ( $pos == -1 );
-            $pos = index( $text, '!   <ref' ) if ( $pos == -1 );
-            $pos = index( $text, '?<ref' )    if ( $pos == -1 );
-            $pos = index( $text, '? <ref' )   if ( $pos == -1 );
-            $pos = index( $text, '?  <ref' )  if ( $pos == -1 );
-            $pos = index( $text, '?   <ref' ) if ( $pos == -1 );
-
-            if ( $pos > -1 ) {
-                $found_text = substr( $text, $pos );
-                error_register( $error_code, text_reduce( $found_text, 40 ) );
-            }
-        }
-    }
 
     return ();
 }
@@ -5471,7 +5421,7 @@ sub error_087_html_names_entities_without_semicolon {
             $test_text =~ s/<ref>(.*?)ref>//sg;
             $test_text =~ s/<ref name(.*?)ref>//sg;
             $test_text =~ s/\[http(.*?)\]//sg;
-            $test_text =~ s/\{\{cite(.*?)\}\}//sg;
+            $test_text =~ s/\{\{cit(.*?)\}\}//sg;
 
             # see http://turner.faculty.swau.edu/webstuff/htmlsymbols.html
             while ( $test_text =~ /&sup2[^;]/g )   { $pos = pos($test_text) }
@@ -5577,41 +5527,6 @@ sub error_088_defaultsort_with_first_blank {
 ###########################################################################
 
 sub error_089_defaultsort_with_capitalization_in_the_middle_of_the_word {
-    my $error_code = 89;
-
-    if ( $ErrorPriorityValue[$error_code] > 0 ) {
-        if (    ( $page_namespace == 0 or $page_namespace == 104 )
-            and $project ne 'arwiki'
-            and $project ne 'hewiki'
-            and $project ne 'plwiki'
-            and $project ne 'jawiki'
-            and $project ne 'yiwiki'
-            and $project ne 'zhwiki' )
-        {
-            my $pos1              = -1;
-            my $current_magicword = q{};
-
-            foreach ( @{$magicword_defaultsort} ) {
-                if ( $pos1 == -1 and index( $text, $_ ) > -1 ) {
-                    $pos1 = index( $text, $_ );
-                    $current_magicword = $_;
-                }
-            }
-            if ( $pos1 > -1 ) {
-                my $pos2 = index( substr( $text, $pos1 ), '}}' );
-                my $testtext = substr( $text, $pos1, $pos2 );
-
-                my $sortkey = $testtext;
-                $sortkey =~ s/^([ ]+)?$current_magicword//;
-                $sortkey =~ s/^([ ]+)?://;
-
-                if ( $sortkey =~ /[a-z][A-Z]/ ) {
-                    my $found_text = $testtext;
-                    error_register( $error_code, $found_text );
-                }
-            }
-        }
-    }
 
     return ();
 }
@@ -5621,40 +5536,6 @@ sub error_089_defaultsort_with_capitalization_in_the_middle_of_the_word {
 ###########################################################################
 
 sub error_090_defaultsort_with_lowercase_letters {
-    my $error_code = 90;
-
-    if ( $ErrorPriorityValue[$error_code] > 0 ) {
-        if (    ( $page_namespace == 0 or $page_namespace == 104 )
-            and $project ne 'arwiki'
-            and $project ne 'hewiki'
-            and $project ne 'plwiki'
-            and $project ne 'jawiki'
-            and $project ne 'yiwiki'
-            and $project ne 'zhwiki' )
-        {
-            my $pos1              = -1;
-            my $current_magicword = q{};
-            foreach ( @{$magicword_defaultsort} ) {
-                if ( $pos1 == -1 and index( $text, $_ ) > -1 ) {
-                    $pos1 = index( $text, $_ );
-                    $current_magicword = $_;
-                }
-            }
-            if ( $pos1 > -1 ) {
-                my $pos2 = index( substr( $text, $pos1 ), '}}' );
-                my $testtext = substr( $text, $pos1, $pos2 );
-
-                my $sortkey = $testtext;
-                $sortkey =~ s/^([ ]+)?$current_magicword//;
-                $sortkey =~ s/^([ ]+)?://;
-
-                if ( $sortkey =~ /[ -][a-z]/ ) {
-                    my $found_text = $testtext;
-                    error_register( $error_code, $found_text );
-                }
-            }
-        }
-    }
 
     return ();
 }
@@ -5664,39 +5545,6 @@ sub error_090_defaultsort_with_lowercase_letters {
 ###########################################################################
 
 sub error_091_title_with_lowercase_letters_and_no_defaultsort {
-    my $error_code = 91;
-
-    if ( $ErrorPriorityValue[$error_code] > 0 ) {
-        if (    ( $page_namespace == 0 or $page_namespace == 104 )
-            and $category_counter > -1
-            and $project ne 'arwiki'
-            and $project ne 'hewiki'
-            and $project ne 'plwiki'
-            and $project ne 'jawiki'
-            and $project ne 'yiwiki'
-            and $project ne 'zhwiki' )
-        {
-
-            my $pos1              = -1;
-            my $current_magicword = q{};
-            foreach ( @{$magicword_defaultsort} ) {
-                if ( $pos1 == -1 and index( $text, $_ ) > -1 ) {
-                    $pos1 = index( $text, $_ );
-                    $current_magicword = $_;
-                }
-            }
-            if ( $pos1 == -1 ) {
-
-                # no defaultsort
-                my $subtitle = $title;
-                $subtitle = substr( $subtitle, 0, 9 )
-                  if ( length($subtitle) > 10 );
-                if ( $subtitle =~ /[ -][a-z]/ ) {
-                    error_register( $error_code, '' );
-                }
-            }
-        }
-    }
 
     return ();
 }
