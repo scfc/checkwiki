@@ -870,8 +870,11 @@ Verlag LANGEWIESCHE, ISBN-10: 3784551912 und ISBN-13: 9783784551913
     # CALLS #15
     get_code();
 
-    # REMOVE FROM $text ANY CONTENT BETWEEN <SYNTAXHIGHLIGHT> TAGS.
+    # REMOVE FROM $text ANY CONTENT BETWEEN <syntaxhighlight> TAGS.
     get_syntaxhighlight();
+
+    # REMOVE FROM $text ANY CONTENT BETWEEN <hiero> TAGS.
+    get_hiero();
 
     #------------------------------------------------------
     # Following calls do not interact with other get_* or error #'s
@@ -1101,13 +1104,23 @@ sub get_code {
 }
 
 ###########################################################################
-## REMOVE EVERYTHIN BETWEEN THE SYNTAXHIGHLIGHT TAGS
+## REMOVE EVERYTHING BETWEEN THE SYNTAXHIGHLIGHT TAGS
 ###########################################################################
 
 sub get_syntaxhighlight {
-    my $test_text = lc($text);
 
     $text =~ s/<syntaxhighlight(.*?)<\/syntaxhighlight>//sg;
+
+    return ();
+}
+
+###########################################################################
+## REMOVE EVERYTHING BETWEEN THE HIERO TAGS
+###########################################################################
+
+sub get_hiero {
+
+    $text =~ s/<hiero>(.*?)<\/hiero>//sg;
 
     return ();
 }
@@ -1794,49 +1807,38 @@ sub get_links {
     while ( $text_test =~ /\[\[/g ) {
 
         $pos_start = pos($text_test) - 2;
-        my $link_text              = substr( $text_test, $pos_start );
-        my $link_text_2            = q{};
-        my $beginn_square_brackets = 1;
-        my $end_square_brackets    = 0;
+        my $link_text      = substr( $text_test, $pos_start );
+        my $link_text_2    = q{};
+        my $brackets_begin = 1;
+        my $brackets_end   = 0;
         while ( $link_text =~ /\]\]/g ) {
 
             # Find currect end - number of [[==]]
-            $pos_end     = pos($link_text);
-            $link_text_2 = substr( $link_text, 0, $pos_end );
-            $link_text_2 = ' ' . $link_text_2 . ' ';
+            $pos_end = pos($link_text);
+            $link_text_2 = q{ } . substr( $link_text, 0, $pos_end ) . q{ };
 
-            #print $link_text_2."\n";
+            # test the number of [[ and ]]
+            $brackets_begin = ( $link_text_2 =~ tr/[[// );
+            $brackets_end   = ( $link_text_2 =~ tr/]]// );
 
-            # test the number of [[and  ]]
-            my $link_text_2_a = $link_text_2;
-            $beginn_square_brackets = ( $link_text_2_a =~ s/\[\[//g );
-            my $link_text_2_b = $link_text_2;
-            $end_square_brackets = ( $link_text_2_b =~ s/\]\]//g );
-
-            #print $beginn_square_brackets .' vs. '.$end_square_brackets."\n";
-            last if ( $beginn_square_brackets eq $end_square_brackets );
+            last if ( $brackets_begin == $brackets_end );
         }
 
-        if ( $beginn_square_brackets == $end_square_brackets ) {
+        if ( $brackets_begin == $brackets_end ) {
 
-            # link is correct
             $link_text_2 = substr( $link_text_2, 1, length($link_text_2) - 2 );
-
-            #print 'Link:'.$link_text_2."\n";
             push( @links_all, $link_text_2 );
 
-            if ( $link_text_2 =~ /^\[\[([ ]?)+?($image_regex):/i ) {
+            if ( $link_text_2 =~ /^\[\[\s*(?:$image_regex):/i ) {
                 push( @images_all, $link_text_2 );
             }
 
         }
         else {
-            # template has no correct end
-            $link_text = text_reduce( $link_text, 40 );
-            error_010_count_square_breaks($link_text);
+            error_010_count_square_breaks( text_reduce( $link_text, 40 ) );
+
         }
     }
-
     return ();
 }
 
@@ -2016,56 +2018,6 @@ sub get_images {
     if ( $found_error_text ne '' ) {
         error_030_image_without_description($found_error_text);
     }
-    return ();
-}
-
-###########################################################################
-##
-###########################################################################
-
-sub get_hiero {
-
-    #print 'Get hiero tag'."\n";
-    my $pos_start_old = 0;
-    my $pos_end_old   = 0;
-    my $end_search    = 'yes';
-    do {
-        my $pos_start = 0;
-        my $pos_end   = 0;
-        $end_search = 'yes';
-
-        #get position of next <math>
-        $pos_start = index( $text, '<hiero>',  $pos_start_old );
-        $pos_end   = index( $text, '</hiero>', $pos_start );
-
-        if ( $pos_start > -1 and $pos_end > -1 ) {
-
-            #found a math in current page
-            $pos_end = $pos_end + length('</hiero>');
-
-            #print substr($text, $pos_start, $pos_end - $pos_start  )."\n";
-
-            $end_search    = 'no';
-            $pos_start_old = $pos_end;
-
-            #replace comment with space
-            my $text_before = substr( $text, 0, $pos_start );
-            my $text_after  = substr( $text, $pos_end );
-            my $filler      = q{};
-            for ( my $i = 0 ; $i < ( $pos_end - $pos_start ) ; $i++ ) {
-                $filler = $filler . ' ';
-            }
-            $text = $text_before . $filler . $text_after;
-        }
-        if ( $pos_start > -1 and $pos_end == -1 ) {
-
-            #error_015_Code_no_correct_end ( substr( $text, $pos_start, 50) );
-            #print 'Code:'.substr( $text, $pos_start, 50)."\n";
-            $end_search = 'yes';
-        }
-
-    } until ( $end_search eq 'yes' );
-
     return ();
 }
 
@@ -2352,7 +2304,7 @@ sub get_headlines {
 
 sub error_check {
     if ( $CheckOnlyOne > 0 ) {
-        error_012_html_list_elements();
+        error_037_title_with_special_letters_and_no_defaultsort();
     }
     else {
         #error_001_no_bold_title();        # DEACTIVATED - Doesn't work
@@ -2494,6 +2446,7 @@ sub error_002_have_br {
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
+
             my $test_text = lc($text);
             if ( $test_text =~
 /(<\s*br\/[^ ]>|<\s*br[^ ]\/>|<\s*br[^ \/]>|<[^ ]br\s*>|<\s*br\s*\/[^ ]>)/
@@ -3021,6 +2974,7 @@ sub error_013_Math_no_correct_end {
     my $error_code = 13;
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
+
         if ( $comment ne '' ) {
             error_register( $error_code, $comment );
         }
@@ -3038,6 +2992,7 @@ sub error_014_Source_no_correct_end {
     my $error_code = 14;
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
+
         if ( $comment ne '' ) {
             error_register( $error_code, $comment );
         }
@@ -3055,6 +3010,7 @@ sub error_015_Code_no_correct_end {
     my $error_code = 15;
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
+
         if ( $comment ne '' ) {
             error_register( $error_code, $comment );
         }
@@ -3108,14 +3064,7 @@ sub error_017_category_double {
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
 
-        for ( my $i = 0 ; $i <= $category_counter - 1 ; $i++ ) {
-
-#if ($title eq 'File:TobolskCoin.jpg') {
-#	print "\t".'Begin='.$category[$i][0].' End='.$category[$category_counter][1]."\n";
-#	print "\t".'catname=' .$category[$i][2]."\n";
-#	print "\t".'linkname='.$category[$i][3]."\n";
-#	print "\t".'full cat='.$category[$i][4]."\n";
-#}
+        foreach my $i ( 0 .. $category_counter - 1 ) {
 
             my $test1 = $category[$i][2];
 
@@ -3133,7 +3082,6 @@ sub error_017_category_double {
                           uc( substr( $test2, 0, 1 ) )
                           . substr( $test2, 1 );    #first letter big
 
-                 #print $title."\t".$category[$i][2]."\t".$category[$j][2]."\n";
                         if ( $test1 eq $test2
                             and
                             ( $page_namespace == 0 or $page_namespace == 104 ) )
@@ -3160,7 +3108,8 @@ sub error_018_category_first_letter_small {
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $project ne 'commonswiki' ) {
-            for ( my $i = 0 ; $i <= $category_counter ; $i++ ) {
+
+            foreach my $i ( 0 .. $category_counter ) {
                 my $test_letter = substr( $category[$i][2], 0, 1 );
                 if ( $test_letter =~ /([a-z]|ä|ö|ü)/ ) {
                     error_register( $error_code, $category[$i][2] );
@@ -3180,11 +3129,12 @@ sub error_019_headline_only_one {
     my $error_code = 19;
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
-        if ( $headlines[0]
-            and ( $page_namespace == 0 or $page_namespace == 104 ) )
-        {
-            if ( $headlines[0] =~ /^=[^=]/ ) {
-                error_register( $error_code, $headlines[0] );
+        if ( $page_namespace == 0 or $page_namespace == 104 ) {
+
+            if ( $headlines[0] ) {
+                if ( $headlines[0] =~ /^=[^=]/ ) {
+                    error_register( $error_code, $headlines[0] );
+                }
             }
         }
     }
@@ -3200,12 +3150,12 @@ sub error_020_symbol_for_dead {
     my $error_code = 20;
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
-        my $pos = index( $text, '&dagger;' );
-        if ( $pos > -1
-            and ( $page_namespace == 0 or $page_namespace == 104 ) )
-        {
-            my $test_text = substr( $text, $pos, 100 );
-            error_register( $error_code, text_reduce( $test_text, 40 ) );
+        if ( $page_namespace == 0 or $page_namespace == 104 ) {
+
+            my $pos = index( $text, '&dagger;' );
+            if ( $pos > -1 ) {
+                error_register( $error_code, substr( $text, $pos, 40 ) );
+            }
         }
     }
 
@@ -3220,16 +3170,18 @@ sub error_021_category_is_english {
     my $error_code = 21;
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
-        if (    $project ne 'enwiki'
-            and $project ne 'commonswiki'
-            and ( $page_namespace == 0 or $page_namespace == 104 )
-            and $namespace_cat[0] ne 'Category' )
-        {
-            for ( my $i = 0 ; $i <= $category_counter ; $i++ ) {
-                my $current_cat = lc( $category[$i][4] );
+        if ( $page_namespace == 0 or $page_namespace == 104 ) {
+            if (    $project ne 'enwiki'
+                and $project ne 'commonswiki'
+                and $namespace_cat[0] ne 'Category' )
+            {
 
-                if ( index( $current_cat, lc( $namespace_cat[1] ) ) > -1 ) {
-                    error_register( $error_code, $current_cat );
+                foreach my $i ( 0 .. $category_counter ) {
+                    my $current_cat = lc( $category[$i][4] );
+
+                    if ( index( $current_cat, lc( $namespace_cat[1] ) ) > -1 ) {
+                        error_register( $error_code, $current_cat );
+                    }
                 }
             }
         }
@@ -3250,15 +3202,10 @@ sub error_022_category_with_space {
             or $page_namespace == 6
             or $page_namespace == 104 )
         {
-            for ( my $i = 0 ; $i <= $category_counter ; $i++ ) {
+            foreach my $i ( 0 .. $category_counter ) {
 
-                #print "\t". $category[$i][4]. "\n";
-                if (
-                       $category[$i][4] =~ /\[\[ /
-                    or $category[$i][4] =~ /\[\[[^:]+ :/
-
-                    #or $category[$i][4] =~ /\[\[[^:]+: /
-                  )
+                if (   $category[$i][4] =~ /\[\[ /
+                    or $category[$i][4] =~ /\[\[[^:]+ :/ )
                 {
                     error_register( $error_code, $category[$i][4] );
                 }
@@ -3323,10 +3270,12 @@ sub error_025_headline_hierarchy {
     my $error_code = 25;
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
-        my $number_headline = -1;
-        my $old_headline    = q{};
-        my $new_headline    = q{};
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
+
+            my $number_headline = -1;
+            my $old_headline    = q{};
+            my $new_headline    = q{};
+
             foreach (@headlines) {
                 $number_headline = $number_headline + 1;
                 $old_headline    = $new_headline;
@@ -3336,15 +3285,10 @@ sub error_025_headline_hierarchy {
                     my $level_old = $old_headline;
                     my $level_new = $new_headline;
 
-                    #print $old_headline."\n";
-                    #print $new_headline."\n";
                     $level_old =~ s/^([=]+)//;
                     $level_new =~ s/^([=]+)//;
                     $level_old = length($old_headline) - length($level_old);
                     $level_new = length($new_headline) - length($level_new);
-
-                    #print $level_old ."\n";
-                    #print $level_new ."\n";
 
                     if ( $level_new > $level_old
                         and ( $level_new - $level_old ) > 1 )
@@ -3368,10 +3312,12 @@ sub error_026_html_text_style_elements {
     my $error_code = 26;
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
-        my $test_text = lc($text);
-        if ( index( $test_text, '<b>' ) > -1 ) {
-            if ( $page_namespace == 0 or $page_namespace == 104 ) {
-                my $pos = index( $test_text, '<b>' );
+        if ( $page_namespace == 0 or $page_namespace == 104 ) {
+
+            my $test_text = lc($text);
+            my $pos = index( $test_text, '<b>' );
+
+            if ( $pos > -1 ) {
                 error_register( $error_code, substr( $text, $pos, 40 ) );
             }
         }
@@ -3396,8 +3342,6 @@ sub error_027_unicode_syntax {
             $pos = index( $text, '&#322;' )   if ( $pos == -1 );  # l in Wrozlaw
             $pos = index( $text, '&#x0124;' ) if ( $pos == -1 );  # l in Wrozlaw
             $pos = index( $text, '&#8211;' )  if ( $pos == -1 );  # –
-                   #$pos = index( $text, '&#x') if ($pos == -1);
-                   #$pos = index( $text, '&#') if ($pos == -1);
 
             if ( $pos > -1 ) {
                 my $found_text = substr( $text, $pos );
@@ -3571,10 +3515,12 @@ sub error_033_html_text_style_elements_underline {
     my $error_code = 33;
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
-        my $test_text = lc($text);
-        if ( index( $test_text, '<u>' ) > -1 ) {
-            if ( $page_namespace == 0 or $page_namespace == 104 ) {
-                my $pos = index( $test_text, '<u>' );
+        if ( $page_namespace == 0 or $page_namespace == 104 ) {
+
+            my $test_text = lc($text);
+            my $pos = index( $test_text, '<u>' );
+
+            if ( $pos > -1 ) {
                 error_register( $error_code, substr( $text, $pos, 40 ) );
             }
         }
@@ -3663,9 +3609,9 @@ sub error_036_redirect_not_correct {
     my $error_code = 36;
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
+
         if ( $page_is_redirect eq 'yes' ) {
             if ( lc($text) =~ /#redirect[ ]?+[^ :\[][ ]?+\[/ ) {
-
                 error_register( $error_code, text_reduce( $text, 40 ) );
             }
         }
@@ -3703,6 +3649,9 @@ sub error_037_title_with_special_letters_and_no_defaultsort {
             if ( $isDefaultsort == -1 ) {
 
                 my $test_title = $title;
+                if ( $project ne 'enwiki' ) {
+                    $test_title = substr( $test_title, 0, 5 );
+                }
 
                 # Titles such as 'Madonna (singer)' are OK
                 $test_title =~ tr/(//d;
@@ -3763,10 +3712,12 @@ sub error_038_html_text_style_elements_italic {
     my $error_code = 38;
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
-        my $test_text = lc($text);
-        if ( index( $test_text, '<i>' ) > -1 ) {
-            if ( $page_namespace == 0 or $page_namespace == 104 ) {
-                my $pos = index( $test_text, '<i>' );
+        if ( $page_namespace == 0 or $page_namespace == 104 ) {
+
+            my $test_text = lc($text);
+            my $pos = index( $test_text, '<i>' );
+
+            if ( $pos > -1 ) {
                 error_register( $error_code, substr( $text, $pos, 40 ) );
             }
         }
@@ -3818,10 +3769,12 @@ sub error_040_html_text_style_elements_font {
     my $error_code = 40;
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
-        my $test_text = lc($text);
-        if ( index( $test_text, '<font' ) > -1 ) {
-            if ( $page_namespace == 0 or $page_namespace == 104 ) {
-                my $pos = index( $test_text, '<font' );
+        if ( $page_namespace == 0 or $page_namespace == 104 ) {
+
+            my $test_text = lc($text);
+            my $pos = index( $test_text, '<font' );
+
+            if ( $pos > -1 ) {
                 error_register( $error_code, substr( $text, $pos, 40 ) );
             }
         }
@@ -3838,10 +3791,12 @@ sub error_041_html_text_style_elements_big {
     my $error_code = 41;
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
-        my $test_text = lc($text);
-        if ( index( $test_text, '<big>' ) > -1 ) {
-            if ( $page_namespace == 0 or $page_namespace == 104 ) {
-                my $pos = index( $test_text, '<big>' );
+        if ( $page_namespace == 0 or $page_namespace == 104 ) {
+
+            my $test_text = lc($text);
+            my $pos = index( $test_text, '<big>' );
+
+            if ( $pos > -1 ) {
                 error_register( $error_code, substr( $text, $pos, 40 ) );
             }
         }
@@ -3902,22 +3857,19 @@ sub error_044_headline_with_bold {
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
+
             foreach (@headlines) {
                 my $current_line = $_;
 
-                #print $current_line ."\n";
-                if (
-                    index( $current_line, "'''" ) > -1    # if bold ther
-                    and not $current_line =~
-                    /[^']''[^']/ # for italic in headlinses   for example: == Acte au sens d'''instrumentum'' ==
-                  )
+                if ( index( $current_line, "'''" ) > -1
+                    and not $current_line =~ /[^']''[^']/ )
                 {
-                    # there is a bold in headline
+                    # /[^']''[^']/ for italic in headlinses
+                    # for example: == Acte au sens d'''instrumentum'' ==
+
                     my $bold_ok = 'no';
                     if ( index( $current_line, "<ref" ) > -1 ) {
 
-# test for bold in ref
-# # ===This is a headline with reference <ref>A reference with '''bold''' text</ref>===
                         my $pos_begin_ref  = index( $current_line, "<ref" );
                         my $pos_end_ref    = index( $current_line, "</ref" );
                         my $pos_begin_bold = index( $current_line, "'''" );
@@ -3947,22 +3899,15 @@ sub error_045_interwiki_double {
     my $error_code = 45;
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
-
-        #print $title."\n";
-        #print 'Interwikis='.$interwiki_counter."\n";
-        my $found_double = q{};
-
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
-            for ( my $i = 0 ; $i <= $interwiki_counter ; $i++ ) {
 
-#print $interwiki[$i][0]. $interwiki[$i][1]. $interwiki[$i][2]. $interwiki[$i][3]. $interwiki[$i][4]. "\n";
+            my $found_double = q{};
+            foreach my $i ( 0 .. $interwiki_counter ) {
+
                 for ( my $j = $i + 1 ; $j <= $interwiki_counter ; $j++ ) {
                     if ( lc( $interwiki[$i][5] ) eq lc( $interwiki[$j][5] ) ) {
                         my $test1 = lc( $interwiki[$i][2] );
                         my $test2 = lc( $interwiki[$j][2] );
-
-                        #print $test1."\n";
-                        #print $test2."\n";
 
                         if ( $test1 eq $test2 ) {
                             $found_double =
@@ -3972,10 +3917,9 @@ sub error_045_interwiki_double {
                     }
                 }
             }
-        }
-
-        if ( $found_double ne '' ) {
-            error_register( $error_code, $found_double );
+            if ( $found_double ne '' ) {
+                error_register( $error_code, $found_double );
+            }
         }
     }
 
@@ -3990,18 +3934,12 @@ sub error_046_count_square_breaks_begin {
     my $error_code = 46;
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
-        my $text_test = q{};
-
-#$text_test = 'abc[[Kartographie]], Bild:abd|[[Globus]]]] ohne [[Gradnetz]] weiterer Text
-#aber hier [[Link234|sdsdlfk]]  [[Test]]';
-#print 'Start 46'."\n";
         if (   $page_namespace == 0
             or $page_namespace == 6
             or $page_namespace == 104 )
         {
-            $text_test = $text;
+            my $text_test = $text;
 
-            #print $text_test."\n";
             my $text_test_1_a = $text_test;
             my $text_test_1_b = $text_test;
 
@@ -4240,35 +4178,28 @@ sub error_051_interwiki_before_last_headline {
     my $error_code = 51;
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
-        my $number_of_headlines = @headlines;
-        my $pos                 = -1;
+        if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
-        #print 'number_of_headlines: '.$number_of_headlines.' '.$title."\n";
+            my $number_of_headlines = @headlines;
+            my $pos                 = -1;
 
-        if ( $number_of_headlines > 0 ) {
+            if ( $number_of_headlines > 0 ) {
+                $pos = index( $text, $headlines[ $number_of_headlines - 1 ] );
 
-            #print 'number_of_headlines: '.$number_of_headlines.' '.$title."\n";
-            $pos =
-              index( $text, $headlines[ $number_of_headlines - 1 ] )
-              ;    #pos of last headline
-                   #print 'pos: '. $pos."\n";
-        }
-        if ( $pos > -1
-            and ( $page_namespace == 0 or $page_namespace == 104 ) )
-        {
+                #pos of last headline
 
-            my $found_text = q{};
-            for ( my $i = 0 ; $i <= $interwiki_counter ; $i++ ) {
-
-                if ( $pos > $interwiki[$i][0] ) {
-
-                    #print $pos .' and '.$interwiki[$i][0]."\n";
-                    $found_text = $interwiki[$i][4];
+                my $found_text = q{};
+                if ( $pos > -1 ) {
+                    foreach my $i ( 0 .. $interwiki_counter ) {
+                        if ( $pos > $interwiki[$i][0] ) {
+                            $found_text = $interwiki[$i][4];
+                        }
+                    }
                 }
-            }
-
-            if ( $found_text ne '' ) {
-                error_register( $error_code, text_reduce( $found_text, 40 ) );
+                if ( $found_text ne '' ) {
+                    error_register( $error_code,
+                        text_reduce( $found_text, 40 ) );
+                }
             }
         }
     }
@@ -4287,11 +4218,8 @@ sub error_052_category_before_last_headline {
         my $number_of_headlines = @headlines;
         my $pos                 = -1;
 
-        #print 'number_of_headlines: '.$number_of_headlines.' '.$title."\n";
-
         if ( $number_of_headlines > 0 ) {
 
-            #print 'number_of_headlines: '.$number_of_headlines.' '.$title."\n";
             $pos =
               index( $text, $headlines[ $number_of_headlines - 1 ] )
               ;    #pos of last headline
@@ -4332,7 +4260,7 @@ sub error_053_interwiki_before_category {
 
             my $pos_interwiki = $interwiki[0][0];
             my $found_text    = $interwiki[0][4];
-            for ( my $i = 0 ; $i <= $interwiki_counter ; $i++ ) {
+            foreach my $i ( 0 .. $interwiki_counter ) {
                 if ( $interwiki[$i][0] < $pos_interwiki ) {
                     $pos_interwiki = $interwiki[$i][0];
                     $found_text    = $interwiki[$i][4];
@@ -4340,11 +4268,10 @@ sub error_053_interwiki_before_category {
             }
 
             my $found = 'false';
-            for ( my $i = 0 ; $i <= $category_counter ; $i++ ) {
-
-                #print $pos_interwiki .' and '.$category[$i][0]."\n";
+            foreach my $i ( 0 .. $category_counter ) {
                 $found = 'true' if ( $pos_interwiki < $category[$i][0] );
             }
+
             if ( $found eq 'true' ) {
                 error_register( $error_code, $found_text );
             }
@@ -4369,18 +4296,14 @@ sub error_054_break_in_list {
                 my $current_line    = $_;
                 my $current_line_lc = lc($current_line);
 
-                #print $current_line_lc."END\n";
                 if ( substr( $current_line, 0, 1 ) eq '*'
                     and index( $current_line_lc, 'br' ) > -1 )
                 {
-                    #print 'Line is list'."\n";
                     if ( $current_line_lc =~
 /<([ ]+)?(\/|\\)?([ ]+)?br([ ]+)?(\/|\\)?([ ]+)?>([ ]+)?$/
                       )
                     {
                         $found_text = $current_line;
-
-                        #print "\t".'Found:'."\t".$current_line_lc."\n";
                     }
                 }
             }
@@ -4407,19 +4330,16 @@ sub error_055_html_text_style_elements_small_double {
     my $error_code = 55;
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
-        my $test_line = q{};
-        my $test_text = lc($text);
-
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
-            #print 'a'."\n";
+            my $test_line = q{};
+            my $test_text = lc($text);
+
             $test_text = lc($text);
             my $pos = -1;
 
-            #print $test_text."\n";
             if ( index( $test_text, '<small>' ) > -1 ) {
 
-                #print 'b'."\n";
                 $pos = index( $test_text, '<small><small>' )  if ( $pos == -1 );
                 $pos = index( $test_text, '<small> <small>' ) if ( $pos == -1 );
                 $pos = index( $test_text, '<small>  <small>' )
@@ -4432,7 +4352,6 @@ sub error_055_html_text_style_elements_small_double {
                   if ( $pos == -1 );
                 if ( $pos > -1 ) {
 
-                    #print 'c'."\n";
                     my $found_text_1 =
                       text_reduce_to_end( substr( $text, 0, $pos ), 40 )
                       ;    # text before
@@ -4459,6 +4378,7 @@ sub error_056_arrow_as_ASCII_art {
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
+
             my $pos = -1;
             $pos = index( lc($text), '->' );
             $pos = index( lc($text), '<-' ) if $pos == -1;
@@ -4485,6 +4405,7 @@ sub error_057_headline_end_with_colon {
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
+
             foreach (@headlines) {
                 my $current_line = $_;
 
@@ -4507,9 +4428,9 @@ sub error_058_headline_with_capitalization {
     my $error_code = 58;
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
-
-        my $found_text = q{};
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
+
+            my $found_text = q{};
             foreach (@headlines) {
                 my $current_line        = $_;
                 my $current_line_normal = $current_line;
@@ -4520,12 +4441,9 @@ sub error_058_headline_with_capitalization {
                 my $current_line_uc = uc($current_line_normal);
                 if ( length($current_line_normal) > 10 ) {
 
-                    #print "A:\t".$current_line_normal."\n";
-                    #print "B:\t".$current_line_uc."\n";
                     if ( $current_line_normal eq $current_line_uc ) {
 
                         # found ALL CAPS HEADLINE(S)
-                        #print "A:\t".$current_line_normal."\n";
                         my $check_ok = 'yes';
 
                         # check comma
@@ -4536,12 +4454,9 @@ sub error_058_headline_with_capitalization {
                                 if ( length($_) < 10 ) {
                                     $check_ok = 'no';
 
-                                    #print $_."\n";
                                 }
                             }
                         }
-
-                        #print "\t".$check_ok."\n";
 
                         # problem
                         # ===== PPM, PGM, PBM, PNM =====
@@ -4577,11 +4492,11 @@ sub error_059_template_value_end_with_br {
     my $error_code = 59;
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
-        my $found_text = q{};
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
-            for ( my $i = 0 ; $i <= $number_of_template_parts ; $i++ ) {
 
-                #print $template[$i][3]."\t".$template[$i][4]."\n";
+            my $found_text = q{};
+            foreach my $i ( 0 .. $number_of_template_parts ) {
+
                 if ( $found_text eq '' ) {
                     if ( $template[$i][4] =~
 /<([ ]+)?(\/|\\)?([ ]+)?br([ ]+)?(\/|\\)?([ ]+)?>([ ])?([ ])?$/
@@ -4610,11 +4525,11 @@ sub error_060_template_parameter_with_problem {
     my $error_code = 60;
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
-        my $found_text = q{};
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
-            for ( my $i = 0 ; $i <= $number_of_template_parts ; $i++ ) {
 
-                #print $template[$i][3]."\t".$template[$i][4]."\n";
+            my $found_text = q{};
+            foreach my $i ( 0 .. $number_of_template_parts ) {
+
                 if ( $found_text eq '' ) {
                     if ( $template[$i][3] =~ /(\[|\]|\|:|\*)/ ) {
                         $found_text =
@@ -4640,6 +4555,7 @@ sub error_061_reference_with_punctuation {
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
+
             my $found_txt = q{};
             my $pos       = -1;
             $pos = index( $text, '</ref>.' )    if ( $pos == -1 );
@@ -4679,9 +4595,8 @@ sub error_062_headline_alone {
             my $old_level           = 2;
             my $found_txt           = q{};
             if ( $number_of_headlines >= 5 ) {
-                for ( my $i = 0 ; $i < $number_of_headlines ; $i++ ) {
+                foreach my $i ( 0 .. $number_of_headlines - 1 ) {
 
-                    #print $headlines[$i]."\n";
                     my $headline_test_1 = $headlines[$i];
                     my $headline_test_2 = $headlines[$i];
                     $headline_test_1 =~ s/^([=]+)//;
@@ -4694,7 +4609,6 @@ sub error_062_headline_alone {
                         and $found_txt eq '' )
                     {
                         # first headline in this level
-                        #print 'check: '.$headlines[$i]."\n";
                         my $found_same_level = 'no';
                         my $found_end        = 'no';
                         for ( my $j = $i + 1 ;
@@ -4708,19 +4622,14 @@ sub error_062_headline_alone {
                               length($headline_test_2b) -
                               length($headline_test_1b);
 
-                            #print 'check: '.$headlines[$i]."\n";
                             if ( $test_level < $current_level ) {
                                 $found_end = 'yes';
-
-                                #print 'Found end'.$headlines[$j]."\n";
                             }
 
                             if (    $test_level = $current_level
                                 and $found_end eq 'no' )
                             {
                                 $found_same_level = 'yes';
-
-                                #print 'Found end'.$headlines[$j]."\n";
                             }
                         }
 
@@ -4729,9 +4638,7 @@ sub error_062_headline_alone {
                         {
                             # found alone text
                             $found_txt = $headlines[$i];
-
                         }
-
                     }
 
                     if (    $current_level > 2
@@ -4763,6 +4670,7 @@ sub error_063_html_text_style_elements_small_ref_sub_sup {
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
+
             my $test_line = q{};
             my $test_text = lc($text);
             my $pos       = -1;
@@ -4783,14 +4691,11 @@ sub error_063_html_text_style_elements_small_ref_sub_sup {
 
                 if ( $pos > -1 ) {
 
-                    #print 'pos:'.$pos."\n";
                     my $found_text_1 =
                       text_reduce_to_end( substr( $text, 0, $pos ), 40 )
                       ;    # text before
                     my $found_text_2 =
                       text_reduce( substr( $text, $pos ), 30 );    #text after
-                          #print 'f1:'."\t".$found_text_1."\n\n";
-                          #print 'f2:'."\t".$found_text_2."\n\n";
 
                     my $found_text = $found_text_1 . $found_text_2;
                     $found_text =~ s/\n//g;
@@ -4813,7 +4718,6 @@ sub error_064_link_equal_linktext {
     my $error_code = 64;
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
-
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
             my $temp_text = $text;
@@ -4836,12 +4740,12 @@ sub error_065_image_description_with_break {
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
+
             my $found_text = q{};
             foreach (@images_all) {
                 my $current_image = $_;
                 if ( $found_text eq '' ) {
 
-                    #print $current_image."\n";
                     if ( $current_image =~
 /<([ ]+)?(\/|\\)?([ ]+)?br([ ]+)?(\/|\\)?([ ]+)?>([ ])?(\||\])/i
                       )
@@ -4868,12 +4772,12 @@ sub error_066_image_description_with_full_small {
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
+
             my $found_text = q{};
             foreach (@images_all) {
                 my $current_image = $_;
                 if ( $found_text eq '' ) {
 
-                    #print $current_image."\n";
                     if ( $current_image =~
 /<([ ]+)?(\/|\\)?([ ]+)?small([ ]+)?(\/|\\)?([ ]+)?>([ ])?(\||\])/i
                         and $current_image =~ /\|([ ]+)?<([ ]+)?small/ )
@@ -4899,9 +4803,10 @@ sub error_067_reference_after_punctuation {
     my $error_code = 67;
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
-        my $found_text = q{};
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
-            my $pos = -1;
+
+            my $found_text = q{};
+            my $pos        = -1;
             $pos = index( $text, '.<ref' )    if ( $pos == -1 );
             $pos = index( $text, '. <ref' )   if ( $pos == -1 );
             $pos = index( $text, '.  <ref' )  if ( $pos == -1 );
@@ -4934,6 +4839,7 @@ sub error_068_link_to_other_language {
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
+
             my $found_text = q{};
             foreach (@links_all) {
 
@@ -5064,6 +4970,7 @@ sub error_074_link_with_no_target {
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
+
             my $found_text = q{};
             foreach (@links_all) {
 
@@ -5131,6 +5038,7 @@ sub error_076_link_with_no_space {
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
+
             my $found_text = q{};
             foreach (@links_all) {
 
@@ -5160,12 +5068,12 @@ sub error_077_image_description_with_partial_small {
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
+
             my $found_text = q{};
             foreach (@images_all) {
+
                 my $current_image = $_;
                 if ( $found_text eq '' ) {
-
-                    #print $current_image."\n";
                     if ( $current_image =~
 /<([ ]+)?(\/|\\)?([ ]+)?small([ ]+)?(\/|\\)?([ ]+)?>([ ])?/i
                         and not $current_image =~ /\|([ ]+)?<([ ]+)?small/ )
@@ -5192,6 +5100,7 @@ sub error_078_reference_double {
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
+
             my $test_text      = lc($text);
             my $number_of_refs = 0;
             my $pos_first      = -1;
@@ -5199,7 +5108,6 @@ sub error_078_reference_double {
             while ( $test_text =~ /<references[ ]?\/>/g ) {
                 my $pos = pos($test_text);
 
-                #print $number_of_refs." ".$pos."\n";
                 $number_of_refs++;
                 $pos_first = $pos
                   if ( $pos_first == -1 and $number_of_refs == 1 );
@@ -5207,8 +5115,6 @@ sub error_078_reference_double {
                   if ( $pos_second == -1 and $number_of_refs == 2 );
             }
 
-            #my $pos  = index($test_text, '<references');
-            #my $pos2 = index($test_text, '<references', $pos+1);
             if ( $number_of_refs > 1 ) {
                 $test_text = $text;
                 $test_text =~ s/\n/ /g;
@@ -5234,8 +5140,8 @@ sub error_079_external_link_without_description {
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
-            my $test_text = lc($text);
 
+            my $test_text  = lc($text);
             my $pos        = -1;
             my $found_text = q{};
             while (index( $test_text, '[http://', $pos + 1 ) > -1
@@ -5246,10 +5152,6 @@ sub error_079_external_link_without_description {
                 my $pos2 = index( $test_text, '[ftp://',   $pos + 1 );
                 my $pos3 = index( $test_text, '[https://', $pos + 1 );
 
-                #print 'pos1: '. $pos1."\n";
-                #print 'pos2: '. $pos2."\n";
-                #print 'pos3: '. $pos3."\n";
-
                 my $next_pos = -1;
                 $next_pos = $pos1 if ( $pos1 > -1 );
                 $next_pos = $pos2
@@ -5259,14 +5161,10 @@ sub error_079_external_link_without_description {
                   if ( ( $next_pos == -1 and $pos3 > -1 )
                     or ( $pos3 > -1 and $next_pos > $pos3 ) );
 
-                #print 'next_pos '.$next_pos."\n";
                 my $pos_end = index( $test_text, ']', $next_pos );
 
-                #print 'pos_end '.$pos_end."\n";
                 my $weblink =
                   substr( $text, $next_pos, $pos_end - $next_pos + 1 );
-
-                #print $weblink."\n";
 
                 if ( index( $weblink, ' ' ) == -1 ) {
                     $found_text = $weblink if ( $found_text eq '' );
@@ -5292,8 +5190,8 @@ sub error_080_external_link_with_line_break {
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
-            my $test_text = lc($text);
 
+            my $test_text  = lc($text);
             my $pos        = -1;
             my $found_text = q{};
             while (index( $test_text, '[http://', $pos + 1 ) > -1
@@ -5342,6 +5240,7 @@ sub error_081_ref_double {
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
+
             my $number_of_ref = @ref;
             my $found_text    = q{};
             for ( my $i = 0 ; $i < $number_of_ref - 1 ; $i++ ) {
@@ -5374,6 +5273,7 @@ sub error_082_link_to_other_wikiproject {
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
+
             my $found_text = q{};
             foreach (@links_all) {
 
@@ -5496,6 +5396,7 @@ sub error_085_tag_without_content {
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
+
             my $found_text = q{};
             my $found_pos  = -1;
 
@@ -5539,6 +5440,7 @@ sub error_086_link_with_two_brackets_to_external_source {
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
+
             my $test_text = lc($text);
             if ( $test_text =~ /\[\[\s*(https?:\/\/[^\]:]*)/ ) {
                 error_register( $error_code, $1 );
@@ -5688,6 +5590,7 @@ sub error_089_defaultsort_with_capitalization_in_the_middle_of_the_word {
         {
             my $pos1              = -1;
             my $current_magicword = q{};
+
             foreach ( @{$magicword_defaultsort} ) {
                 if ( $pos1 == -1 and index( $text, $_ ) > -1 ) {
                     $pos1 = index( $text, $_ );
@@ -5698,12 +5601,9 @@ sub error_089_defaultsort_with_capitalization_in_the_middle_of_the_word {
                 my $pos2 = index( substr( $text, $pos1 ), '}}' );
                 my $testtext = substr( $text, $pos1, $pos2 );
 
-                #print $testtext."\n";
                 my $sortkey = $testtext;
                 $sortkey =~ s/^([ ]+)?$current_magicword//;
                 $sortkey =~ s/^([ ]+)?://;
-
-                #print '-'.$sortkey."-\n";
 
                 if ( $sortkey =~ /[a-z][A-Z]/ ) {
                     my $found_text = $testtext;
@@ -5744,12 +5644,9 @@ sub error_090_defaultsort_with_lowercase_letters {
                 my $pos2 = index( substr( $text, $pos1 ), '}}' );
                 my $testtext = substr( $text, $pos1, $pos2 );
 
-                #print $testtext."\n";
                 my $sortkey = $testtext;
                 $sortkey =~ s/^([ ]+)?$current_magicword//;
                 $sortkey =~ s/^([ ]+)?://;
-
-                #print '-'.$sortkey."-\n";
 
                 if ( $sortkey =~ /[ -][a-z]/ ) {
                     my $found_text = $testtext;
@@ -6021,7 +5918,7 @@ my @Options = (
     'user|u=s'     => \$DbUsername,
     'dumpfile=s'   => \$DumpFilename,
     'tt-file=s'    => \$TTFilename,
-    'check'        => \$CheckOnlyOne
+    'check'        => \$CheckOnlyOne,
 );
 
 if (
@@ -6036,7 +5933,7 @@ if (
               GetOptionsFromString( $s, @Options );
             die unless ( $Success && !@$RemainingArgs );
         },
-        @Options
+        @Options,
     )
     || defined($DumpFilename) != defined($TTFilename)
   )
