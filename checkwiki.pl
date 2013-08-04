@@ -885,10 +885,14 @@ Verlag LANGEWIESCHE, ISBN-10: 3784551912 und ISBN-13: 9783784551913
     # CREATES @ref - USED IN #81
     get_ref();
 
-    # DOES TEMPLATETIGER.
-    # CREATES @templates_all - USED IN #59, #60
+    # CREATES @templates_all - USED IN #12, #31
     # CALLS #43
-    get_templates();
+    get_templates_all();
+
+    # DOES TEMPLATETIGER
+    # USES @templates_all
+    # CREATES @template - USED IN #59, #60
+    get_template();
 
     # CREATES @links_all & @images_all - USED IN #68, #74, #76, #82
     # CALLS #10
@@ -907,13 +911,13 @@ Verlag LANGEWIESCHE, ISBN-10: 3784551912 und ISBN-13: 9783784551913
     # CREATES @interwiki - USED IN #45, #51, #53
     get_interwikis();
 
-    # CREATES @lines - ARRAY CONTAINING INDIVIDUAL LINES FROM $text
-    # USED IN #02, #09, #12, #26, #31, #32, #34, #38, #39, #40-#42, #54 and #75
+    # CREATES @lines
+    # USED IN #02, #09, #26, #32, #34, #38, #39, #40-#42, #54,  #75
     create_line_array();
 
     # CREATES @headlines
     # USES @lines
-    # USED IN #07, #08, #25, #44, #51, #52, #57, #58, #62, #83, #84 and #92
+    # USED IN #07, #08, #25, #44, #51, #52, #57, #58, #62, #83, #84, #92
     get_headlines();
 
     # EXCEPT FOR get_* THAT REMOVES TAGS FROM $text, FOLLOWING DON'T NEED
@@ -1220,27 +1224,18 @@ sub get_isbn {
         while ( $text_test =~ /ISBN([ ]|[-]|[=])/g ) {
             my $pos_start = pos($text_test) - 5;
 
-            #print "\n\n";
-            #print $pos_start."\n";
             my $current_isbn = substr( $text_test, $pos_start );
-
             my $output_isbn = substr( $current_isbn, 0, 50 );
             $output_isbn =~ s/\n/ /g;
-
-            #print $output_isbn."\n";
 
             my $result_isbn = q{};
             my $i           = -1;
             my $finish      = 'no';
 
-            #print 'isbn: '."\t".$current_isbn."\n";
-
-            # \tab
             $current_isbn =~ s/\t/ /;
 
             if ( $current_isbn =~ /^([ ]+)?ISBN=([ ]+)?/ ) {
 
-                #print 'ISBN in Link'."\n";
                 # ISBN = 01234566 in templates
                 $current_isbn =~ s/^([ ]+)?ISBN([ ]+)?=([ ]+)?/ /;
 
@@ -1249,8 +1244,6 @@ sub get_isbn {
                 my $pos_open  = index( $current_isbn, '[' );
                 my $pos_close = index( $current_isbn, ']' );
 
-                #print $pos_open."\n";
-                #print $pos_close."\n";
                 if (
                     ( $pos_open == -1 and $pos_close > -1 )
                     or (    $pos_open > -1
@@ -1258,8 +1251,6 @@ sub get_isbn {
                         and $pos_open > $pos_close )
                   )
                 {
-# [[nl:Michel_Schooyans]] - [http://www.dehoniane.it/edb/cat_dettaglio.php?ISBN=24109]
-#print "\t".'Get ISBN: ISBN in Link: '."\t"."\n";
                     $current_isbn = 'ISBN';
                 }
             }
@@ -1268,21 +1259,14 @@ sub get_isbn {
 
                 # text "ISBN-number"
                 # text "ISBN-bureau"
-                #print "\t".'Get ISBN: ISBN with Minus'."\t"."\n";
                 $current_isbn = 'ISBN';
             }
 
-            #print "\t".'Get ISBN 2: '."\t".substr($current_isbn, 0, 45)."\n";
             my $pos_next_ISBN = index( $current_isbn, 'ISBN', 4 );
             if ( $pos_next_ISBN > -1 ) {
-
-#many ISBN behind the first ISBN
-# "ISBN 1-883319-85-4 ISBN 0-7567-5698-7 ISBN 0-8264-1258-0 ISBN 0-8264-1415-X")
                 $current_isbn = substr( $current_isbn, 0, $pos_next_ISBN );
             }
             $current_isbn =~ s/ISBN//g;
-
-            #print "\t".'Get ISBN 2b: '."\t".substr($current_isbn, 0, 45)."\n";
 
             do {
                 $i++;
@@ -1307,7 +1291,6 @@ sub get_isbn {
                 $result_isbn =~ s/^([ ]+)?//g;
                 $result_isbn =~ s/([ ]+)?$//g;
 
-                #print "\t".'Get ISBN 2: '."\t".$result_isbn."\n";
                 push( @isbn, $result_isbn );
                 check_isbn($result_isbn);
             }
@@ -1324,15 +1307,12 @@ sub get_isbn {
 sub check_isbn {
     my ($current_isbn) = @_;
 
-    #print 'check: '."\t".$current_isbn."\n";
-    # length
     my $test_isbn = $current_isbn;
 
     $test_isbn =~ s/^([ ]+)?//g;
     $test_isbn =~ s/([ ]+)?$//g;
     $test_isbn =~ s/[ ]//g;
 
-    #print "\t".'Check ISBN 1: '."\t_".$test_isbn."_\n";
     my $result = 'yes';
 
     # length of isbn
@@ -1347,15 +1327,12 @@ sub check_isbn {
 
     $test_isbn =~ s/-//g;
 
-    #print "\t".'Check ISBN 2: '."\t_".$test_isbn."_\n";
-
     # wrong position of X
     if ( $result eq 'yes' ) {
         $test_isbn =~ s/x/X/g;
         if ( index( $test_isbn, 'X' ) > -1 ) {
 
             # ISBN with X
-            #print "\t".'Check ISBN X: '."\t_".$test_isbn."_\n";
             if ( index( $test_isbn, 'X' ) != 9 ) {
 
                 # ISBN 123456X890
@@ -1367,8 +1344,6 @@ sub check_isbn {
             {
                 # ISBN 123451678XXXX b
                 $test_isbn = substr( $test_isbn, 0, 10 );
-
-                #print "\t".'Check ISBN X reduce length: '.$test_isbn."\n";
             }
         }
     }
@@ -1397,11 +1372,9 @@ sub check_isbn {
             $checksum = $checksum + 1 * substr( $test_isbn, 10, 1 );
             $checksum = $checksum + 3 * substr( $test_isbn, 11, 1 );
 
-            #print 'Checksum: '."\t".$checksum."\n";
             my $checker = 10 - substr( $checksum, length($checksum) - 1, 1 );
             $checker = 0 if ( $checker == 10 );
 
-            #print $checker."\n";
             if ( $checker eq substr( $test_isbn, 12, 1 ) ) {
                 $check_13 = 'ok';
             }
@@ -1431,10 +1404,8 @@ sub check_isbn {
             $checksum = $checksum + 8 * substr( $test_isbn, 7, 1 );
             $checksum = $checksum + 9 * substr( $test_isbn, 8, 1 );
 
-            #print 'Checksum: '."\t".$checksum."\n";
             my $checker = $checksum % 11;
 
-            #print $checker."\n";
             if (   ( $checker < 10 and $checker ne substr( $test_isbn, 9, 1 ) )
                 or ( $checker == 10 and 'X' ne substr( $test_isbn, 9, 1 ) ) )
             {
@@ -1483,11 +1454,52 @@ sub check_isbn {
         }
     }
 
-    #if ($result eq 'yes') {
-    #	print "\t".'Check ISBN: all ok!'."\n";
-    #} else {
-    #	print "\t".'Check ISBN: wrong ISBN!'."\n";
-    #}
+    return ();
+}
+
+###########################################################################
+##
+###########################################################################
+
+sub get_templates_all {
+
+    my $pos_start = 0;
+    my $pos_end   = 0;
+    my $text_test = $text;
+
+    $text_test =~ s/\n//g;    # Delete all breaks     --> only one line
+    $text_test =~ s/\t//g;    # Delete all tabulator  --> better for output
+
+    while ( $text_test =~ /\{\{/g ) {
+
+        $pos_start = pos($text_test) - 2;
+        my $temp_text      = substr( $text_test, $pos_start );
+        my $temp_text_2    = q{};
+        my $brackets_begin = 1;
+        my $brackets_end   = 0;
+        while ( $temp_text =~ /\}\}/g ) {
+
+            # Find currect end - number of {{ == }}
+            $pos_end = pos($temp_text);
+            $temp_text_2 = q{ } . substr( $temp_text, 0, $pos_end ) . q{ };
+
+            # Test the number of {{ and  }}
+            $brackets_begin = ( $temp_text_2 =~ tr/{{/{{/ );
+            $brackets_end   = ( $temp_text_2 =~ tr/}}/}}/ );
+
+            last if ( $brackets_begin == $brackets_end );
+        }
+
+        if ( $brackets_begin == $brackets_end ) {
+
+            # Demplate is correct
+            $temp_text_2 = substr( $temp_text_2, 1, length($temp_text_2) - 2 );
+            push( @templates_all, $temp_text_2 );
+        }
+        else {
+            error_043_template_no_correct_end( substr( $temp_text, 0, 40 ) );
+        }
+    }
 
     return ();
 }
@@ -1496,66 +1508,7 @@ sub check_isbn {
 ##
 ###########################################################################
 
-sub get_templates {
-
-    # filter all templates
-    my $pos_start = 0;
-    my $pos_end   = 0;
-
-    my $text_test = $text;
-
-#$text_test = 'abc{{Huhu|name=1|otto=|die=23|wert=as|wertA=[[Dresden|Pesterwitz]] Mein|wertB=1234}}
-#{{ISD|123}}  {{ESD {{Test|dfgvb}}|123}} {{tzu}} {{poil|ert{{eret|er}}|qwezh}} {{xtesxt} und außerdem
-#{{Frerd|qwer=0|asd={{mytedfg|poil={{1234|12334}}}}|fgh=123}} und {{mnb|jkl=12|fgh=78|cvb=4567} Ende.';
-
-    #print $text_test ."\n\n\n";
-
-    $text_test =~ s/\n//g;    # delete all breaks  --> only one line
-    $text_test =~ s/\t//g;    # delete all tabulator  --> better for output
-    @templates_all = ();
-
-    while ( $text_test =~ /\{\{/g ) {
-
-        #Begin of template
-        $pos_start = pos($text_test) - 2;
-        my $temp_text             = substr( $text_test, $pos_start );
-        my $temp_text_2           = q{};
-        my $beginn_curly_brackets = 1;
-        my $end_curly_brackets    = 0;
-        while ( $temp_text =~ /\}\}/g ) {
-
-            # Find currect end - number of {{ == }}
-            $pos_end     = pos($temp_text);
-            $temp_text_2 = substr( $temp_text, 0, $pos_end );
-            $temp_text_2 = ' ' . $temp_text_2 . ' ';
-
-            #print $temp_text_2."\n";
-
-            # test the number of {{ and  }}
-            my $temp_text_2_a = $temp_text_2;
-            $beginn_curly_brackets = ( $temp_text_2_a =~ s/\{\{//g );
-            my $temp_text_2_b = $temp_text_2;
-            $end_curly_brackets = ( $temp_text_2_b =~ s/\}\}//g );
-
-            #print $beginn_curly_brackets .' vs. '.$end_curly_brackets."\n";
-            last if ( $beginn_curly_brackets eq $end_curly_brackets );
-        }
-
-        if ( $beginn_curly_brackets == $end_curly_brackets ) {
-
-            # template is correct
-            $temp_text_2 = substr( $temp_text_2, 1, length($temp_text_2) - 2 );
-
-           #print 'Template:'.$temp_text_2."\n" if ($details_for_page eq 'yes');
-            push( @templates_all, $temp_text_2 );
-        }
-        else {
-            # template has no correct end
-            error_043_template_no_correct_end( substr( $temp_text, 0, 40 ) );
-
-            #print 'Error: '.$title.' '.$temp_text."\n";
-        }
-    }
+sub get_template {
 
     # extract for each template all attributes and values
     my $number_of_templates   = -1;
@@ -1564,7 +1517,6 @@ sub get_templates {
     foreach (@templates_all) {
         my $current_template = $_;
 
-        #print 'Current templat:_'.$current_template."_\n";
         $current_template =~ s/^\{\{//;
         $current_template =~ s/\}\}$//;
         $current_template =~ s/^ //g;
@@ -1573,7 +1525,7 @@ sub get_templates {
             $current_template =~ s/^$_://i;
         }
 
-        $number_of_templates = $number_of_templates + 1;
+        $number_of_templates = $number_of_templates++;
         my $template_name = q{};
 
         my @template_split = split( /\|/, $current_template );
@@ -1594,22 +1546,11 @@ sub get_templates {
             $template_split[0] =~ s/^ //g;
             $template_name = $template_split[0];
 
-            #print 'Template name: '.$template_name."\n";
             if ( index( $template_name, '_' ) > -1 ) {
-
-                #print $title."\n";
-                #print 'Template name: '.$template_name."\n";
                 $template_name =~ s/_/ /g;
-
-                #print 'Template name: '.$template_name."\n";
             }
             if ( index( $template_name, '  ' ) > -1 ) {
-
-                #print $title."\n";
-                #print 'Template name: '.$template_name."\n";
                 $template_name =~ s/  / /g;
-
-                #print 'Template name: '.$template_name."\n";
             }
 
             shift(@template_split);
@@ -1622,32 +1563,15 @@ sub get_templates {
             foreach (@template_split) {
                 $template_part = $template_part . $_;
 
-                #print "\t" . 'Test this templatepart: ' . $template_part . "\n"
-                #  if ( $details_for_page eq 'yes' );
-
                 # check for []
-                my $template_part1 = $template_part;
-                my $beginn_brackets = ( $template_part1 =~ s/\[\[//g );
-
-                #print "\t\t1 ".$beginn_brackets."\n";
-
-                my $template_part2 = $template_part;
-                my $end_brackets = ( $template_part2 =~ s/\]\]//g );
-
-                #print "\t\t2 ".$end_brackets."\n";
+                my $beginn_brackets = ( $template_part =~ tr/[[/[[/ );
+                my $end_brackets    = ( $template_part =~ tr/]]/]]/ );
 
                 #check for {}
-                my $template_part3 = $template_part;
-                my $beginn_curly_brackets = ( $template_part3 =~ s/\{\{//g );
+                my $beginn_curly_brackets = ( $template_part =~ tr/{{/{{/ );
+                my $end_curly_brackets    = ( $template_part =~ tr/}}/}}/ );
 
-                #print "\t\t3 ".$beginn_curly_brackets."\n";
-
-                my $template_part4 = $template_part;
-                my $end_curly_brackets = ( $template_part4 =~ s/\}\}//g );
-
-                #print "\t\t4 ".$end_curly_brackets."\n";
-
-                # templet part complete ?
+                # template part complete ?
                 if (    $beginn_brackets eq $end_brackets
                     and $beginn_curly_brackets eq $end_curly_brackets )
                 {
@@ -1668,10 +1592,8 @@ sub get_templates {
             foreach (@template_part_array) {
                 $template_part = $_;
 
-                #print "\t\t".'Template part: '.$_."\n";
-
-                $template_part_number  = $template_part_number + 1;
-                $template_part_counter = $template_part_counter + 1;
+                $template_part_number++;
+                $template_part_counter++;
 
                 $template_name =~ s/^[ ]+//g;
                 $template_name =~ s/[ ]+$//g;
@@ -1734,13 +1656,10 @@ sub get_templates {
                 $value    =~ s/^[ ]+//g;
                 $value    =~ s/[ ]+$//g;
 
-           #print 'x'.$attribut."x\tx".$value."x\n" ;#if ($title eq 'Methanol');
                 $template[$template_part_counter][3] = $attribut;
                 $template[$template_part_counter][4] = $value;
 
                 $number_of_template_parts = $number_of_template_parts + 1;
-
-                #print $number_of_template_parts."\n";
 
                 $output .= $title . "\t";
                 $output .= $template[$template_part_counter][0] . "\t";
@@ -1748,19 +1667,9 @@ sub get_templates {
                 $output .= $template[$template_part_counter][2] . "\t";
                 $output .= $template[$template_part_counter][3] . "\t";
                 $output .= $template[$template_part_counter][4] . "\n";
-
-                #print $output."\n"  if ($title eq 'Methanol');
             }
-
         }
-
-        #print "\n";
-        # OUTPUT If all templates {{xy}} and {{xy|value}}
-
     }
-
-    #print $output."\n"  if ($title eq 'Methanol');
-    #print $page_namespace."\n"  if ($title eq 'Methanol');
 
     # Output for TemplateTiger
     if (
@@ -1790,7 +1699,6 @@ sub get_links {
     my $text_test = $text;
 
     $text_test =~ s/\n//g;
-    undef(@links_all);
 
     while ( $text_test =~ /\[\[/g ) {
 
@@ -1805,9 +1713,9 @@ sub get_links {
             $pos_end = pos($link_text);
             $link_text_2 = q{ } . substr( $link_text, 0, $pos_end ) . q{ };
 
-            # test the number of [[ and ]]
-            $brackets_begin = ( $link_text_2 =~ tr/[[// );
-            $brackets_end   = ( $link_text_2 =~ tr/]]// );
+            # Test the number of [[ and ]]
+            $brackets_begin = ( $link_text_2 =~ tr/[[/[[/ );
+            $brackets_end   = ( $link_text_2 =~ tr/]]/]]/ );
 
             last if ( $brackets_begin == $brackets_end );
         }
@@ -1843,123 +1751,93 @@ sub get_images {
 
         my $test_image = $current_image;
 
-        #print '1:'."\t".$test_image."\n";
         foreach (@magicword_img_thumbnail) {
             my $current_magicword = $_;
 
-            #print $current_magicword."\n";
             $test_image =~ s/\|([ ]?)+$current_magicword([ ]?)+(\||\])/$3/i;
         }
 
-        #print '2:'."\t".$test_image."\n";
         foreach (@magicword_img_right) {
             my $current_magicword = $_;
 
-            #print $current_magicword."\n";
             $test_image =~ s/\|([ ]?)+$current_magicword([ ]?)+(\||\])/$3/i;
         }
 
-        #print '3:'."\t".$test_image."\n";
         foreach (@magicword_img_left) {
             my $current_magicword = $_;
 
-            #print $current_magicword."\n";
             $test_image =~ s/\|([ ]?)+$current_magicword([ ]?)+(\||\])/$3/i;
         }
 
-        #print '4:'."\t".$test_image."\n";
         foreach (@magicword_img_none) {
             my $current_magicword = $_;
 
-            #print $current_magicword."\n";
             $test_image =~ s/\|([ ]?)+$current_magicword([ ]?)+(\||\])/$3/i;
         }
 
-        #print '5:'."\t".$test_image."\n";
         foreach (@magicword_img_center) {
             my $current_magicword = $_;
 
-            #print $current_magicword."\n";
             $test_image =~ s/\|([ ]?)+$current_magicword([ ]?)+(\||\])/$3/i;
         }
 
-        #print '6:'."\t".$test_image."\n";
         foreach (@magicword_img_framed) {
             my $current_magicword = $_;
 
-            #print $current_magicword."\n";
             $test_image =~ s/\|([ ]?)+$current_magicword([ ]?)+(\||\])/$3/i;
         }
 
-        #print '7:'."\t".$test_image."\n";
         foreach (@magicword_img_frameless) {
             my $current_magicword = $_;
 
-            #print $current_magicword."\n";
             $test_image =~ s/\|([ ]?)+$current_magicword([ ]?)+(\||\])/$3/i;
         }
 
-        #print '8:'."\t".$test_image."\n";
         foreach (@magicword_img_border) {
             my $current_magicword = $_;
 
-            #print $current_magicword."\n";
             $test_image =~ s/\|([ ]?)+$current_magicword([ ]?)+(\||\])/$3/i;
         }
 
-        #print '9:'."\t".$test_image."\n";
         foreach (@magicword_img_sub) {
             my $current_magicword = $_;
 
-            #print $current_magicword."\n";
             $test_image =~ s/\|([ ]?)+$current_magicword([ ]?)+(\||\])/$3/i;
         }
 
-        #print '10:'."\t".$test_image."\n";
         foreach (@magicword_img_super) {
             my $current_magicword = $_;
 
-            #print $current_magicword."\n";
             $test_image =~ s/\|([ ]?)+$current_magicword([ ]?)+(\||\])/$3/i;
         }
 
-        #print '11:'."\t".$test_image."\n";
         foreach (@magicword_img_baseline) {
             my $current_magicword = $_;
 
-            #print $current_magicword."\n";
             $test_image =~ s/\|([ ]?)+$current_magicword([ ]?)+(\||\])/$3/i;
         }
 
-        #print '12:'."\t".$test_image."\n";
         foreach (@magicword_img_top) {
             my $current_magicword = $_;
 
-            #print $current_magicword."\n";
             $test_image =~ s/\|([ ]?)+$current_magicword([ ]?)+(\||\])/$3/i;
         }
 
-        #print '13:'."\t".$test_image."\n";
         foreach (@magicword_img_text_top) {
             my $current_magicword = $_;
 
-            #print $current_magicword."\n";
             $test_image =~ s/\|([ ]?)+$current_magicword([ ]?)+(\||\])/$3/i;
         }
 
-        #print '14:'."\t".$test_image."\n";
         foreach (@magicword_img_middle) {
             my $current_magicword = $_;
 
-            #print $current_magicword."\n";
             $test_image =~ s/\|([ ]?)+$current_magicword([ ]?)+(\||\])/$3/i;
         }
 
-        #print '15:'."\t".$test_image."\n";
         foreach (@magicword_img_bottom) {
             my $current_magicword = $_;
 
-            #print $current_magicword."\n";
             $test_image =~ s/\|([ ]?)+$current_magicword([ ]?)+(\||\])/$3/i;
         }
 
@@ -1989,15 +1867,11 @@ sub get_images {
                 my $pos_1 = index( $test_image, '|' );
                 my $pos_2 = index( $test_image, '|', $pos_1 + 1 );
 
-                #print '1:'."\t".$pos_1."\n";
-                #print '2:'."\t".$pos_2."\n";
                 if ( $pos_2 == -1
                     and index( $test_image, '|]' ) > -1 )
                 {
                     # [[Image:Afriga3.svg|]]
                     $found_error_text = $current_image;
-
-                    #print 'Error'."\n";
                 }
             }
         }
@@ -2015,35 +1889,27 @@ sub get_images {
 
 sub get_ref {
 
-    undef(@ref);
     my $pos_start_old = 0;
     my $pos_end_old   = 0;
-    my $end_search    = 'yes';
-    do {
+    my $end_search    = 0;
+
+    while ( $end_search == 0 ) {
         my $pos_start = 0;
         my $pos_end   = 0;
-        $end_search = 'yes';
+        $end_search = 1;
 
         $pos_start = index( $text, '<ref>',  $pos_start_old );
         $pos_end   = index( $text, '</ref>', $pos_start );
 
         if ( $pos_start > -1 and $pos_end > -1 ) {
 
-            $pos_end = $pos_end + length('</ref>');
-
-            #print substr($text, $pos_start, $pos_end - $pos_start  )."\n";
-
-            $end_search    = 'no';
+            $pos_end       = $pos_end + length('</ref>');
+            $end_search    = 0;
             $pos_start_old = $pos_end;
 
-            #print $pos_start." ".$pos_end."\n";
-            my $new_ref = substr( $text, $pos_start, $pos_end - $pos_start );
-
-            #print $new_ref."\n";
-            push( @ref, $new_ref );
+            push( @ref, substr( $text, $pos_start, $pos_end - $pos_start ) );
         }
-
-    } until ( $end_search eq 'yes' );
+    }
 
     return ();
 }
@@ -2054,7 +1920,6 @@ sub get_ref {
 
 sub check_for_redirect {
 
-    # is this page a redirect?
     if ( index( lc($text), '#redirect' ) > -1 ) {
         $page_is_redirect = 'yes';
     }
@@ -2068,99 +1933,48 @@ sub check_for_redirect {
 
 sub get_categories {
 
-    # search for categories in this page
-    # save comments in Array
-    # replace comments with space
-    #print 'get categories'."\n";
-
     foreach (@namespace_cat) {
 
         my $namespace_cat_word = $_;
+        my $pos_start          = 0;
+        my $pos_end            = 0;
+        my $counter            = 0;
+        my $text_test          = $text;
+        my $search_word        = $namespace_cat_word;
 
-        #print "namespace_cat_word:".$namespace_cat_word."x\n";
-
-        my $pos_start = 0;
-        my $pos_end   = 0;
-
-        my $text_test = $text;
-
-        my $search_word = $namespace_cat_word;
         while ( $text_test =~ /\[\[([ ]+)?($search_word:)/ig ) {
-            $pos_start = pos($text_test) - length($search_word) - 1;
-
+            my $pos_start = pos($text_test) - length($search_word) - 1;
             $pos_end = index( $text_test, ']]', $pos_start );
-
-            my $counter_begin = 0;
-            do {
-                $pos_start     = $pos_start - 1;
-                $counter_begin = $counter_begin + 1
-                  if ( substr( $text_test, $pos_start, 1 ) eq '[' );
-            } until ( $counter_begin == 2 );
-
-            #print $namespace_cat."\n";
-            #print $pos_start."\n";
-            #print $pos_end."\n";
+            $pos_start = $pos_start - 2;
 
             if ( $pos_start > -1 and $pos_end > -1 ) {
 
-                #found a comment in current page
-                $pos_end                        = $pos_end + length(']]');
-                $category_counter               = $category_counter + 1;
-                $category[$category_counter][0] = $pos_start;
-                $category[$category_counter][1] = $pos_end;
-                $category[$category_counter][2] = q{};
-                $category[$category_counter][3] = q{};
-                $category[$category_counter][4] =
+                $counter               = ++$category_counter;
+                $pos_end               = $pos_end + 2;
+                $category[$counter][0] = $pos_start;
+                $category[$counter][1] = $pos_end;
+                $category[$counter][4] =
                   substr( $text_test, $pos_start, $pos_end - $pos_start );
+                $category[$counter][2] = $category[$counter][4];
+                $category[$counter][3] = $category[$counter][4];
 
-     #print $category[$category_counter][4]."\n";# if ($title eq 'Alain Delon');
-
-                #replace comment with space
-                #my $text_before = substr( $text, 0, $pos_start );
-                #my $text_after  = substr( $text, $pos_end );
-                #my $filler = q{};
-                #for (my $i = 0; $i < ($pos_end-$pos_start); $i++) {
-                # 		$filler = $filler.' ';
-                #}
-                #$text = $text_before.$filler.$text_after;
-
-                #filter catname
-                $category[$category_counter][2] =
-                  $category[$category_counter][4];
-                $category[$category_counter][2] =~ s/\[\[//g;    #delete space
-                $category[$category_counter][2] =~
-                  s/^([ ]+)?//g;    #delete blank before text
-                $category[$category_counter][2] =~ s/\]\]//g;    #delete ]]
-                $category[$category_counter][2] =~
-                  s/^$namespace_cat_word//i;                     #delete ]]
-                $category[$category_counter][2] =~ s/^://;       #delete ]]
-                $category[$category_counter][2] =~ s/\|(.)*//g;  #delete |xy
-                  #$category[$category_counter][2] =~ s/^(.)*://i;	#delete [[category:
-                $category[$category_counter][2] =~
-                  s/^ //g;    #delete blank before text
-                $category[$category_counter][2] =~
-                  s/ $//g;    #delete blank after text
+                $category[$counter][2] =~ s/\[\[//g;        # Delete [[
+                $category[$counter][2] =~ s/^([ ]+)?//g;    # Delete blank
+                $category[$counter][2] =~ s/\]\]//g;        # Delete ]]
+                $category[$counter][2] =~ s/^$namespace_cat_word//i;
+                $category[$counter][2] =~ s/^://;                   # Delete :
+                $category[$counter][2] =~ s/\|(.)*//g;              # Delete |xy
+                $category[$counter][2] =~ s/^ //g;    # Delete blank
+                $category[$counter][2] =~ s/ $//g;    # Delete blank
 
                 #filter linkname
-                $category[$category_counter][3] =
-                  $category[$category_counter][4];
-                $category[$category_counter][3] = q{}
-                  if ( index( $category[$category_counter][3], '|' ) == -1 );
-                $category[$category_counter][3] =~
-                  s/^(.)*\|//gi;    #delete [[category:xy|
-                $category[$category_counter][3] =~ s/\]\]//g;    #delete ]]
-                $category[$category_counter][3] =~
-                  s/^ //g;    #delete blank before text
-                $category[$category_counter][3] =~
-                  s/ $//g;    #delete blank after text
+                $category[$counter][3] = q{}
+                  if ( index( $category[$counter][3], '|' ) == -1 );
+                $category[$counter][3] =~ s/^(.)*\|//gi; # Delete [[category:xy|
+                $category[$counter][3] =~ s/\]\]//g;     # Delete ]]
+                $category[$counter][3] =~ s/^ //g;       # Delete blank
+                $category[$counter][3] =~ s/ $//g;       # Delete blank
 
-#if ($title eq 'Alain Delon') {
-#print "\t".'Begin='.$category[$category_counter][0].' End='.$category[$category_counter][1]."\n";
-#print "\t".'catname=' .$category[$category_counter][2]."\n";
-#print "\t".'linkname='.$category[$category_counter][3]."\n";
-#print "\t".'full cat='.$category[$category_counter][4]."\n";
-
-                #}
             }
         }
     }
@@ -2181,16 +1995,19 @@ sub get_interwikis {
             my $current_lang = $_;
             my $pos_start    = 0;
             my $pos_end      = 0;
+            my $counter      = 0;
             my $test_text    = $text;
             my $search_word  = $current_lang;
 
             while ( $test_text =~ /\[\[$search_word:/ig ) {
-                $pos_start = pos($test_text) - length($search_word) - 3;
-                $pos_end = index( $test_text, ']]', $pos_start ) + 4;
+                $pos_start = pos($test_text) - length($search_word) - 1;
+                $pos_end   = index( $test_text, ']]', $pos_start );
+                $pos_start = $pos_start - 2;
 
                 if ( $pos_start > -1 and $pos_end > -1 ) {
 
-                    my $counter = ++$interwiki_counter;
+                    $counter                = ++$interwiki_counter;
+                    $pos_end                = $pos_end + 2;
                     $interwiki[$counter][0] = $pos_start;
                     $interwiki[$counter][1] = $pos_end;
                     $interwiki[$counter][4] =
@@ -2199,7 +2016,7 @@ sub get_interwikis {
                     $interwiki[$counter][2] = $interwiki[$counter][4];
                     $interwiki[$counter][3] = $interwiki[$counter][4];
 
-                    $interwiki[$counter][2] =~ tr/]]//d;        # Delete ]]
+                    $interwiki[$counter][2] =~ s/\]\]//g;       # Delete ]]
                     $interwiki[$counter][2] =~ s/\|(.)*//g;     # Delete |xy
                     $interwiki[$counter][2] =~ s/^(.)*://gi;    # Delete [[xx:
                     $interwiki[$counter][2] =~ s/^ //g;         # Delete blank
@@ -2210,7 +2027,7 @@ sub get_interwikis {
                     }
 
                     $interwiki[$counter][3] =~ s/^(.)*\|//gi;
-                    $interwiki[$counter][3] =~ tr/]]//d;
+                    $interwiki[$counter][3] =~ s/\]\]//g;
                     $interwiki[$counter][3] =~ s/^ //g;
                     $interwiki[$counter][3] =~ s/ $//g;
                 }
@@ -2254,7 +2071,7 @@ sub get_headlines {
 
 sub error_check {
     if ( $CheckOnlyOne > 0 ) {
-        error_063_html_text_style_elements_small_ref_sub_sup();
+        error_075_indented_list();
     }
     else {
         #error_001_no_bold_title();                        # DEACTIVATED
@@ -2615,8 +2432,8 @@ sub error_006_defaultsort_with_special_letters {
                 $test_text =~ s/[-:,\.\/\(\)0-9 A-Za-z!\?']//g;
 
                 # Too many to figure out what is right or not
-                $test_text =~ tr/#//d;
-                $test_text =~ tr/+//d;
+                $test_text =~ s/#//g;
+                $test_text =~ s/\+//g;
 
                 if ( $project eq 'svwiki' ) {
                     $test_text =~ s/[ÅÄÖåäö]//g;
@@ -3569,15 +3386,15 @@ sub error_037_title_with_special_letters_and_no_defaultsort {
                 }
 
                 # Titles such as 'Madonna (singer)' are OK
-                $test_title =~ tr/(//d;
-                $test_title =~ tr/)//d;
+                $test_title =~ s/\(//g;
+                $test_title =~ s/\)//g;
 
                 # Remove ok letters
                 $test_title =~ s/[-:,\.\/0-9 A-Za-z!\?']//g;
 
                 # Too many to figure out what is right or not
-                $test_title =~ tr/#//d;
-                $test_title =~ tr/+//d;
+                $test_title =~ s/#//g;
+                $test_title =~ s/\+//g;
 
                 if ( $project eq 'svwiki' ) {
                     $test_title =~ s/[ÅÄÖåäö]//g;
@@ -4343,8 +4160,9 @@ sub error_059_template_value_end_with_br {
             my $found_text = q{};
             foreach my $i ( 0 .. $number_of_template_parts ) {
 
-                if ( $template[$i][4] =~
-                        /<br([ ]+)?(\/)?([ ]+)?>([ ])?([ ])?$/ ) {
+                if (
+                    $template[$i][4] =~ /<br([ ]+)?(\/)?([ ]+)?>([ ])?([ ])?$/ )
+                {
                     if ( $found_text eq q{} ) {
                         $found_text =
                           $template[$i][3] . '=...'
@@ -4490,7 +4308,7 @@ sub error_062_headline_alone {
                             }
                         }
 
-                        if (    $found_txt eq q{} 
+                        if (    $found_txt eq q{}
                             and $found_same_level eq 'no' )
                         {
                             # found alone text
@@ -4592,7 +4410,6 @@ sub error_065_image_description_with_break {
 
                 if ( $_ =~ /<br([ ]+)?(\/)?([ ]+)?>([ ])?(\||\])/i ) {
                     if ( $found_text eq '' ) {
-                    {
                         $found_text = $_;
                     }
                 }
@@ -4619,10 +4436,10 @@ sub error_066_image_description_with_full_small {
             my $found_text = q{};
             foreach (@images_all) {
 
-                if ( $_ =~ /<small([ ]+)?(\/)?([ ]+)?>([ ])?(\||\])/i
-                        and $current_image =~ /\|([ ]+)?<small/ )
+                if (    $_ =~ /<small([ ]+)?(\/)?([ ]+)?>([ ])?(\||\])/i
+                    and $_ =~ /\|([ ]+)?<small/i )
+                {
                     if ( $found_text eq q{} ) {
-                    {
                         $found_text = $_;
                     }
                 }
@@ -4748,7 +4565,7 @@ sub error_072_isbn_10_wrong_checksum {
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( ( $page_namespace == 0 or $page_namespace == 104 )
-            and $found_text ne '' )
+            and $found_text ne q{} )
         {
             error_register( $error_code, $found_text );
         }
@@ -4767,7 +4584,7 @@ sub error_073_isbn_13_wrong_checksum {
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( ( $page_namespace == 0 or $page_namespace == 104 )
-            and $found_text ne '' )
+            and $found_text ne q{} )
         {
             error_register( $error_code, $found_text );
         }
@@ -4790,14 +4607,14 @@ sub error_074_link_with_no_target {
             foreach (@links_all) {
 
                 # check all links
-                if ( $found_text eq '' ) {
+                if ( $found_text eq q{} ) {
                     my $current_link = $_;
                     if ( index( $current_link, '[[|' ) > -1 ) {
                         $found_text = $current_link;
                     }
                 }
             }
-            if ( $found_text ne '' ) {
+            if ( $found_text ne q{} ) {
                 error_register( $error_code, $found_text );
             }
         }
@@ -4823,17 +4640,17 @@ sub error_075_indented_list {
             foreach (@lines) {
                 $test_text = substr( $_, 0, 2 );
 
-                if ( $test_text =~ /^\*/ or $test_text =~ /^#/ ) {
+                if ( index( $_, q{*} ) == 0 or index( $_, q{#} ) == 0 ) {
                     $list = 1;
                 }
                 elsif ( $list == 1
-                    and ( $test_text ne q{} and $test_text !~ /^:/ ) )
+                    and ( $_ ne q{} and index( $_, q{:} ) != 0 ) )
                 {
                     $list = 0;
                 }
 
                 if ( $list == 1
-                    and ( $test_text eq ':*' or $test_text eq ':#' ) )
+                    and ( index( $_, ':*' ) == 0 or index( $_, ':#' ) == 0 ) )
                 {
                     error_register( $error_code, substr( $_, 0, 40 ) );
                 }
@@ -4857,15 +4674,13 @@ sub error_076_link_with_no_space {
             my $found_text = q{};
             foreach (@links_all) {
 
-                # check all links
-                if ( $found_text eq '' ) {
-                    my $current_link = $_;
-                    if ( $current_link =~ /^\[\[([^\|]+)%20([^\|]+)/i ) {
-                        $found_text = $current_link;
+                if ( $_ =~ /^\[\[([^\|]+)%20([^\|]+)/i ) {
+                    if ( $found_text eq q{} ) {
+                        $found_text = $_;
                     }
                 }
             }
-            if ( $found_text ne '' ) {
+            if ( $found_text ne q{} ) {
                 error_register( $error_code, $found_text );
             }
         }
@@ -4887,17 +4702,15 @@ sub error_077_image_description_with_partial_small {
             my $found_text = q{};
             foreach (@images_all) {
 
-                my $current_image = $_;
-                if ( $found_text eq '' ) {
-                    if ( $current_image =~
-/<([ ]+)?(\/|\\)?([ ]+)?small([ ]+)?(\/|\\)?([ ]+)?>([ ])?/i
-                        and not $current_image =~ /\|([ ]+)?<([ ]+)?small/ )
-                    {
-                        $found_text = $current_image;
+                if ( $_ =~ /<small([ ]+)?(\/|\\)?([ ]+)?>([ ])?/i
+                    and not $_ =~ /\|([ ]+)?<([ ]+)?small/ )
+                {
+                    if ( $found_text eq q{} ) {
+                        $found_text = $_;
                     }
                 }
             }
-            if ( $found_text ne '' ) {
+            if ( $found_text ne q{} ) {
                 error_register( $error_code, $found_text );
             }
         }
@@ -5058,19 +4871,18 @@ sub error_081_ref_double {
 
             my $number_of_ref = @ref;
             my $found_text    = q{};
-            for ( my $i = 0 ; $i < $number_of_ref - 1 ; $i++ ) {
+            foreach my $i ( 0 .. $number_of_ref - 2 ) {
 
-                for ( my $j = $i + 1 ; $j < $number_of_ref ; $j++ ) {
+                foreach my $j ( $i + 1 .. $number_of_ref - 1 ) {
 
-                    if (    $ref[$i] eq $ref[$j]
-                        and $found_text eq '' )
-                    {
-                        #found a double ref
-                        $found_text = $ref[$i];
+                    if ( $ref[$i] eq $ref[$j] ) {
+                        if ( $found_text eq q{} ) {
+                            $found_text = $ref[$i];
+                        }
                     }
                 }
             }
-            if ( $found_text ne '' ) {
+            if ( $found_text ne q{} ) {
                 error_register( $error_code, substr( $found_text, 0, 40 ) );
             }
         }
