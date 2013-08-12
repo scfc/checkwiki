@@ -20,6 +20,8 @@ use warnings;
 use CGI qw(:standard);
 use DBI;
 
+binmode( STDOUT, ":encoding(UTF-8)" );
+
 our $MAX_LIMIT = 500;
 
 ###########################################################################
@@ -51,7 +53,7 @@ else {
 }
 
 if ( $param_limit > $MAX_LIMIT ) {
-     $param_limit = $MAX_LIMIT;
+    $param_limit = $MAX_LIMIT;
 }
 
 ##########################################################################
@@ -60,17 +62,17 @@ if ( $param_limit > $MAX_LIMIT ) {
 
 # List articles
 if (    $param_project ne q{}
-    and $param_action  eq 'list'
-    and $param_id      =~ /^[0-9]+$/ )
+    and $param_action eq 'list'
+    and $param_id =~ /^[0-9]+$/ )
 {
     list_articles();
 }
 
 # Mark error as fixed
 elsif ( $param_project ne q{}
-    and $param_action  eq 'mark'
-    and $param_id      =~ /^[0-9]+$/
-    and $param_title   ne q{} )
+    and $param_action eq 'mark'
+    and $param_id =~ /^[0-9]+$/
+    and $param_title ne q{} )
 {
     mark_article_done();
 }
@@ -87,18 +89,11 @@ sub list_articles {
 
     print "Content-type: text/text;charset=UTF-8\n\n";
 
-    my $sql_text =
-        "SELECT title FROM cw_error WHERE error = "
-      . $param_id
-      . " AND project = '"
-      . $param_project
-      . "' AND ok=0 LIMIT "
-      . $param_offset . ","
-      . $param_limit . ";";
-
-    my $sth = $dbh->prepare($sql_text)
-      || die "Can not prepare statement: $DBI::errstr\n";
-    $sth->execute or die "Cannot execute: " . $sth->errstr . "\n";
+    my $sth = $dbh->prepare(
+'SELECT title FROM cw_error WHERE error = ? AND project = ? AND ok=0 LIMIT ?, ?;'
+    ) || die "Can not prepare statement: $DBI::errstr\n";
+    $sth->execute( $param_id, $param_project, $param_offset, $param_limit )
+      or die "Cannot execute: " . $sth->errstr . "\n";
 
     my $title_sql;
     $sth->bind_col( 1, \$title_sql );
@@ -117,17 +112,11 @@ sub list_articles {
 sub mark_article_done {
     my $dbh = connect_database();
 
-    my $sql_text =
-        "UPDATE cw_error SET ok=1 WHERE title="
-      . $param_title
-      . " AND error="
-      . $param_id
-      . " AND project = '"
-      . $param_project . "';";
-
-    my $sth = $dbh->prepare($sql_text)
+    my $sth = $dbh->prepare(
+        'UPDATE cw_error SET ok=1 WHERE title= ? AND error= ? And project = ?;')
       || die "Can not prepare statement: $DBI::errstr\n";
-    $sth->execute or die "Cannot execute: " . $sth->errstr . "\n";
+    $sth->execute( $param_title, $param_id, $param_project )
+      or die "Cannot execute: " . $sth->errstr . "\n";
 
     print "Content-type: text/text\n\n";
     print 'Article ' . $param_title . ' has been marked as done.';
@@ -147,8 +136,10 @@ sub show_usage {
     print "  id=       : Error number (04, 10, 80, ...)\n";
     print "  title=    : title of the article that has been fixed\n";
     print "  action=   : action requested, among the following values:\n";
-    print "    list: list articles for the given improvement. The following parameters can also be used:\n";
-    print "    mark: mark an article as fixed for the given improvement. The following parameters can also be used:\n";
+    print
+"    list: list articles for the given improvement. The following parameters can also be used:\n";
+    print
+"    mark: mark an article as fixed for the given improvement. The following parameters can also be used:\n";
     print "  offset=   : offset in the list of articles\n";
     print "  limit=    : maximum number of articles in the list\n";
 

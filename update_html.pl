@@ -21,9 +21,13 @@
 
 use strict;
 use warnings;
+
 use DBI;
 use Getopt::Long
   qw(GetOptionsFromString :config bundling no_auto_abbrev no_ignore_case);
+use utf8;
+
+binmode( STDOUT, ":encoding(UTF-8)" );
 
 our $output_directory  = '/data/project/checkwiki/public_html';
 our $webpage_directory = 'https://tools.wmflabs.org/checkwiki';
@@ -89,8 +93,8 @@ sub open_db {
         $DbUsername,
         $DbPassword,
         {
-            RaiseError        => 1,
-            AutoCommit        => 1,
+            RaiseError => 1,
+            AutoCommit => 1,
             mysql_enable_utf8 => 1
         }
     ) or die( "Could not connect to database: " . DBI::errstr() . "\n" );
@@ -142,8 +146,7 @@ sub build_start_page {
 
     #print 'Output in:'."\t".$filename."\n";
 
-    open( my $file, ">:encoding(UTF-8)", $filename )
-      or die "unable to open: $!\n";
+    open( my $file, ">:encoding(UTF-8)", $filename ) or die "unable to open: $!\n";
     print $file $result;
     close($file);
 
@@ -300,7 +303,7 @@ sub build_project_page {
             '<link rel="stylesheet" href="../css/style.css" type="text/css" />'
           . "\n";
         $result .= html_head_end();
-        $result .= '<p><a href="../index.htm">Homepage</a> &rarr; '
+        $result .= '<p><a href="../index.htm">Homepage</a> → '
           . $project . '</p>' . "\n";
 
         my $sql_text =
@@ -324,13 +327,13 @@ sub build_project_page {
             }
         }
 
-        $lang         = $output[0];
-        $project_page = $output[1];
-        my $temp_page = $output[1];
-        $temp_page =~ tr/ /_/;
+        $lang             = $output[0];
+        $project_page     = $output[1];
+        my $temp_page     = $output[1];
+        $temp_page        =~ tr/ /_/;
         $translation_page = $output[2];
-        my $temp1_page = $output[2];
-        $temp1_page =~ tr/ /_/;
+        my $temp1_page    = $output[2];
+        $temp1_page       =~ tr/ /_/;
 
         $result .= '<p>' . "\n";
         $result .= '<ul>' . "\n";
@@ -355,7 +358,7 @@ sub build_project_page {
 
         $result .=
             '<p><small>This table will updated every 30 minutes. Last update: '
-          . $time
+          . $time 
           . ' (UTC)</small></p>' . "\n";
 
         $result .= '<table class="table">';
@@ -368,8 +371,7 @@ sub build_project_page {
         $result .= html_end();
         my $filename = $output_directory . '/' . $project . '/' . 'index.htm';
 
-        open( my $file, ">:encoding(UTF-8)", $filename )
-          or die "unable to open: $!\n";
+        open( my $file, ">:encoding(UTF-8)", $filename ) or die "unable to open: $!\n";
         print $file $result;
         close($file);
 
@@ -506,23 +508,23 @@ sub build_prio_page2 {
         '<link rel="stylesheet" href="../css/style.css" type="text/css" />'
       . "\n";
     $result .= html_head_end();
-    $result .= '<p><a href="../index.htm">Homepage</a> &rarr; ';
-    $result .= '<a href="index.htm">' . $project . '</a> &rarr; ';
+    $result .= '<p><a href="../index.htm">Homepage</a> → ';
+    $result .= '<a href="index.htm">' . $project . '</a> → ';
     $result .= $headline . '</p>' . "\n";
 
     $result .=
 '<p>Priorities: <a href="priority_all.htm">all</a> - <a href="priority_high.htm">high</a> - <a href="priority_middle.htm">middle</a> - <a href="priority_low.htm">low</a></p>'
       . "\n";
     $result .=
-      '<p><small>This table will updated every 30 minutes.</small></p>' . "\n";
+      '<p><small>This table will updated every 30 minutes.<br> Last update: '
+          . $time . ' (UTC)</small></p>' . "\n";
 
     $result .= get_number_error_and_desc_by_prio( $project, $prio );
     $result .= html_end();
 
     my $filename = $output_directory . '/' . $project . '/' . $file_name;
 
-    open( my $file, ">:encoding(UTF-8)", $filename )
-      or die "unable to open: $!\n";
+    open( my $file, ">:encoding(UTF-8)", $filename ) or die "unable to open: $!\n";
     print $file $result;
     close($file);
 
@@ -656,14 +658,14 @@ sub html_end {
     my $result = q{};
     $result .= '<p><span style="font-size:10px;">' . "\n";
     $result .=
-'<a href="http://de.wikipedia.org/wiki/Benutzer:Stefan_K&#252;hn/Check_Wikipedia">projectpage</a> &middot; '
+'<a href="https://en.wikipedia.org/wiki/Wikipedia:WikiProject_Check_Wikipedia">projectpage</a> · '
       . "\n";
     $result .=
-'<a href="http://de.wikipedia.org/w/index.php?title=Benutzer_Diskussion:Stefan_K&#252;hn/Check_Wikipedia&amp;action=edit&amp;section=new">comments and bugs</a><br />'
+'<a href="https://en.wikipedia.org/wiki/Wikipedia_talk:WikiProject_Check_Wikipedia&amp;action=edit&amp;section=new">comments and bugs</a><br />'
       . "\n";
-    $result .= 'Version 2013-08-01 &middot; ' . "\n";
+    $result .= 'Version 2013-08-01 · ' . "\n";
     $result .=
-'license: <a href="http://www.gnu.org/copyleft/gpl.html">GPLv3</a> &middot; '
+        'license: <a href="http://www.gnu.org/copyleft/gpl.html">GPLv3</a> · '
       . "\n";
     $result .=
 'Powered by <a href="https://www.mediawiki.org/wiki/Wikimedia_Labs">Wikimedia Labs</a> '
