@@ -31,6 +31,7 @@ binmode( STDOUT, ":encoding(UTF-8)" );
 
 our $output_directory  = '/data/project/checkwiki/public_html';
 our $webpage_directory = 'https://tools.wmflabs.org/checkwiki';
+our $script_name       = 'cgi-bin/checkwiki.cgi';
 
 our $dbh;
 our @project;
@@ -67,9 +68,10 @@ our $time = gmtime();
 
 open_db();
 build_start_page();
-get_all_projects();
-build_project_page();
-build_prio_page();
+
+#get_all_projects();
+#build_project_page();
+#build_prio_page();
 close_db();
 
 print 'Finish' . "\n";
@@ -93,8 +95,8 @@ sub open_db {
         $DbUsername,
         $DbPassword,
         {
-            RaiseError => 1,
-            AutoCommit => 1,
+            RaiseError        => 1,
+            AutoCommit        => 1,
             mysql_enable_utf8 => 1
         }
     ) or die( "Could not connect to database: " . DBI::errstr() . "\n" );
@@ -128,10 +130,8 @@ sub build_start_page {
     $result .= '<p>' . "\n";
     $result .= '<ul>' . "\n";
     $result .=
-'<li>More information at the <a href="http://de.wikipedia.org/wiki/Benutzer:Stefan_K&#252;hn/Check_Wikipedia">projectpage</a></li>'
+'<li>More information at the <a href="https://en.wikipedia.org/wiki/Wikipedia:WikiProject_Check_Wikipedia">projectpage</a></li>'
       . "\n";
-    $result .=
-      '<li><a href="index.htm">FAQ</a> (be available soon)</li>' . "\n";
     $result .= '</ul>' . "\n";
 
     $result .=
@@ -142,11 +142,12 @@ sub build_start_page {
 
     $result .= html_end();
 
-    my $filename = $output_directory . q{/} . 'index.htm';
+    my $filename = $output_directory . q{/} . 'index.html';
 
     #print 'Output in:'."\t".$filename."\n";
 
-    open( my $file, ">:encoding(UTF-8)", $filename ) or die "unable to open: $!\n";
+    open( my $file, ">:encoding(UTF-8)", $filename )
+      or die "unable to open: $!\n";
     print $file $result;
     close($file);
 
@@ -195,18 +196,19 @@ sub get_projects {
         $result .= '<td class="table">' . $output[0] . '</td>' . "\n";
         $result .=
             '<td class="table"><a href="'
-          . $webpage_directory . '/'
+          . $script_name
+          . '?project='
           . $output[1]
-          . '/index.htm" rel="nofollow">'
+          . '&amp;view=project">'
           . $output[1]
           . '</a></td>' . "\n";
 
         # PRINT OUT "TO-DO" and "DONE" COLUMNS
         $result .=
-          '<td class="table" style="text-align:right; vertical-align:middle;">'
+          '<td class="table" style="text-align:right;">'
           . $output[2] . '</td>' . "\n";
         $result .=
-          '<td class="table" style="text-align:right; vertical-align:middle;">'
+          '<td class="table" style="text-align:right;">'
           . $output[3] . '</td>' . "\n";
 
         # PRINT OUT "CHANGE TO YESTERDAY" and "CHANGE TO LAST WEEK" COLUMN
@@ -216,22 +218,21 @@ sub get_projects {
 #$result .= '<td class="table" style="text-align:right; vertical-align:middle;">'
 #  . $output[10] . '</td>' . "\n";
         $result .=
-          '<td class="table" style="text-align:right; vertical-align:middle;">'
-          . ' </td>' . "\n";
+          '<td class="table" style="text-align:right;">' . ' </td>' . "\n";
         $result .=
-          '<td class="table" style="text-align:right; vertical-align:middle;">'
-          . ' </td>' . "\n";
+          '<td class="table" style="text-align:right;">' . ' </td>' . "\n";
 
         # PRINT OUT "LAST DUMP" AND "LAST UPDATE" COLUMNS
         $result .=
-          '<td class="table" style="text-align:right; vertical-align:middle;">'
+          '<td class="table" style="text-align:right;">'
           . $output[8] . '</td>' . "\n";
-        $result .= '<td class="table">' . time_string( $output[7] ) . '</td>';
+        $result .= '<td class="table style="text-align:right;">'
+          . time_string( $output[7] ) . '</td>' . "\n";
 
         # PRINT OUT "PAGE AT WIKIPEDIA" AND "TRANSLATION" COLUMNS
         $output[5] =~ tr/ /_/;
         $result .=
-'<td class="table" style="text-align:center; vertical-align:middle;"><a href="https://'
+            '<td class="table" style="text-align:center;"><a href="https://'
           . $output[4]
           . '.wikipedia.org/wiki/'
           . $output[5]
@@ -239,7 +240,7 @@ sub get_projects {
 
         $output[6] =~ tr/ /_/;
         $result .=
-'<td class="table" style="text-align:center; vertical-align:middle;"><a href="https://'
+            '<td class="table" style="text-align:center;"><a href="https://'
           . $output[4]
           . '.wikipedia.org/wiki/'
           . $output[6]
@@ -247,7 +248,7 @@ sub get_projects {
         $result .= '</tr>' . "\n";
 
     }
-    $result .= '</table>';
+    $result .= '</table>' . "\n\n";
 
     return ($result);
 }
@@ -327,13 +328,13 @@ sub build_project_page {
             }
         }
 
-        $lang             = $output[0];
-        $project_page     = $output[1];
-        my $temp_page     = $output[1];
-        $temp_page        =~ tr/ /_/;
+        $lang         = $output[0];
+        $project_page = $output[1];
+        my $temp_page = $output[1];
+        $temp_page =~ tr/ /_/;
         $translation_page = $output[2];
-        my $temp1_page    = $output[2];
-        $temp1_page       =~ tr/ /_/;
+        my $temp1_page = $output[2];
+        $temp1_page =~ tr/ /_/;
 
         $result .= '<p>' . "\n";
         $result .= '<ul>' . "\n";
@@ -358,7 +359,7 @@ sub build_project_page {
 
         $result .=
             '<p><small>This table will updated every 30 minutes. Last update: '
-          . $time 
+          . $time
           . ' (UTC)</small></p>' . "\n";
 
         $result .= '<table class="table">';
@@ -371,7 +372,8 @@ sub build_project_page {
         $result .= html_end();
         my $filename = $output_directory . '/' . $project . '/' . 'index.htm';
 
-        open( my $file, ">:encoding(UTF-8)", $filename ) or die "unable to open: $!\n";
+        open( my $file, ">:encoding(UTF-8)", $filename )
+          or die "unable to open: $!\n";
         print $file $result;
         close($file);
 
@@ -516,15 +518,17 @@ sub build_prio_page2 {
 '<p>Priorities: <a href="priority_all.htm">all</a> - <a href="priority_high.htm">high</a> - <a href="priority_middle.htm">middle</a> - <a href="priority_low.htm">low</a></p>'
       . "\n";
     $result .=
-      '<p><small>This table will updated every 30 minutes.<br> Last update: '
-          . $time . ' (UTC)</small></p>' . "\n";
+        '<p><small>This table will updated every 30 minutes.<br> Last update: '
+      . $time
+      . ' (UTC)</small></p>' . "\n";
 
     $result .= get_number_error_and_desc_by_prio( $project, $prio );
     $result .= html_end();
 
     my $filename = $output_directory . '/' . $project . '/' . $file_name;
 
-    open( my $file, ">:encoding(UTF-8)", $filename ) or die "unable to open: $!\n";
+    open( my $file, ">:encoding(UTF-8)", $filename )
+      or die "unable to open: $!\n";
     print $file $result;
     close($file);
 
