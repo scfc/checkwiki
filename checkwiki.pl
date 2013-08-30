@@ -293,11 +293,17 @@ sub scan_pages {
 ###########################################################################
 
 sub update_ui {
-    my $bytes   = $pages->current_byte;
-    my $percent = int( $bytes / $file_size * 100 );
+    my $bytes = $pages->current_byte;
 
-    printf( "   %7d articles;%10s processed;%3d%% completed\n",
-        ( $artcount, pretty_bytes($bytes), $percent ) );
+    if ( $file_size > 0 ) {
+        my $percent = int( $bytes / $file_size * 100 );
+        printf( "   %7d articles;%10s processed;%3d%% completed\n",
+            ( $artcount, pretty_bytes($bytes), $percent ) );
+    }
+    else {
+        printf( "   %7d articles;%10s processed\n",
+            ( $artcount, pretty_bytes($bytes) ) );
+    }
 
     return ();
 }
@@ -840,8 +846,8 @@ sub get_nowiki {
         my $nowiki_begin = 0;
         my $nowiki_end   = 0;
 
-        $nowiki_begin = () = $test_text =~ /<math/g;
-        $nowiki_end   = () = $test_text =~ /<\/math>/g;
+        $nowiki_begin = () = $test_text =~ /<nowiki/g;
+        $nowiki_end   = () = $test_text =~ /<\/nowiki>/g;
 
         if ( $nowiki_begin > $nowiki_end ) {
             my $snippet = get_broken_tag( '<nowiki>', '</nowiki>' );
@@ -890,6 +896,7 @@ sub get_math {
         my $math_begin = 0;
         my $math_end   = 0;
 
+        $test_text =~ s/<math\.h>//g;
         $math_begin = () = $test_text =~ /<math/g;
         $math_end   = () = $test_text =~ /<\/math>/g;
 
@@ -1336,7 +1343,7 @@ sub get_templates_all {
         while ( $temp_text =~ /\}\}/g ) {
 
             # Find currect end - number of {{ == }}
-            $pos_end = pos($temp_text);
+            $pos_end     = pos($temp_text);
             $temp_text_2 = q{ } . substr( $temp_text, 0, $pos_end ) . q{ };
 
             # Test the number of {{ and  }}
@@ -1992,7 +1999,7 @@ sub error_check {
         error_064_link_equal_linktext();
         error_065_image_description_with_break();
         error_066_image_description_with_full_small();
-        error_067_reference_after_punctuation();    # DEACTIVATED
+        error_067_reference_after_punctuation();
         error_068_link_to_other_language();
 
         #error_069_isbn_wrong_syntax('');                  # get_isbn()
@@ -3507,7 +3514,7 @@ sub error_046_count_square_breaks_begin {
             my $text_test_1_b = $text_test;
 
             if ( ( $text_test_1_a =~ s/\[\[//g ) !=
-                ( $text_test_1_b =~ s/\]\]//g ) )
+                 ( $text_test_1_b =~ s/\]\]//g ) )
             {
                 my $found_text = q{};
                 my $begin_time = time();
@@ -3523,8 +3530,8 @@ sub error_046_count_square_breaks_begin {
 
                         # Find currect end - number of [[==]]
                         my $pos_start = pos($link_text);
-                        $link_text_2 = substr( $link_text, $pos_start );
-                        $link_text_2 = ' ' . $link_text_2 . ' ';
+                        $link_text_2  = substr( $link_text, $pos_start );
+                        $link_text_2  = ' ' . $link_text_2 . ' ';
 
                         # Test the number of [[and  ]]
                         my $link_text_2_a = $link_text_2;
@@ -4061,8 +4068,7 @@ sub error_061_reference_with_punctuation {
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
-            my $found_txt = q{};
-            my $pos       = -1;
+            my $pos = -1;
             $pos = index( $text, '</ref>.' )    if ( $pos == -1 );
             $pos = index( $text, '</ref> .' )   if ( $pos == -1 );
             $pos = index( $text, '</ref>  .' )  if ( $pos == -1 );
@@ -4301,6 +4307,33 @@ sub error_066_image_description_with_full_small {
 ###########################################################################
 
 sub error_067_reference_after_punctuation {
+    my $error_code = 67;
+
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
+        if ( $page_namespace == 0 or $page_namespace == 104 ) {
+
+            my $pos = -1;
+            $pos = index( $text, '.<ref' )   if ( $pos == -1 );
+            $pos = index( $text, '. <ref' )  if ( $pos == -1 );
+            $pos = index( $text, '.  <ref' ) if ( $pos == -1 );
+            $pos = index( $text, '!<ref' )   if ( $pos == -1 );
+            $pos = index( $text, '! <ref' )  if ( $pos == -1 );
+            $pos = index( $text, '!  <ref' ) if ( $pos == -1 );
+            $pos = index( $text, '?<ref' )   if ( $pos == -1 );
+            $pos = index( $text, '? <ref' )  if ( $pos == -1 );
+            $pos = index( $text, '?  <ref' ) if ( $pos == -1 );
+            $pos = index( $text, ',<ref' )   if ( $pos == -1 );
+            $pos = index( $text, ' ,<ref' )  if ( $pos == -1 );
+            $pos = index( $text, '  ,<ref' ) if ( $pos == -1 );
+            $pos = index( $text, ':<ref' )   if ( $pos == -1 );
+            $pos = index( $text, ' :<ref' )  if ( $pos == -1 );
+            $pos = index( $text, '  :<ref' ) if ( $pos == -1 );
+
+            if ( $pos > -1 ) {
+                error_register( $error_code, substr( $text, $pos, 40 ) );
+            }
+        }
+    }
 
     return ();
 }
@@ -4653,19 +4686,11 @@ sub error_080_external_link_with_line_break {
 
                 if ( $pos_start > -1 and $pos_end > -1 ) {
 
-                    # Why pos_start keeps creeping up in value, I don't know.
-                    # This still doesn't stop it from creeping, when going
-                    # thru above while loop. But this corrects it for only this
-                    # iteration.
-                    while ( substr( $text, $pos_start, 5 ) ne '[http' ) {
-                        $pos_start--;
-                        $pos_end--;
-                    }
                     $end_search    = 0;
                     $pos_start_old = $pos_end;
 
                     my $weblink =
-                      substr( $text, $pos_start, $pos_end - $pos_start );
+                      substr( $test_text, $pos_start, $pos_end - $pos_start );
 
                     if ( $weblink =~ /\n/ ) {
                         error_register( $error_code,
@@ -5076,7 +5101,7 @@ sub error_register {
 
     $notice =~ s/\n//g;
 
-    #print "\t" . $error_code . "\t" . $title . "\t" . $notice . "\n";
+    print "\t" . $error_code . "\t" . $title . "\t" . $notice . "\n";
 
     $Error_number_counter[$error_code] = $Error_number_counter[$error_code] + 1;
     $error_counter = $error_counter + 1;
@@ -5286,16 +5311,19 @@ if ( defined($DumpFilename) ) {
     # GET DATE FROM THE DUMP FILENAME
     $dump_date_for_output = $DumpFilename;
     $dump_date_for_output =~
-s/^(?:.*\/)?\Q$project\E-(\d{4})(\d{2})(\d{2})-pages-articles\.xml\.bz2$/$1-$2-$3/;
+s/^(?:.*\/)?\Q$project\E-(\d{4})(\d{2})(\d{2})-pages-articles\.xml(.*?)$/$1-$2-$3/;
 
-    # GET DUMP FILE SIZE, UNCOMPRESS AND THEN OPEN VIA METAWIKI::DumpFile
-    my $dump;
-    $file_size = ( stat($DumpFilename) )[7];
-
-    open( $dump, '-|', 'bzcat', '-q', $DumpFilename )
-      or die("Couldn't open dump file '$DumpFilename'");
-
-    $pages = $pmwd->pages($dump);
+    # OPEN DUMPFILE BASED IF COMPRESSED OR NOT
+    if ( $DumpFilename =~ /(.*?)\.xml\.bz2$/ ) {
+        my $dump;
+        open( $dump, '-|', 'bzcat', '-q', $DumpFilename )
+          or die("Couldn't open dump file '$DumpFilename'");
+        $pages = $pmwd->pages($dump);
+    }
+    else {
+        $pages     = $pmwd->pages($DumpFilename);
+        $file_size = ( stat($DumpFilename) )[7];
+    }
 
     # OPEN TEMPLATETIGER FILE
     if (
