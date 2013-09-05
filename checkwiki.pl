@@ -178,6 +178,7 @@ our @images_all;                     # All images
 our @isbn;                           # All ibsn of books
 our @ref;                            # All ref
 our @headlines;                      # All headlines
+our @section;                        # Text between headlines
 our @lines;                          # Text seperated in lines
 
 ###########################################################################
@@ -293,17 +294,11 @@ sub scan_pages {
 ###########################################################################
 
 sub update_ui {
-    my $bytes = $pages->current_byte;
+    my $bytes   = $pages->current_byte;
+    my $percent = int( $bytes / $file_size * 100 );
 
-    if ( $file_size > 0 ) {
-        my $percent = int( $bytes / $file_size * 100 );
-        printf( "   %7d articles;%10s processed;%3d%% completed\n",
-            ( $artcount, pretty_bytes($bytes), $percent ) );
-    }
-    else {
-        printf( "   %7d articles;%10s processed\n",
-            ( $artcount, pretty_bytes($bytes) ) );
-    }
+    printf( "   %7d articles;%10s processed;%3d%% completed\n",
+        ( $artcount, pretty_bytes($bytes), $percent ) );
 
     return ();
 }
@@ -394,6 +389,7 @@ sub set_variables_for_article {
 
     undef(@lines);              # Text seperated in lines
     undef(@headlines);          # Headlines
+    undef(@section);            # Text between headlines
 
     undef(@templates_all);      # All templates
     undef(@template);           # Templates with values
@@ -846,8 +842,8 @@ sub get_nowiki {
         my $nowiki_begin = 0;
         my $nowiki_end   = 0;
 
-        $nowiki_begin = () = $test_text =~ /<nowiki/g;
-        $nowiki_end   = () = $test_text =~ /<\/nowiki>/g;
+        $nowiki_begin = () = $test_text =~ /<math/g;
+        $nowiki_end   = () = $test_text =~ /<\/math>/g;
 
         if ( $nowiki_begin > $nowiki_end ) {
             my $snippet = get_broken_tag( '<nowiki>', '</nowiki>' );
@@ -896,7 +892,6 @@ sub get_math {
         my $math_begin = 0;
         my $math_end   = 0;
 
-        $test_text =~ s/<math\.h>//g;
         $math_begin = () = $test_text =~ /<math/g;
         $math_end   = () = $test_text =~ /<\/math>/g;
 
@@ -1309,7 +1304,7 @@ sub check_isbn {
 
         if (    $check_10 eq 'no ok'
             and $check_13 eq 'no ok'
-            and $result   eq 'yes'
+            and $result eq 'yes'
             and length($test_isbn) != 0 )
         {
             $result = 'no';
@@ -1343,7 +1338,7 @@ sub get_templates_all {
         while ( $temp_text =~ /\}\}/g ) {
 
             # Find currect end - number of {{ == }}
-            $pos_end     = pos($temp_text);
+            $pos_end = pos($temp_text);
             $temp_text_2 = q{ } . substr( $temp_text, 0, $pos_end ) . q{ };
 
             # Test the number of {{ and  }}
@@ -1516,23 +1511,20 @@ sub get_template {
 
                 $attribut =~ s/^[ ]+//g;
                 $attribut =~ s/[ ]+$//g;
-                $value    =~ s/^[ ]+//g;
-                $value    =~ s/[ ]+$//g;
+                $value =~ s/^[ ]+//g;
+                $value =~ s/[ ]+$//g;
 
                 $template[$template_part_counter][3] = $attribut;
                 $template[$template_part_counter][4] = $value;
 
                 $number_of_template_parts = $number_of_template_parts + 1;
 
-                # Output for TemplateTiger
-                if ( $dump_or_live eq 'dump' ) {
-                    $output .= $title . "\t";
-                    $output .= $template[$template_part_counter][0] . "\t";
-                    $output .= $template[$template_part_counter][1] . "\t";
-                    $output .= $template[$template_part_counter][2] . "\t";
-                    $output .= $template[$template_part_counter][3] . "\t";
-                    $output .= $template[$template_part_counter][4] . "\n";
-                }
+                $output .= $title . "\t";
+                $output .= $template[$template_part_counter][0] . "\t";
+                $output .= $template[$template_part_counter][1] . "\t";
+                $output .= $template[$template_part_counter][2] . "\t";
+                $output .= $template[$template_part_counter][3] . "\t";
+                $output .= $template[$template_part_counter][4] . "\n";
             }
         }
     }
@@ -1546,7 +1538,7 @@ sub get_template {
       )
     {
 
-        $TTFile->print($output);
+        #$TTFile->print($output);
 
     }
 
@@ -1812,10 +1804,10 @@ sub get_categories {
                 $category[$counter][2] =~ s/^([ ]+)?//g;    # Delete blank
                 $category[$counter][2] =~ s/\]\]//g;        # Delete ]]
                 $category[$counter][2] =~ s/^$namespace_cat_word//i;
-                $category[$counter][2] =~ s/^://;                   # Delete :
-                $category[$counter][2] =~ s/\|(.)*//g;              # Delete |xy
-                $category[$counter][2] =~ s/^ //g;    # Delete blank
-                $category[$counter][2] =~ s/ $//g;    # Delete blank
+                $category[$counter][2] =~ s/^://;           # Delete :
+                $category[$counter][2] =~ s/\|(.)*//g;      # Delete |xy
+                $category[$counter][2] =~ s/^ //g;          # Delete blank
+                $category[$counter][2] =~ s/ $//g;          # Delete blank
 
                 # Filter linkname
                 $category[$counter][3] = q{}
@@ -1904,13 +1896,19 @@ sub create_line_array {
 
 sub get_headlines {
 
+    my $section_text = q{};
+
     foreach (@lines) {
         my $current_line = $_;
 
         if ( substr( $current_line, 0, 1 ) eq '=' ) {
+            push( @section, $section_text );
+            $section_text = q{};
             push( @headlines, $current_line );
         }
+        $section_text = $section_text . $_ . "\n";
     }
+    push( @section, $section_text );
 
     return ();
 }
@@ -1921,7 +1919,7 @@ sub get_headlines {
 
 sub error_check {
     if ( $CheckOnlyOne > 0 ) {
-        error_075_indented_list();
+        error_084_section_without_text();
     }
     else {
         #error_001_no_bold_title();                        # DEACTIVATED
@@ -1999,7 +1997,7 @@ sub error_check {
         error_064_link_equal_linktext();
         error_065_image_description_with_break();
         error_066_image_description_with_full_small();
-        error_067_reference_after_punctuation();
+        error_067_reference_after_punctuation();    # DEACTIVATED
         error_068_link_to_other_language();
 
         #error_069_isbn_wrong_syntax('');                  # get_isbn()
@@ -2098,128 +2096,104 @@ sub error_003_have_ref {
                 $test = "true" if ( $test_text =~ /<[ ]?+references group/ );
                 $test = "true" if ( $test_text =~ /\{\{[ ]?+refbegin/ );
                 $test = "true" if ( $test_text =~ /\{\{[ ]?+refend/ );
-
-                # enwiki
                 $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+reflist/ );
+                  if ( $test_text =~ /\{\{[ ]?+reflist/ );    # in enwiki
                 $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+reflink/ );
+                  if ( $test_text =~ /\{\{[ ]?+reflink/ );    # in enwiki
                 $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+reference list/ );
+                  if ( $test_text =~ /\{\{[ ]?+reference list/ );    # in enwiki
                 $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+references-small/ );
+                  if ( $test_text =~ /\{\{[ ]?+references-small/ );  # in enwiki
                 $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+references/ );
+                  if ( $test_text =~ /\{\{[ ]?+references/ );        # in enwiki
                 $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+listaref / );
+                  if ( $test_text =~ /\{\{[ ]?+listaref / );         # in enwiki
                 $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+reference/ );
+                  if ( $test_text =~ /\{\{[ ]?+reference/ );         # in enwiki
                 $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+refs/ );
-
+                  if ( $test_text =~ /\{\{[ ]?+przypisy/ );          # in plwiki
                 $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+verwysings/ );    # afwiki
-
-                # arwiki
+                  if ( $test_text =~ /\{\{[ ]?+amaga/ );             # in cawiki
+                $test = "true"
+                  if ( $test_text =~ /\{\{[ ]?+referències/ );      # in cawiki
+                $test = "true"
+                  if ( $test_text =~ /\{\{[ ]?+viitteet/ );          # in fiwiki
+                $test = "true"
+                  if ( $test_text =~ /\{\{[ ]?+verwysings/ );        # in afwiki
+                $test = "true"
+                  if ( $test_text =~ /\{\{[ ]?+references/ );        # in itwiki
+                $test = "true"
+                  if ( $test_text =~ /\{\{[ ]?+références/ );      # in frwiki
+                $test = "true"
+                  if ( $test_text =~ /\{\{[ ]?+notes/ );             # in frwiki
+                $test = "true"
+                  if ( $test_text =~ /\{\{[ ]?+listaref/ );          # in nlwiki
+                $test = "true"
+                  if ( $test_text =~ /\{\{[ ]?+referenties/ );       # in cawiki
+                $test = "true"
+                  if ( $test_text =~ /\{\{[ ]?+ref-section/ );       # in ptwiki
+                $test = "true"
+                  if ( $test_text =~ /\{\{[ ]?+referências/ );      # in ptwiki
+                $test = "true"
+                  if ( $test_text =~ /\{\{[ ]?+refs/ );    # in nlwiki + enwiki
+                $test = "true" if ( $test_text =~ /\{\{[ ]?+noot/ ); # in nlwiki
+                $test = "true"
+                  if ( $test_text =~ /\{\{[ ]?+unreferenced/ );      # in nlwiki
+                $test = "true" if ( $test_text =~ /\{\{[ ]?+fnb/ );  # in nlwiki
+                $test = "true"
+                  if ( $test_text =~ /\{\{[ ]?+примечания/ )
+                  ;                                                  # in ruwiki
+                $test = "true"
+                  if ( $test_text =~
+                    /\{\{[ ]?+список примечаний/ );  # in ruwiki
+                $test = "true"
+                  if ( $test_text =~ /\{\{[ ]?+Примечания/ )
+                  ;    # in ruwiki (Problem with big letters)
                 $test = "true"
                   if (
-                    $test_text =~ /\{\{[ ]?+ﺚﺒﺗ ﺎﻠﻣﺭﺎﺠﻋ/ );
+                    $test_text =~ /\{\{[ ]?+Список примечаний/ )
+                  ;    # in ruwiki (Problem with big letters)
                 $test = "true"
-                  if ( $test_text =~
-                    /\{\{[ ]?+ﻕﺎﻠﺑ:ﺚﺒﺗ ﺎﻠﻣﺭﺎﺠﻋ/ );
+                  if ( $test_text =~ /\{\{[ ]?+kaynakça/ );    # in trwiki
                 $test = "true"
-                  if ( $test_text =~
-                    /\{\{[ ]?+ﻕﺎﻠﺑ:ﺚﺒﺗ ﻡﺭﺎﺠﻋ/ );
+                  if ( $test_text =~ /\{\{[ ]?+ثبت المراجع/ )
+                  ;                                             # in arwiki
                 $test = "true"
-                  if ( $test_text =~
-                    /\{\{[ ]?+ﻕﺎﻠﺑ:ﺚﺒﺗ ﺎﻠﻤﺻﺍﺩﺭ/ );
+                  if ( $test_text =~ /\{\{[ ]?+appendix/ );     # in nlwiki
                 $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+ﻕﺎﻠﺑ:Reflist/ );
-
+                  if ( $test_text =~ /\{\{[ ]?+примітки/ );  # in ukwiki
                 $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+amaga/ );    # cawiki
+                  if ( $test_text =~ /\{\{[ ]?+Примітки/ );  # in ukwiki
                 $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+referenties/ );    # cawiki
+                  if ( $test_text =~ /\{\{[ ]?+hide ref/ );          # in zhwiki
                 $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+referències/ );    # cawiki
+                  if ( $test_text =~ /\{\{[ ]?+forrás/ );           # in huwiki
                 $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+apèndix/ );        # cawiki
+                  if ( $test_text =~ /\{\{[ ]?+註腳/ );            # in zhwiki
                 $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+παραπομπές/ ); # elwiki
+                  if ( $test_text =~ /\{\{[ ]?+註腳h/ );           # in zhwiki
                 $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+viitteet/ );             # fiwiki
+                  if ( $test_text =~ /\{\{[ ]?+註腳f/ );           # in zhwiki
                 $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+références/ );         # frwiki
-                $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+notes/ );                # frwiki
+                  if ( $test_text =~ /\{\{[ ]?+kayan kaynakça/ );   # in trwiki
+                $test = "true" if ( $test_text =~ /\{\{[ ]?+r/ );    # in itwiki
+                $test = "true" if ( $test_text =~ /\{\{[ ]?+r/ );    # in itwiki
                 $test = "true"
                   if ( $test_text =~ /\{\{[ ]?+הערות שוליים/ )
-                  ;                                                     # hewiki
+                  ;                                                  # in hewiki
                 $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+הערה/ );             # hewiki
+                  if ( $test_text =~ /\{\{[ ]?+הערה/ );          # in hewiki
                 $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+forrás/ );              # huwiki
+                  if ( $test_text =~ /\{\{[ ]?+注脚/ );            # in zhwiki
                 $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+references/ );           # itwiki
+                  if ( $test_text =~ /\{\{[ ]?+referências/ );      # in ptwiki
                 $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+r/ );                    # itwiki
+                  if ( $test_text =~ /\{\{[ ]?+רעפליסטע/ );  # in yiwiki
                 $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+r/ );                    # itwiki
-
-                # nlwiki
+                  if ( $test_text =~ /\{\{[ ]?+apèndix/ );          # in cawiki
                 $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+listaref/ );
-                $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+noot/ );
-                $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+unreferenced/ );
-                $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+fnb/ );
-                $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+appendix/ );
-                $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+przypisy/ );    # plwiki
-                $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+ref-section/ );    # ptwiki
-                $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+referências/ );    # ptwiki
-                $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+referências/ );    # ptwiki
-
-                # ruwiki
-                $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+примечания/ );
-                $test = "true"
-                  if ( $test_text =~
-                    /\{\{[ ]?+список примечаний/ );
-                $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+Примечания/ );
-                $test = "true"
-                  if ( $test_text =~
-                    /\{\{[ ]?+Список примечаний/ );
-
-                $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+kaynakça/ );    # trwiki
-                $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+kayan kaynakça/ );    # trwiki
-                $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+примітки/ );    # ukwiki
-                $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+Примітки/ );    # ukwiki
-                $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+רעפליסטע/ );    # yiwiki
-
-                # zhwiki
-                $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+hide ref/ );
-                $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+註腳/ );
-                $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+註腳h/ );
-                $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+註腳f/ );
-                $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+注脚/ );
+                  if ( $test_text =~ /\{\{[ ]?+παραπομπές/ )
+                  ;                                                  # in elwiki
 
                 if ( $test eq "false" ) {
                     error_register( $error_code, '' );
@@ -2295,7 +2269,7 @@ sub error_006_defaultsort_with_special_letters {
                 my $test_text2 = $test_text;
 
                 # Remove ok letters
-                $test_text =~ s/[-–:,\.\/\(\)0-9 A-Za-z!\?']//g;
+                $test_text =~ s/[-:,\.\/\(\)0-9 A-Za-z!\?']//g;
 
                 # Too many to figure out what is right or not
                 $test_text =~ s/#//g;
@@ -3514,7 +3488,7 @@ sub error_046_count_square_breaks_begin {
             my $text_test_1_b = $text_test;
 
             if ( ( $text_test_1_a =~ s/\[\[//g ) !=
-                 ( $text_test_1_b =~ s/\]\]//g ) )
+                ( $text_test_1_b =~ s/\]\]//g ) )
             {
                 my $found_text = q{};
                 my $begin_time = time();
@@ -3530,8 +3504,8 @@ sub error_046_count_square_breaks_begin {
 
                         # Find currect end - number of [[==]]
                         my $pos_start = pos($link_text);
-                        $link_text_2  = substr( $link_text, $pos_start );
-                        $link_text_2  = ' ' . $link_text_2 . ' ';
+                        $link_text_2 = substr( $link_text, $pos_start );
+                        $link_text_2 = ' ' . $link_text_2 . ' ';
 
                         # Test the number of [[and  ]]
                         my $link_text_2_a = $link_text_2;
@@ -4068,7 +4042,8 @@ sub error_061_reference_with_punctuation {
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
-            my $pos = -1;
+            my $found_txt = q{};
+            my $pos       = -1;
             $pos = index( $text, '</ref>.' )    if ( $pos == -1 );
             $pos = index( $text, '</ref> .' )   if ( $pos == -1 );
             $pos = index( $text, '</ref>  .' )  if ( $pos == -1 );
@@ -4307,33 +4282,6 @@ sub error_066_image_description_with_full_small {
 ###########################################################################
 
 sub error_067_reference_after_punctuation {
-    my $error_code = 67;
-
-    if ( $ErrorPriorityValue[$error_code] > 0 ) {
-        if ( $page_namespace == 0 or $page_namespace == 104 ) {
-
-            my $pos = -1;
-            $pos = index( $text, '.<ref' )   if ( $pos == -1 );
-            $pos = index( $text, '. <ref' )  if ( $pos == -1 );
-            $pos = index( $text, '.  <ref' ) if ( $pos == -1 );
-            $pos = index( $text, '!<ref' )   if ( $pos == -1 );
-            $pos = index( $text, '! <ref' )  if ( $pos == -1 );
-            $pos = index( $text, '!  <ref' ) if ( $pos == -1 );
-            $pos = index( $text, '?<ref' )   if ( $pos == -1 );
-            $pos = index( $text, '? <ref' )  if ( $pos == -1 );
-            $pos = index( $text, '?  <ref' ) if ( $pos == -1 );
-            $pos = index( $text, ',<ref' )   if ( $pos == -1 );
-            $pos = index( $text, ' ,<ref' )  if ( $pos == -1 );
-            $pos = index( $text, '  ,<ref' ) if ( $pos == -1 );
-            $pos = index( $text, ':<ref' )   if ( $pos == -1 );
-            $pos = index( $text, ' :<ref' )  if ( $pos == -1 );
-            $pos = index( $text, '  :<ref' ) if ( $pos == -1 );
-
-            if ( $pos > -1 ) {
-                error_register( $error_code, substr( $text, $pos, 40 ) );
-            }
-        }
-    }
 
     return ();
 }
@@ -4666,40 +4614,43 @@ sub error_080_external_link_with_line_break {
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
-            my $pos_start_old = 0;
-            my $pos_end_old   = 0;
-            my $end_search    = 0;
-            my $test_text     = lc($text);
+            my $test_text  = lc($text);
+            my $pos        = -1;
+            my $found_text = q{};
+            while (index( $test_text, '[http://', $pos + 1 ) > -1
+                or index( $test_text, '[ftp://',   $pos + 1 ) > -1
+                or index( $test_text, '[https://', $pos + 1 ) > -1 )
+            {
+                my $pos1 = index( $test_text, '[http://',  $pos + 1 );
+                my $pos2 = index( $test_text, '[ftp://',   $pos + 1 );
+                my $pos3 = index( $test_text, '[https://', $pos + 1 );
 
-            while ( $end_search == 0 ) {
-                my $pos_start   = 0;
-                my $pos_start_s = 0;
-                my $pos_end     = 0;
-                $end_search = 1;
+                my $next_pos = -1;
+                $next_pos = $pos1 if ( $pos1 > -1 );
+                $next_pos = $pos2
+                  if ( ( $next_pos == -1 and $pos2 > -1 )
+                    or ( $pos2 > -1 and $next_pos > $pos2 ) );
+                $next_pos = $pos3
+                  if ( ( $next_pos == -1 and $pos3 > -1 )
+                    or ( $pos3 > -1 and $next_pos > $pos3 ) );
 
-                $pos_start   = index( $test_text, '[http://',  $pos_start_old );
-                $pos_start_s = index( $test_text, '[https://', $pos_start_old );
-                if ( ( $pos_start_s < $pos_start ) and ( $pos_start_s > -1 ) ) {
-                    $pos_start = $pos_start_s;
+                my $pos_end = index( $test_text, ']', $next_pos );
+
+                my $weblink =
+                  substr( $text, $next_pos, $pos_end - $next_pos + 1 );
+
+                if ( $weblink =~ /\n/ ) {
+                    $found_text = $weblink if ( $found_text eq '' );
                 }
-                $pos_end = index( $test_text, ']', $pos_start );
+                $pos = $next_pos;
+            }
 
-                if ( $pos_start > -1 and $pos_end > -1 ) {
-
-                    $end_search    = 0;
-                    $pos_start_old = $pos_end;
-
-                    my $weblink =
-                      substr( $test_text, $pos_start, $pos_end - $pos_start );
-
-                    if ( $weblink =~ /\n/ ) {
-                        error_register( $error_code,
-                            substr( $weblink, 0, 40 ) );
-                    }
-                }
+            if ( $found_text ne '' ) {
+                error_register( $error_code, substr( $found_text, 0, 40 ) );
             }
         }
     }
+
     return ();
 }
 
@@ -4815,26 +4766,25 @@ sub error_084_section_without_text {
 
                 # If headline's level is identical or lower to next headline
                 # And headline's level is ==
-                if ( $level_one >= $level_two and $level_one <= 2 ) {
-                    my $test_text = $text_without_comments;
-                    my $pos       = index( $test_text, $headlines[$i] );
-                    my $pos2      = index( $test_text, $headlines[ $i + 1 ] );
-                    my $pos3      = $pos2 - $pos;
+                if ( $level_one >= $level_two and $level_one == 2 ) {
+                    if ( $section[$i] ) {
+                        my $test_section  = $section[ $i + 1 ];
+                        my $test_headline = $headlines[$i];
+                        $test_headline    =~ s/\n//g;
 
-                    # There are two copies of next headline. Get 2nd one
-                    if ( $pos3 < 0 ) {
-                        $pos2 =
-                          index( $test_text, $headlines[ $i + 1 ], $pos2 + 5 );
-                        $pos3 = $pos2 - $pos;
-                    }
-                    $test_text = substr( $test_text, $pos, $pos3 );
-                    $test_text =~ s/^\Q$headlines[$i]\E//;
-                    $test_text =~ s/[ ]//g;
-                    $test_text =~ s/\n//g;
-                    $test_text =~ s/\t//g;
+                        $test_section =
+                          substr( $test_section, length($test_headline) )
+                          if ($test_section);
 
-                    if ( $test_text eq q{} ) {
-                        error_register( $error_code, $headlines[$i] );
+                        if ($test_section) {
+                            $test_section =~ s/[ ]//g;
+                            $test_section =~ s/\n//g;
+                            $test_section =~ s/\t//g;
+
+                            if ( $test_section eq q{} ) {
+                                error_register( $error_code, $headlines[$i] );
+                            }
+                        }
                     }
                 }
             }
@@ -4927,16 +4877,8 @@ sub error_087_html_names_entities_without_semicolon {
             $test_text =~ s/<ref>(.*?)ref>//sg;
             $test_text =~ s/<ref name(.*?)ref>//sg;
             $test_text =~ s/\[http(.*?)\]//sg;
-            $test_text =~ s/\^http(.*?)\n//sg;
+            $test_text =~ s/\^http(.*?)//sg;
             $test_text =~ s/\{\{cit(.*?)\}\}//sg;
-
-            # Can't get rid off all refs, so remove some common ones
-            # so they don't cause false positives.
-            $test_text =~ s/&section//g;
-            $test_text =~ s/&registry//g;
-            $test_text =~ s/&region//g;
-            $test_text =~ s/&regid//g;
-            $test_text =~ s/&reg=//g;
 
             # See http://turner.faculty.swau.edu/webstuff/htmlsymbols.html
             while ( $test_text =~ /&sup2[^;]/g )   { $pos = pos($test_text) }
@@ -5154,8 +5096,8 @@ sub insert_into_db {
     # Problem: sql-command insert, apostrophe ' or backslash \ in text
     $article_title =~ s/\\/\\\\/g;
     $article_title =~ s/'/\\'/g;
-    $notice        =~ s/\\/\\\\/g;
-    $notice        =~ s/'/\\'/g;
+    $notice =~ s/\\/\\\\/g;
+    $notice =~ s/'/\\'/g;
 
     $notice =~ s/\&/&amp;/g;
     $notice =~ s/</&lt;/g;
@@ -5311,19 +5253,21 @@ if ( defined($DumpFilename) ) {
     # GET DATE FROM THE DUMP FILENAME
     $dump_date_for_output = $DumpFilename;
     $dump_date_for_output =~
-s/^(?:.*\/)?\Q$project\E-(\d{4})(\d{2})(\d{2})-pages-articles\.xml(.*?)$/$1-$2-$3/;
+s/^(?:.*\/)?\Q$project\E-(\d{4})(\d{2})(\d{2})-pages-articles\.xml\.bz2$/$1-$2-$3/;
 
-    # OPEN DUMPFILE BASED IF COMPRESSED OR NOT
-    if ( $DumpFilename =~ /(.*?)\.xml\.bz2$/ ) {
-        my $dump;
-        open( $dump, '-|', 'bzcat', '-q', $DumpFilename )
-          or die("Couldn't open dump file '$DumpFilename'");
-        $pages = $pmwd->pages($dump);
-    }
-    else {
-        $pages     = $pmwd->pages($DumpFilename);
-        $file_size = ( stat($DumpFilename) )[7];
-    }
+    # GET DUMP FILE SIZE, UNCOMPRESS AND THEN OPEN VIA METAWIKI::DumpFile
+    #my $dump;
+    $file_size = ( stat($DumpFilename) )[7];
+
+    #open( $dump, '-|', 'bzcat', '-q', $DumpFilename )
+    #  or die("Couldn't open dump file '$DumpFilename'");
+
+    $DumpFilename =
+      '/home/bgwhite/windows/enwiki/enwiki-20130708-pages-articles.xml';
+    $dump_date_for_output = '2013-07-08';
+    $pages                = $pmwd->pages($DumpFilename);
+
+    #$pages = $pmwd->pages($dump);
 
     # OPEN TEMPLATETIGER FILE
     if (
