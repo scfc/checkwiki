@@ -69,11 +69,11 @@ my $queued_count = 0;
 foreach (@Projects) {
 
     # Due to WMFlabs incompetence, below projects are very late showing up
-    if ( $_ ne 'enwiki' and $_ ne 'dewiki' and $_ ne 'frwiki' and $_ ne 'commonswiki' and $_ ne 'svwiki' ) {
+    if ( $_ ne 'enwiki' and $_ ne 'dewiki' and $_ ne 'commonswiki' and $_ ne 'svwiki' ) {
         my $lastDump = $Last_Dump[$count];
         my ( $latestDumpDate, $latestDumpFilename ) = FindLatestDump($_);
 
-        if ( $queued_count < 8 ) {    # Queue max is 16 jobs at one time.
+        if ( $queued_count < 10 ) {    # Queue max is 16 jobs at one time.
             if ( !defined($lastDump) || $lastDump ne $latestDumpDate ) {
                 queueUp( $_, $latestDumpDate, $latestDumpFilename );
                 $queued_count++;
@@ -197,6 +197,4 @@ sub queueUp {
     print '--dumpfile,' . $file . "\n";
     print '--tt-file, /data/project/checkwiki/var/spool/templatetiger/'
           . $lang . '-' . $date . ".txt\n\n";
-
-    rreturn();
 }
