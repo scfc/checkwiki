@@ -18,6 +18,7 @@ use strict;
 use warnings;
 
 use DBI;
+use Time::HiRes qw(usleep);
 use CGI qw(:standard);
 use CGI::Carp qw(fatalsToBrowser set_message);
   BEGIN {
@@ -31,7 +32,7 @@ use CGI::Carp qw(fatalsToBrowser set_message);
 
 binmode( STDOUT, ":encoding(UTF-8)" );
 
-our $MAX_LIMIT = 500;
+our $MAX_LIMIT = 10000;
 
 ###########################################################################
 ## GET PARAMETERS FROM CGI
@@ -116,7 +117,7 @@ sub list_articles {
     while ( $sth->fetchrow_arrayref ) {
         print 'title=' . $title_sql . "\n";
     }
-
+    usleep(333000); 
     return ();
 }
 
@@ -133,6 +134,7 @@ sub mark_article_done {
     $sth->execute( $param_title, $param_id, $param_project )
       or die "Cannot execute: " . $sth->errstr . "\n";
 
+    usleep(250000);
     print "Content-type: text/text\n\n";
     print 'Article ' . $param_title . ' has been marked as done.';
 

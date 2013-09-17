@@ -8,7 +8,7 @@
 # DESCRIPTION:
 #
 # AUTHOR:  Stefan Kühn, Bryan White
-# VERSION: 2013-08-22
+# VERSION: 2013-09-16
 # LICENSE: GPLv3
 #
 ###########################################################################
@@ -25,7 +25,7 @@ use DBI;
 
 binmode( STDOUT, ":encoding(UTF-8)" );
 
-our $VERSION     = '2013-08-22';
+our $VERSION     = '2013-09-16';
 our $script_name = 'checkwiki.cgi';
 
 ###########################################################################
@@ -648,7 +648,7 @@ if ( $param_view ne 'bots' ) {
     $result2 .=
 '<a href="https://en.wikipedia.org/wiki/Wikipedia_talk:WikiProject_Check_Wikipedia&amp;action=edit&amp;section=new">comments and bugs</a><br />'
       . "\n";
-    $result2 .= 'Version' . $VERSION . ' · ' . "\n";
+    $result2 .= 'Version ' . $VERSION . ' · ' . "\n";
     $result2 .=
         'license: <a href="https://www.gnu.org/copyleft/gpl.html">GPLv3</a> · '
       . "\n";
@@ -657,11 +657,12 @@ if ( $param_view ne 'bots' ) {
       . "\n";
     $result2 .= '</span></p>' . "\n";
 
-    $result2 .= '</body>' . "\n";
-    $result2 .= '</html>' . "\n";
-
     print $result2;
 }
+
+# AWB needs this
+print '</body>' . "\n";
+print '</html>' . "\n";
 
 ####################################################################################################################
 ####################################################################################################################
@@ -702,12 +703,12 @@ sub check_if_no_params {
 sub begin_html {
 
     print "Content-type: text/html\n\n";
-    print
-"<!DOCTYPE html>\n<head>\n<meta http-equiv=\"content-type\" content=\"text/html;charset=UTF-8\" />\n";
+    print "<!DOCTYPE html>\n<html>\n<head>\n<meta charset=\"UTF-8\" />\n";
     print '<title>Check Wikipedia</title>' . "\n";
-    print '<link rel="stylesheet" href="css/style.css" type="text/css" />'
-      . "\n";
-    print get_style();
+
+    #print '<link rel="stylesheet" href="css/style.css" type="text/css" />'
+    #  . "\n" if ( $param_view ne 'bots' );
+    print get_style() if ( $param_view ne 'bots' );
     print '</head>' . "\n";
     print '<body>' . "\n";
     print '<h1>Check Wikipedia</h1>' . "\n" if ( $param_view ne 'bots' );
@@ -1113,30 +1114,41 @@ sub get_number_of_prio {
 ####################################################################
 
 sub get_number_error_and_desc_by_prio {
-    my ($prio) = @_;
-    my $result = q{};
-    my $dbh    = connect_database();
+    my ($prio)   = @_;
+    my $result   = q{};
+    my $sql_text = q{};
+    my $dbh      = connect_database();
 
     $result .= '<table class="table">';
     $result .= '<tr>';
-    $result .= '<th class="table">To-do</th>';
-    $result .= '<th class="table">Done</th>';
-    $result .= '<th class="table">Description</th>';
-    $result .= '<th class="table">ID</th>';
-    $result .= '</tr>' . "\n";
 
     # SHOW ONE PRIORITY FROM ONE PROJECT
-    my $sql_text =
-"SELECT IFNULL(errors, '') todo, IFNULL(done, '') ok, name, name_trans, id FROM cw_overview_errors WHERE prio = "
-      . $prio
-      . " and project = '"
-      . $param_project
-      . "' order by name_trans, name;";
+    if ( $prio > 0 ) {
+        $result .= '<th class="table">To-do</th>';
+        $result .= '<th class="table">Done</th>';
+        $result .= '<th class="table">Description</th>';
+        $result .= '<th class="table">ID</th>';
+        $result .= '</tr>' . "\n";
+
+        $sql_text =
+"SELECT IFNULL(errors, '') todo, IFNULL(done, '') ok, name, name_trans, id, prio FROM cw_overview_errors WHERE prio = "
+          . $prio
+          . " and project = '"
+          . $param_project
+          . "' order by name_trans, name;";
+    }
 
     # SHOW ALL PRIORITIES FROM ONE PROJECT
     if ( $prio == 0 ) {
+        $result .= '<th class="table">Priority</th>';
+        $result .= '<th class="table">To-do</th>';
+        $result .= '<th class="table">Done</th>';
+        $result .= '<th class="table">Description</th>';
+        $result .= '<th class="table">ID</th>';
+        $result .= '</tr>' . "\n";
+
         $sql_text =
-"SELECT IFNULL(errors, '') todo, IFNULL(done, '') ok, name, name_trans, id FROM cw_overview_errors WHERE project = '"
+"SELECT IFNULL(errors, '') todo, IFNULL(done, '') ok, name, name_trans, id, prio FROM cw_overview_errors WHERE project = '"
           . $param_project
           . "' order by name_trans, name;";
     }
@@ -1144,19 +1156,23 @@ sub get_number_error_and_desc_by_prio {
     # SHOW ALL PRIORITIES FROM ALL PROJECTS
     if ( $prio == 0 and $param_project eq 'all' ) {
         $sql_text =
-"SELECT IFNULL(errors, '') todo, IFNULL(done, '') ok, name, name_trans, id FROM cw_overview_errors ORDER BY name_trans, name;";
+"SELECT IFNULL(errors, '') todo, IFNULL(done, '') ok, name, name_trans, id, prio FROM cw_overview_errors ORDER BY name_trans, name;";
     }
 
     my $sth = $dbh->prepare($sql_text)
       || die "Problem with statement: $DBI::errstr\n";
     $sth->execute or die "Cannot execute: " . $sth->errstr . "\n";
 
-    my ( $errors_sql, $done_sql, $ok_sql, $name_sql, $trans_sql, $id_sql );
+    my (
+        $errors_sql, $done_sql, $ok_sql, $name_sql,
+        $trans_sql,  $id_sql,   $prio_sql
+    );
     $sth->bind_col( 1, \$errors_sql );
     $sth->bind_col( 2, \$ok_sql );
     $sth->bind_col( 3, \$name_sql );
     $sth->bind_col( 4, \$trans_sql );
     $sth->bind_col( 5, \$id_sql );
+    $sth->bind_col( 6, \$prio_sql );
 
     while ( $sth->fetchrow_arrayref ) {
 
@@ -1169,7 +1185,17 @@ sub get_number_error_and_desc_by_prio {
             $headline = $trans_sql;
         }
 
+        $prio_sql = "off"    if ( $prio_sql == 0 );
+        $prio_sql = "high"   if ( $prio_sql == 1 );
+        $prio_sql = "low"    if ( $prio_sql == 3 );
+        $prio_sql = "middle" if ( $prio_sql == 2 );
+
         $result .= '<tr>';
+        if ( $prio == 0 ) {
+            $result .=
+              '<td class="table" style="text-align:center;">'
+              . $prio_sql . '</td>';
+        }
         $result .=
           '<td class="table" style="text-align:right; vertical-align:middle;">'
           . $errors_sql . '</td>';
@@ -1840,7 +1866,7 @@ sub get_article_of_error_for_bots {
         $result .= $title_sql . "\n";
     }
 
-    $result .= '</pre>';
+    $result .= '</pre>' . "\n";
 
     return ($result);
 }
@@ -1969,8 +1995,7 @@ sub get_homepage {
 
 sub get_style {
     my $result = '<style type="text/css">
-    body {
-    
+body {
     font-family: Verdana, Tahoma, Arial, Helvetica, sans-serif;
     font-size:14px;
     font-style:normal;
@@ -1984,26 +2009,22 @@ sub get_style {
     text-transform:none; 
     margin-left:5%;
     margin-right:5%;
-	}
+    }
 
 h1  {
-    /*color:red; */
     font-size:20px;
     }
 
 h2	{
-	/*color:red; */
 	font-size:16px;
 	}
 	
 a 	{  
-
 	color:#4889c5;
 	font-weight:bold;
 	
 	/* without underline */
 	text-decoration:none; 
-	
 	}
 
 a:hover {  
@@ -2031,7 +2052,6 @@ a:hover.nocolor{
   	border-color:blue;
   	background-color:#EEEEEE;
   	
-  	/*Innenabstand*/
 	padding-top:2px;
 	padding-bottom:2px;
 	padding-left:5px;
