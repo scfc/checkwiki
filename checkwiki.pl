@@ -11,7 +11,7 @@
 ##
 ##        AUTHOR: Stefan Kühn, Bryan White
 ##       LICENCE: GPLv3
-##       VERSION: 07/23/2013
+##       VERSION: 09/20/2013
 ##
 ###########################################################################
 
@@ -294,11 +294,17 @@ sub scan_pages {
 ###########################################################################
 
 sub update_ui {
-    my $bytes   = $pages->current_byte;
-    my $percent = int( $bytes / $file_size * 100 );
+    my $bytes = $pages->current_byte;
 
-    printf( "   %7d articles;%10s processed;%3d%% completed\n",
-        ( $artcount, pretty_bytes($bytes), $percent ) );
+    if ( $file_size > 0 ) {
+        my $percent = int( $bytes / $file_size * 100 );
+        printf( "   %7d articles;%10s processed;%3d%% completed\n",
+            ( $artcount, pretty_bytes($bytes), $percent ) );
+    }
+    else {
+        printf( "   %7d articles;%10s processed\n",
+            ( $artcount, pretty_bytes($bytes) ) );
+    }
 
     return ();
 }
@@ -842,8 +848,8 @@ sub get_nowiki {
         my $nowiki_begin = 0;
         my $nowiki_end   = 0;
 
-        $nowiki_begin = () = $test_text =~ /<math/g;
-        $nowiki_end   = () = $test_text =~ /<\/math>/g;
+        $nowiki_begin = () = $test_text =~ /<nowiki/g;
+        $nowiki_end   = () = $test_text =~ /<\/nowiki>/g;
 
         if ( $nowiki_begin > $nowiki_end ) {
             my $snippet = get_broken_tag( '<nowiki>', '</nowiki>' );
@@ -996,6 +1002,29 @@ sub get_gallery {
         if ( $gallery_begin > $gallery_end ) {
             my $snippet = get_broken_tag( '<gallery', '</gallery>' );
             error_029_gallery_no_correct_end($snippet);
+        }
+
+        my $search        = 1;
+        my $pos_start_old = 0;
+
+        while ( $search == 1 ) {
+            my $pos_start = 0;
+            my $pos_end   = 0;
+            $pos_start = index( $text, '<gallery',   $pos_start_old );
+            $pos_end   = index( $text, '</gallery>', $pos_start );
+            if ( $pos_start > -1 and $pos_end > -1 ) {
+                $pos_end       = $pos_end + length('</gallery>');
+                $pos_start_old = $pos_end;
+
+                my $text_before = substr( $text, 0, $pos_start );
+                my $text_after = substr( $text, $pos_end );
+                my $text_gallery =
+                  substr( $text, $pos_start, $pos_end - $pos_start );
+                error_035_gallery_without_description($text_gallery);
+            }
+            else {
+                $search = 0;
+            }
         }
     }
 
@@ -1304,7 +1333,7 @@ sub check_isbn {
 
         if (    $check_10 eq 'no ok'
             and $check_13 eq 'no ok'
-            and $result eq 'yes'
+            and $result   eq 'yes'
             and length($test_isbn) != 0 )
         {
             $result = 'no';
@@ -1511,8 +1540,8 @@ sub get_template {
 
                 $attribut =~ s/^[ ]+//g;
                 $attribut =~ s/[ ]+$//g;
-                $value =~ s/^[ ]+//g;
-                $value =~ s/[ ]+$//g;
+                $value    =~ s/^[ ]+//g;
+                $value    =~ s/[ ]+$//g;
 
                 $template[$template_part_counter][3] = $attribut;
                 $template[$template_part_counter][4] = $value;
@@ -1804,10 +1833,10 @@ sub get_categories {
                 $category[$counter][2] =~ s/^([ ]+)?//g;    # Delete blank
                 $category[$counter][2] =~ s/\]\]//g;        # Delete ]]
                 $category[$counter][2] =~ s/^$namespace_cat_word//i;
-                $category[$counter][2] =~ s/^://;           # Delete :
-                $category[$counter][2] =~ s/\|(.)*//g;      # Delete |xy
-                $category[$counter][2] =~ s/^ //g;          # Delete blank
-                $category[$counter][2] =~ s/ $//g;          # Delete blank
+                $category[$counter][2] =~ s/^://;                   # Delete :
+                $category[$counter][2] =~ s/\|(.)*//g;              # Delete |xy
+                $category[$counter][2] =~ s/^ //g;    # Delete blank
+                $category[$counter][2] =~ s/ $//g;    # Delete blank
 
                 # Filter linkname
                 $category[$counter][3] = q{}
@@ -2269,7 +2298,7 @@ sub error_006_defaultsort_with_special_letters {
                 my $test_text2 = $test_text;
 
                 # Remove ok letters
-                $test_text =~ s/[-:,\.\/\(\)0-9 A-Za-z!\?']//g;
+                $test_text =~ s/[-–:,\.\/\(\)0-9 A-Za-z!\?']//g;
 
                 # Too many to figure out what is right or not
                 $test_text =~ s/#//g;
@@ -4209,8 +4238,13 @@ sub error_064_link_equal_linktext {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
             my $temp_text = $text;
-            if ( $temp_text =~ /\[\[([^|:]*)\|\1\]\]/ ) {
-                my $found_text = '[[' . $1 . '|' . $1 . ']]';
+            # Account for [[Foo|foo]] and [[foo|Foo]] by capitalizing the
+            # the first character after the [ and | 
+
+            $temp_text =~ s/\[\[\s*([\w])/\[\[\u$1/;
+            $temp_text =~ s/\[\[\s*([^|:]*)\s*\|\s*(.)/\[\[$1\|\u$2/;
+            if ( $temp_text =~ /(\[\[\s*([^|:]*)\s*\|\s*\2\s*\]\])/ ) {
+                my $found_text = $1;
                 error_register( $error_code, $found_text );
             }
         }
@@ -4614,43 +4648,40 @@ sub error_080_external_link_with_line_break {
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
-            my $test_text  = lc($text);
-            my $pos        = -1;
-            my $found_text = q{};
-            while (index( $test_text, '[http://', $pos + 1 ) > -1
-                or index( $test_text, '[ftp://',   $pos + 1 ) > -1
-                or index( $test_text, '[https://', $pos + 1 ) > -1 )
-            {
-                my $pos1 = index( $test_text, '[http://',  $pos + 1 );
-                my $pos2 = index( $test_text, '[ftp://',   $pos + 1 );
-                my $pos3 = index( $test_text, '[https://', $pos + 1 );
+            my $pos_start_old = 0;
+            my $pos_end_old   = 0;
+            my $end_search    = 0;
+            my $test_text     = lc($text);
 
-                my $next_pos = -1;
-                $next_pos = $pos1 if ( $pos1 > -1 );
-                $next_pos = $pos2
-                  if ( ( $next_pos == -1 and $pos2 > -1 )
-                    or ( $pos2 > -1 and $next_pos > $pos2 ) );
-                $next_pos = $pos3
-                  if ( ( $next_pos == -1 and $pos3 > -1 )
-                    or ( $pos3 > -1 and $next_pos > $pos3 ) );
+            while ( $end_search == 0 ) {
+                my $pos_start   = 0;
+                my $pos_start_s = 0;
+                my $pos_end     = 0;
+                $end_search = 1;
 
-                my $pos_end = index( $test_text, ']', $next_pos );
-
-                my $weblink =
-                  substr( $text, $next_pos, $pos_end - $next_pos + 1 );
-
-                if ( $weblink =~ /\n/ ) {
-                    $found_text = $weblink if ( $found_text eq '' );
+                $pos_start   = index( $test_text, '[http://',  $pos_start_old );
+                $pos_start_s = index( $test_text, '[https://', $pos_start_old );
+                if ( ( $pos_start_s < $pos_start ) and ( $pos_start_s > -1 ) ) {
+                    $pos_start = $pos_start_s;
                 }
-                $pos = $next_pos;
-            }
+                $pos_end = index( $test_text, ']', $pos_start );
 
-            if ( $found_text ne '' ) {
-                error_register( $error_code, substr( $found_text, 0, 40 ) );
+                if ( $pos_start > -1 and $pos_end > -1 ) {
+
+                    $end_search    = 0;
+                    $pos_start_old = $pos_end;
+
+                    my $weblink =
+                      substr( $test_text, $pos_start, $pos_end - $pos_start );
+
+                    if ( $weblink =~ /\n/ ) {
+                        error_register( $error_code,
+                            substr( $weblink, 0, 40 ) );
+                    }
+                }
             }
         }
     }
-
     return ();
 }
 
@@ -4770,7 +4801,7 @@ sub error_084_section_without_text {
                     if ( $section[$i] ) {
                         my $test_section  = $section[ $i + 1 ];
                         my $test_headline = $headlines[$i];
-                        $test_headline    =~ s/\n//g;
+                        $test_headline =~ s/\n//g;
 
                         $test_section =
                           substr( $test_section, length($test_headline) )
@@ -4873,12 +4904,9 @@ sub error_087_html_names_entities_without_semicolon {
             my $pos       = -1;
             my $test_text = lc($text);
 
-            # REFS USE & FOR INPUT
-            $test_text =~ s/<ref>(.*?)ref>//sg;
-            $test_text =~ s/<ref name(.*?)ref>//sg;
-            $test_text =~ s/\[http(.*?)\]//sg;
-            $test_text =~ s/\^http(.*?)//sg;
-            $test_text =~ s/\{\{cit(.*?)\}\}//sg;
+            # REFS USE '&' FOR INPUT
+            $test_text =~ s/<ref(.*?)>https?:(.*?)<\/ref>//sg;
+            $test_text =~ s/https?:(.*?)\n//g;
 
             # See http://turner.faculty.swau.edu/webstuff/htmlsymbols.html
             while ( $test_text =~ /&sup2[^;]/g )   { $pos = pos($test_text) }
@@ -4924,9 +4952,17 @@ sub error_087_html_names_entities_without_semicolon {
             while ( $test_text =~ /&harr[^;]/g )  { $pos = pos($test_text) }
 
             if ( $pos > -1 ) {
-                $test_text = substr( $test_text, ( $pos - 6 ), 40 );
+
+                # Find the '&' to start the error text
+                my $text_char = substr( $test_text, $pos, 1 );
+                while ( $text_char ne '&' and $pos > 0 ) {
+                    $pos = $pos - 1;
+                    $text_char = substr( $test_text, $pos, 1 );
+                }
+                $test_text = substr( $test_text, $pos, 40 );
                 error_register( $error_code, $test_text );
             }
+
         }
     }
 
@@ -5096,8 +5132,8 @@ sub insert_into_db {
     # Problem: sql-command insert, apostrophe ' or backslash \ in text
     $article_title =~ s/\\/\\\\/g;
     $article_title =~ s/'/\\'/g;
-    $notice =~ s/\\/\\\\/g;
-    $notice =~ s/'/\\'/g;
+    $notice        =~ s/\\/\\\\/g;
+    $notice        =~ s/'/\\'/g;
 
     $notice =~ s/\&/&amp;/g;
     $notice =~ s/</&lt;/g;
@@ -5253,21 +5289,19 @@ if ( defined($DumpFilename) ) {
     # GET DATE FROM THE DUMP FILENAME
     $dump_date_for_output = $DumpFilename;
     $dump_date_for_output =~
-s/^(?:.*\/)?\Q$project\E-(\d{4})(\d{2})(\d{2})-pages-articles\.xml\.bz2$/$1-$2-$3/;
+s/^(?:.*\/)?\Q$project\E-(\d{4})(\d{2})(\d{2})-pages-articles\.xml(.*?)$/$1-$2-$3/;
 
-    # GET DUMP FILE SIZE, UNCOMPRESS AND THEN OPEN VIA METAWIKI::DumpFile
-    #my $dump;
-    $file_size = ( stat($DumpFilename) )[7];
-
-    #open( $dump, '-|', 'bzcat', '-q', $DumpFilename )
-    #  or die("Couldn't open dump file '$DumpFilename'");
-
-    $DumpFilename =
-      '/home/bgwhite/windows/enwiki/enwiki-20130708-pages-articles.xml';
-    $dump_date_for_output = '2013-07-08';
-    $pages                = $pmwd->pages($DumpFilename);
-
-    #$pages = $pmwd->pages($dump);
+    # OPEN DUMPFILE BASED IF COMPRESSED OR NOT
+    if ( $DumpFilename =~ /(.*?)\.xml\.bz2$/ ) {
+        my $dump;
+        open( $dump, '-|', 'bzcat', '-q', $DumpFilename )
+          or die("Couldn't open dump file '$DumpFilename'");
+        $pages = $pmwd->pages($dump);
+    }
+    else {
+        $pages     = $pmwd->pages($DumpFilename);
+        $file_size = ( stat($DumpFilename) )[7];
+    }
 
     # OPEN TEMPLATETIGER FILE
     if (
