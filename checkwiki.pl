@@ -1108,236 +1108,64 @@ sub get_isbn {
     {
         my $text_test = $text;
 
-        while ( $text_test =~ /ISBN([ ]|[-]|[=])/g ) {
-            my $pos_start = pos($text_test) - 5;
+        if ( $test_text =~ / ISBN([-]|[:])/g ) {
+            my $output = substr( $test_text, pos($test_text) - 5, 16 );
+            error_069_isbn_wrong_syntax($output);
+        }
 
-            my $current_isbn = substr( $text_test, $pos_start );
-            my $output_isbn = substr( $current_isbn, 0, 50 );
-            $output_isbn =~ s/\n/ /g;
+        while ( $test_text =~ /ISBN([ ]|[-]|[=]|[:])/g ) {
+            my $pos_start    = pos($test_text) - 5;
+            my $current_isbn = substr( $test_text, $pos_start );
 
-            my $result_isbn = q{};
-            my $i           = -1;
-            my $finish      = 'no';
+            $current_isbn =~
+/\b(?:ISBN(?:-?1[03])?:?\s*|(ISBN\s*=\s*))([\dX ‐—–-]{4,24}[\dX])\b/gi;
 
-            $current_isbn =~ s/\t/ /;
+            if ( defined $2 ) {
+                my $isbn       = $2;
+                my $isbn_strip = $2;
+                $isbn_strip    =~ s/[^0-9X]//g;
 
-            if ( $current_isbn =~ /^([ ]+)?ISBN=([ ]+)?/ ) {
+                my $digits = length($isbn_strip);
 
-                # ISBN = 01234566 in templates
-                $current_isbn =~ s/^([ ]+)?ISBN([ ]+)?=([ ]+)?/ /;
-
-                #if ( length($current_isbn ) == 10
-
-                my $pos_open  = index( $current_isbn, '[' );
-                my $pos_close = index( $current_isbn, ']' );
-
-                if (
-                    ( $pos_open == -1 and $pos_close > -1 )
-                    or (    $pos_open > -1
-                        and $pos_close > -1
-                        and $pos_open > $pos_close )
-                  )
-                {
-                    $current_isbn = 'ISBN';
+                if ( $digits != 10 and $digits != 13 ) {
+                    error_070_isbn_wrong_length($isbn);
                 }
-            }
-
-            if ( $current_isbn =~ /^([ ]+)?ISBN-[^1]/ ) {
-
-                # text "ISBN-number"
-                # text "ISBN-bureau"
-                $current_isbn = 'ISBN';
-            }
-
-            my $pos_next_ISBN = index( $current_isbn, 'ISBN', 4 );
-            if ( $pos_next_ISBN > -1 ) {
-                $current_isbn = substr( $current_isbn, 0, $pos_next_ISBN );
-            }
-            $current_isbn =~ s/ISBN//g;
-
-            do {
-                $i++;
-                if ( $i <= length($current_isbn) ) {
-                    my $character = substr( $current_isbn, $i, 1 );
-                    if ( $character =~ /[ 0-9Xx\-]/ ) {
-                        $result_isbn = $result_isbn . $character;
-                    }
-                    else {
-                        $finish = 'yes';
-                    }
+                elsif ( index( $isbn_strip, 'X' ) != 9
+                    and index( $isbn_strip, 'X' ) > -1 )
+                {
+                    error_071_isbn_wrong_pos_X($isbn);
                 }
                 else {
-                    $finish = 'yes';
+                    if ( $digits == 10 ) {
+                        my $sum;
+                        my @digits = split //, $isbn_strip;
+                        foreach ( reverse 2 .. 10 ) {
+                            $sum += $_ * ( shift @digits );
+                        }
+                        my $checksum = ( 11 - ( $sum % 11 ) ) % 11;
+                        $checksum = 'X' if $checksum == 10;
+
+                        if ( $checksum ne substr( $isbn_strip, 9, 1 ) ) {
+                            $isbn = $isbn . ' vs ' . $checksum;
+                            error_072_isbn_10_wrong_checksum($isbn);
+                        }
+                    }
+                    elsif ( $digits == 13 ) {
+                        my $sum;
+                        foreach my $index ( 0, 2, 4, 6, 8, 10 ) {
+                            $sum += substr( $isbn_split, $index, 1 );
+                            $sum += 3 * substr( $isbn_split, $index + 1, 1 );
+                        }
+                        my $checksum =
+                          ( 10 * ( int( $sum / 10 ) + 1 ) - $sum ) % 10;
+
+                        if ( $checksum ne substr( $isbn_strip, 12, 1 ) ) {
+                            $isbn = $isbn . ' vs ' . $checksum;
+                            error_073_isbn_13_wrong_checksum($isbn);
+                        }
+                    }
                 }
-
-            } until ( $finish eq 'yes' );
-
-            if (    $result_isbn =~ /[^ ]/
-                and $result_isbn =~ /[0-9]/ )
-            {
-                $result_isbn =~ s/^([ ]+)?//g;
-                $result_isbn =~ s/([ ]+)?$//g;
-
-                push( @isbn, $result_isbn );
-                check_isbn($result_isbn);
             }
-        }
-    }
-
-    return ();
-}
-
-###########################################################################
-##
-###########################################################################
-
-sub check_isbn {
-    my ($current_isbn) = @_;
-
-    my $test_isbn = $current_isbn;
-
-    $test_isbn =~ s/^([ ]+)?//g;
-    $test_isbn =~ s/([ ]+)?$//g;
-    $test_isbn =~ s/[ ]//g;
-
-    my $result = 'yes';
-
-    # Length of isbn
-    if ( $result eq 'yes' ) {
-        if (   index( $test_isbn, '-10' ) == 0
-            or index( $test_isbn, '-13' ) == 0 )
-        {
-            $result = 'no';
-            error_069_isbn_wrong_syntax($current_isbn);
-        }
-    }
-
-    $test_isbn =~ s/-//g;
-
-    # Wrong position of X
-    if ( $result eq 'yes' ) {
-        $test_isbn =~ s/x/X/g;
-        if ( index( $test_isbn, 'X' ) > -1 ) {
-
-            # ISBN with X
-            if ( index( $test_isbn, 'X' ) != 9 ) {
-
-                # ISBN 123456X890
-                $result = 'no';
-                error_071_isbn_wrong_pos_X($current_isbn);
-            }
-            if ( index( $test_isbn, 'X' ) == 9
-                and ( length($test_isbn) != 10 ) )
-            {
-                # ISBN 123451678XXXX b
-                $test_isbn = substr( $test_isbn, 0, 10 );
-            }
-        }
-    }
-
-    my $check_10      = 'no ok';
-    my $check_13      = 'no ok';
-    my $found_text_10 = q{};
-    my $found_text_13 = q{};
-
-    # Check Checksum 13
-    if ( $result eq 'yes' ) {
-        if ( length($test_isbn) >= 13
-            and $test_isbn =~ /^[0-9]{13}/ )
-        {
-            my $checksum = 0;
-            $checksum = $checksum + 1 * substr( $test_isbn, 0,  1 );
-            $checksum = $checksum + 3 * substr( $test_isbn, 1,  1 );
-            $checksum = $checksum + 1 * substr( $test_isbn, 2,  1 );
-            $checksum = $checksum + 3 * substr( $test_isbn, 3,  1 );
-            $checksum = $checksum + 1 * substr( $test_isbn, 4,  1 );
-            $checksum = $checksum + 3 * substr( $test_isbn, 5,  1 );
-            $checksum = $checksum + 1 * substr( $test_isbn, 6,  1 );
-            $checksum = $checksum + 3 * substr( $test_isbn, 7,  1 );
-            $checksum = $checksum + 1 * substr( $test_isbn, 8,  1 );
-            $checksum = $checksum + 3 * substr( $test_isbn, 9,  1 );
-            $checksum = $checksum + 1 * substr( $test_isbn, 10, 1 );
-            $checksum = $checksum + 3 * substr( $test_isbn, 11, 1 );
-
-            my $checker = 10 - substr( $checksum, length($checksum) - 1, 1 );
-            $checker = 0 if ( $checker == 10 );
-
-            if ( $checker eq substr( $test_isbn, 12, 1 ) ) {
-                $check_13 = 'ok';
-            }
-            else {
-                $found_text_13 =
-                    $current_isbn
-                  . substr( $test_isbn, 12, 1 ) . ' vs. '
-                  . $checker;
-            }
-        }
-    }
-
-    # Check Checksum 10
-    if ( $result eq 'yes' ) {
-        if (    length($test_isbn) >= 10
-            and $test_isbn =~ /^[0-9X]{10}/
-            and $check_13 eq 'no ok' )
-        {
-            my $checksum = 0;
-            $checksum = $checksum + 1 * substr( $test_isbn, 0, 1 );
-            $checksum = $checksum + 2 * substr( $test_isbn, 1, 1 );
-            $checksum = $checksum + 3 * substr( $test_isbn, 2, 1 );
-            $checksum = $checksum + 4 * substr( $test_isbn, 3, 1 );
-            $checksum = $checksum + 5 * substr( $test_isbn, 4, 1 );
-            $checksum = $checksum + 6 * substr( $test_isbn, 5, 1 );
-            $checksum = $checksum + 7 * substr( $test_isbn, 6, 1 );
-            $checksum = $checksum + 8 * substr( $test_isbn, 7, 1 );
-            $checksum = $checksum + 9 * substr( $test_isbn, 8, 1 );
-
-            my $checker = $checksum % 11;
-
-            if (   ( $checker < 10 and $checker ne substr( $test_isbn, 9, 1 ) )
-                or ( $checker == 10 and 'X' ne substr( $test_isbn, 9, 1 ) ) )
-            {
-                # Check wrong and 10 or more characters
-                $found_text_10 =
-                    $current_isbn
-                  . substr( $test_isbn, 9, 1 ) . ' vs. '
-                  . $checker . ' ('
-                  . $checksum
-                  . ' mod 11)';
-            }
-            else {
-                $check_10 = 'ok';
-            }
-        }
-    }
-
-    # Length of isbn
-    if ( $result eq 'yes'
-        and not( $check_10 eq 'ok' or $check_13 eq 'ok' ) )
-    {
-
-        if (    $check_10 eq 'no ok'
-            and $check_13 eq 'no ok'
-            and length($test_isbn) == 10 )
-        {
-            $result = 'no';
-            error_072_isbn_10_wrong_checksum($found_text_10);
-        }
-
-        if (    $check_10 eq 'no ok'
-            and $check_13 eq 'no ok'
-            and length($test_isbn) == 13 )
-        {
-            $result = 'no';
-            error_073_isbn_13_wrong_checksum($found_text_13);
-        }
-
-        if (    $check_10 eq 'no ok'
-            and $check_13 eq 'no ok'
-            and $result   eq 'yes'
-            and length($test_isbn) != 0 )
-        {
-            $result = 'no';
-            error_070_isbn_wrong_length( $current_isbn . length($test_isbn) );
         }
     }
 
@@ -4238,8 +4066,9 @@ sub error_064_link_equal_linktext {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
             my $temp_text = $text;
+
             # Account for [[Foo|foo]] and [[foo|Foo]] by capitalizing the
-            # the first character after the [ and | 
+            # the first character after the [ and |
 
             $temp_text =~ s/\[\[\s*([\w])/\[\[\u$1/;
             $temp_text =~ s/\[\[\s*([^|:]*)\s*\|\s*(.)/\[\[$1\|\u$2/;
