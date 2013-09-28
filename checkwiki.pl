@@ -1108,14 +1108,14 @@ sub get_isbn {
     {
         my $text_test = $text;
 
-        if ( $test_text =~ / ISBN([-]|[:])/g ) {
-            my $output = substr( $test_text, pos($test_text) - 5, 16 );
+        if ( $text_test =~ / ISBN([-]|[:])/g ) {
+            my $output = substr( $text_test, pos($text_test) - 5, 16 );
             error_069_isbn_wrong_syntax($output);
         }
 
-        while ( $test_text =~ /ISBN([ ]|[-]|[=]|[:])/g ) {
-            my $pos_start    = pos($test_text) - 5;
-            my $current_isbn = substr( $test_text, $pos_start );
+        while ( $text_test =~ /ISBN([ ]|[-]|[=]|[:])/g ) {
+            my $pos_start = pos($text_test) - 5;
+            my $current_isbn = substr( $text_test, $pos_start );
 
             $current_isbn =~
 /\b(?:ISBN(?:-?1[03])?:?\s*|(ISBN\s*=\s*))([\dX ‐—–-]{4,24}[\dX])\b/gi;
@@ -1123,7 +1123,7 @@ sub get_isbn {
             if ( defined $2 ) {
                 my $isbn       = $2;
                 my $isbn_strip = $2;
-                $isbn_strip    =~ s/[^0-9X]//g;
+                $isbn_strip =~ s/[^0-9X]//g;
 
                 my $digits = length($isbn_strip);
 
@@ -1153,8 +1153,8 @@ sub get_isbn {
                     elsif ( $digits == 13 ) {
                         my $sum;
                         foreach my $index ( 0, 2, 4, 6, 8, 10 ) {
-                            $sum += substr( $isbn_split, $index, 1 );
-                            $sum += 3 * substr( $isbn_split, $index + 1, 1 );
+                            $sum += substr( $isbn_strip, $index, 1 );
+                            $sum += 3 * substr( $isbn_strip, $index + 1, 1 );
                         }
                         my $checksum =
                           ( 10 * ( int( $sum / 10 ) + 1 ) - $sum ) % 10;
@@ -4068,8 +4068,10 @@ sub error_064_link_equal_linktext {
             my $temp_text = $text;
 
             # Account for [[Foo|foo]] and [[foo|Foo]] by capitalizing the
-            # the first character after the [ and |
+            # the first character after the [ and |.  Acount for
+            # [[foo_foo|foo foo]] by removing all _.
 
+            $temp_text =~ tr/_/ /;
             $temp_text =~ s/\[\[\s*([\w])/\[\[\u$1/;
             $temp_text =~ s/\[\[\s*([^|:]*)\s*\|\s*(.)/\[\[$1\|\u$2/;
             if ( $temp_text =~ /(\[\[\s*([^|:]*)\s*\|\s*\2\s*\]\])/ ) {
@@ -4906,14 +4908,27 @@ sub error_092_headline_double {
 sub error_register {
     my ( $error_code, $notice ) = @_;
 
-    $notice =~ s/\n//g;
+    my $sth = $dbh->prepare(
+        'SELECT OK FROM cw_whitelist WHERE error=? AND title=? AND project=?');
+    $sth->execute( $project, $title, $error_code )
+      or die "Cannot execute: " . $sth->errstr . "\n";
 
-    print "\t" . $error_code . "\t" . $title . "\t" . $notice . "\n";
+    my $whitelist = $sth->fetchrow_arrayref();
 
-    $Error_number_counter[$error_code] = $Error_number_counter[$error_code] + 1;
-    $error_counter = $error_counter + 1;
+    if ( !defined($whitelist ) ) {
+        $notice =~ s/\n//g;
 
-    insert_into_db( $error_code, $notice );
+        print "\t" . $error_code . "\t" . $title . "\t" . $notice . "\n";
+
+        $Error_number_counter[$error_code] =
+          $Error_number_counter[$error_code] + 1;
+        $error_counter = $error_counter + 1;
+
+        insert_into_db( $error_code, $notice );
+    }
+    else {
+        print $title . " is in whitelist with error: " . $error_code . "\n";
+    }
 
     return ();
 }

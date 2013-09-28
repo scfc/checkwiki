@@ -16,15 +16,15 @@
 
 use strict;
 use warnings;
-use utf8;
 
 use DBI;
+use Encode;
 use Getopt::Long
   qw(GetOptionsFromString :config bundling no_auto_abbrev no_ignore_case);
 use LWP::UserAgent;
 use URI::Escape;
 
-binmode STDOUT, ":encoding(UTF-8)";
+binmode( STDOUT, ":encoding(UTF-8)" );
 
 our $OUTPUT_DIRECTORY       = "/data/project/checkwiki/public_html/Translation";
 our $TRANSLATION_FILE       = 'translation.txt';
@@ -35,7 +35,10 @@ our $LOWEST_PRIORITY_SCRIPT = 'Lowest priority';
 our @Projects;
 our $project;
 our @ErrorDescription;
-our $Number_of_error_description;
+our $Number_of_error_description = 92;
+
+our $TranslationFile;
+our @Whitelist;
 
 our $Top_priority_project    = q{};
 our $Middle_priority_project = q{};
@@ -56,18 +59,19 @@ our $dbh;
 
 our %TranslationLocation = (
     'afwiki' => 'Wikipedia:WikiProject Check Wikipedia/Translation',
-    'arwiki' => 'ﻮﻴﻜﻴﺒﻳﺪﻳﺍ:ﻒﺤﺻ_ﻮﻴﻜﻴﺒﻳﺪﻳﺍ/ﺕﺮﺠﻣﺓ',
-    'cawiki' => 'Viquipèdia:WikiProject Check Wikipedia/Translation',
-    'cswiki' => 'Wikipedie:WikiProjekt Check Wikipedia/Translation',
+    'arwiki' =>
+'ﻮﻴﻜﻴﺒﻳﺪﻳﺍ:ﻒﺤﺻ_ﻮﻴﻜﻴﺒﻳﺪﻳﺍ/ﺕﺮﺠﻣﺓ',
+    'cawiki'      => 'Viquipèdia:WikiProject Check Wikipedia/Translation',
+    'cswiki'      => 'Wikipedie:WikiProjekt Check Wikipedia/Translation',
     'commonswiki' => 'Commons:WikiProject Check Wikipedia/Translation',
-    'cywiki' => 'Wicipedia:WikiProject Check Wikipedia/Translation',
-    'dawiki' => 'Wikipedia:WikiProjekt Check Wikipedia/Oversættelse',
-    'dewiki' => 'Wikipedia:WikiProjekt Syntaxkorrektur/Übersetzung',
-    'enwiki' => 'Wikipedia:WikiProject Check Wikipedia/Translation',
-    'eowiki' => 'Projekto:Kontrolu Vikipedion/Tradukado',
-    'eswiki' => 'Wikiproyecto:Check Wikipedia/Translation',
-    'fiwiki' => 'Wikipedia:Wikiprojekti Check Wikipedia/Translation',
-    'frwiki' => 'Projet:Correction syntaxique/Traduction',
+    'cywiki'      => 'Wicipedia:WikiProject Check Wikipedia/Translation',
+    'dawiki'      => 'Wikipedia:WikiProjekt Check Wikipedia/Oversættelse',
+    'dewiki'      => 'Wikipedia:WikiProjekt Syntaxkorrektur/Übersetzung',
+    'enwiki'      => 'Wikipedia:WikiProject Check Wikipedia/Translation',
+    'eowiki'      => 'Projekto:Kontrolu Vikipedion/Tradukado',
+    'eswiki'      => 'Wikiproyecto:Check Wikipedia/Translation',
+    'fiwiki'      => 'Wikipedia:Wikiprojekti Check Wikipedia/Translation',
+    'frwiki'      => 'Projet:Correction syntaxique/Traduction',
     'fywiki' =>
       'Meidogger:Stefan Kühn/WikiProject Check Wikipedia/Translation',
     'hewiki' => 'Wikipedia:WikiProject Check Wikipedia/Translation',
@@ -77,20 +81,22 @@ our %TranslationLocation = (
     'itwiki' => 'Wikipedia:WikiProjekt Check Wikipedia/Translation',
     'jawiki' => 'プロジェクト:ウィキ文法のチェック/Translation',
     'lawiki' => 'Vicipaedia:WikiProject Check Wikipedia/Translation',
-    'ndswiki' => 'Wikipedia:Wikiproject Check Wikipedia/Translation',
+    'ndswiki'    => 'Wikipedia:Wikiproject Check Wikipedia/Translation',
     'nds_nlwiki' => 'Wikipedie:WikiProject Check Wikipedia/Translation',
-    'nlwiki' => 'Wikipedia:Wikiproject/Check Wikipedia/Vertaling',
-    'nowiki' => 'Wikipedia:WikiProject Check Wikipedia/Translation',
-    'pdcwiki' => 'Wikipedia:WikiProject Check Wikipedia/Translation',
-    'plwiki' => 'Wikiprojekt:Check Wikipedia/Tłumaczenie',
-    'ptwiki' => 'Wikipedia:Projetos/Check Wikipedia/Tradução',
-    'ruwiki' => 'Википедия:Страницы с ошибками в викитексте/Перевод',
+    'nlwiki'     => 'Wikipedia:Wikiproject/Check Wikipedia/Vertaling',
+    'nowiki'     => 'Wikipedia:WikiProject Check Wikipedia/Translation',
+    'pdcwiki'    => 'Wikipedia:WikiProject Check Wikipedia/Translation',
+    'plwiki'     => 'Wikiprojekt:Check Wikipedia/Tłumaczenie',
+    'ptwiki'     => 'Wikipedia:Projetos/Check Wikipedia/Tradução',
+    'ruwiki' =>
+'Википедия:Страницы с ошибками в викитексте/Перевод',
     'rowiki' => 'Wikipedia:WikiProject Check Wikipedia/Translation',
     'skwiki' => 'Wikipédia:WikiProjekt Check Wikipedia/Translation',
     'svwiki' => 'Wikipedia:Projekt wikifiering/Syntaxfel/Translation',
     'trwiki' => 'Vikipedi:Vikipedi proje kontrolü/Çeviri',
     'ukwiki' => 'Вікіпедія:Проект:Check Wikipedia/Translation',
-    'yiwiki' => 'װיקיפּעדיע:קאנטראלירן_בלעטער/Translation',
+    'yiwiki' =>
+      'װיקיפּעדיע:קאנטראלירן_בלעטער/Translation',
     'zhwiki' => '维基百科:错误检查专题/翻译',
 );
 
@@ -107,7 +113,7 @@ my @Options = (
 
 GetOptions(
     'c=s' => sub {
-        my $f = IO::File->new( $_[1], '<:encoding(UTF-8)' )
+        my $f = IO::File->new( $_[1], '<' )
           or die( "Can't open " . $_[1] . "\n" );
         local ($/);
         my $s = <$f>;
@@ -128,7 +134,11 @@ foreach (@Projects) {
     print "\n\n";
     two_column_display( 'Working on:', $project );
     get_error_description();
+    $TranslationFile = get_translation_page();
     load_text_translation();
+    clearWhitelistTable();
+    add_whitelist_to_db();
+
     output_errors_desc_in_db();
     output_text_translation_wiki();
 }
@@ -148,8 +158,8 @@ sub open_db {
         $DbUsername,
         $DbPassword,
         {
-            RaiseError => 1,
-            AutoCommit => 1,
+            RaiseError        => 1,
+            AutoCommit        => 1,
             mysql_enable_utf8 => 1
         }
     ) or die( "Could not connect to database: " . DBI::errstr() . "\n" );
@@ -181,7 +191,8 @@ sub get_error_description {
       || die "Can not prepare statement: $DBI::errstr\n";
     $sth->execute or die "Cannot execute: " . $sth->errstr . "\n";
 
-    $Number_of_error_description = $sth->fetchrow();
+    #$Number_of_error_description = $sth->fetchrow();
+    #$Number_of_error_description = 92;
 
     $sql_text =
       "SELECT prio, name, text FROM cw_error_desc WHERE project = 'enwiki';";
@@ -243,16 +254,53 @@ sub get_projects {
 }
 
 ##########################################################################
+## INSERT TRANSLATION PAGE
+##########################################################################
+
+sub insert_into_projects {
+    my ($page) = @_;
+
+    my $sql_text =
+        "UPDATE cw_project SET Translation_Page='"
+      . $page
+      . "' WHERE project='"
+      . $project . "';";
+    my $sth = $dbh->prepare($sql_text)
+      || die "Can not prepare statement: $DBI::errstr\n";
+    $sth->execute or die "Cannot execute: " . $sth->errstr . "\n";
+
+}
+
+###########################################################################
+### GET TRANSLATION PAGE FROM DATABASE
+############################################################################
+
+sub get_translation_page {
+
+    my $sth = $dbh->prepare(
+        'SELECT translation_page FROM cw_overview WHERE project= ?');
+    $sth->execute($project) or die "Cannot execute: " . $sth->errstr . "\n";
+
+    my $file = $sth->fetchrow();
+    $file = q{} if ( !defined $file );
+
+    return ($file);
+}
+
+##########################################################################
 ## LOAD TEXT TRANSLATION
 ##########################################################################
 
 sub load_text_translation {
 
     my $translation_input;
-    my $translation_page = $TranslationLocation{$project};
+
+    #    my $translation_page = $TranslationLocation{$project};
+    my $translation_page = $TranslationFile;
 
     if ( defined($translation_page) ) {
         two_column_display( 'Translation input:', $translation_page );
+        insert_into_projects($translation_page);
         $translation_input = raw_text($translation_page);
         $translation_input = replace_special_letters($translation_input);
     }
@@ -297,6 +345,11 @@ sub load_text_translation {
         $current_error_number = $current_error_number . '0' if ( $i < 100 );
         $current_error_number = $current_error_number . $i;
 
+        # whitelist
+        $Whitelist[$i] =
+          get_translation_text( $translation_input,
+            $current_error_number . '_whitelistpage_' . $project . '=', 'END' );
+
         # Priority
         $ErrorDescription[$i][4] = get_translation_text( $translation_input,
             $current_error_number . '_prio_' . $project . '=', 'END' );
@@ -322,6 +375,55 @@ sub load_text_translation {
         $ErrorDescription[$i][6] = get_translation_text( $translation_input,
             $current_error_number . '_desc_' . $project . '=', 'END' );
 
+    }
+
+    return ();
+}
+
+###########################################################################
+## DELETE ARTICLES FROM DATABASE
+###########################################################################
+
+sub clearWhitelistTable {
+
+    my $sth = $dbh->prepare('DELETE FROM cw_whitelist WHERE Project = ?;')
+      || die "Can not prepare statement: $DBI::errstr\n";
+    $sth->execute($project) or die "Cannot execute: " . $sth->errstr . "\n";
+
+    return ();
+
+}
+
+###########################################################################
+## ADD WHITELIST ARTICLES TO DATABASE
+###########################################################################
+
+sub add_whitelist_to_db {
+
+    my $error_input;
+
+    foreach my $error ( 1 .. $Number_of_error_description ) {
+        my $error_page = $Whitelist[$error];
+
+        if ( $error_page ne q{} ) {
+            $error_input = raw_text($error_page);
+            $error_input = replace_special_letters($error_input);
+
+            while ( $error_input =~ /\* \[\[/g ) {
+                my $pos_start = pos($error_input) - 4;
+                my $current   = substr( $error_input, $pos_start );
+                $current      =~ /\* \[\[([^\[]*)\]\]/;
+                my $title     = $1;
+
+                if ( defined($title) ) {
+                    my $sth = $dbh->prepare(
+'INSERT IGNORE INTO cw_whitelist (project, title, error, ok ) VALUES (?, ?, ?, 1)'
+                    );
+                    $sth->execute( $project, $title, $error )
+                      or die "Cannot execute: " . $sth->errstr . "\n";
+                }
+            }
+        }
     }
 
     return ();
@@ -410,7 +512,8 @@ sub output_text_translation_wiki {
     my $filename = $OUTPUT_DIRECTORY . '/' . $project . '_' . $TRANSLATION_FILE;
     two_column_display( 'Output translation text to:',
         $project . '_' . $TRANSLATION_FILE );
-    open TRANSLATION, ">", $filename or die "unable to open: $filename\n";
+    open TRANSLATION, ">:encoding(UTF-8)", $filename
+      or die "unable to open: $filename\n";
 
     print TRANSLATION '<pre>' . "\n";
     print TRANSLATION
@@ -614,6 +717,8 @@ sub raw_text {
     if ($content2) {
         $result2 = $content2;
     }
+
+    $result2 = decode( 'utf-8', $result2 );
 
     return ($result2);
 }
