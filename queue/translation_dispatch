@@ -1,0 +1,9 @@
+#! /usr/bin/env perl
+
+system ('jsub',
+	'-j', 'y',
+	'-N', 'translation',
+	'-o', '/data/project/checkwiki/var/log',
+	'-once',
+	'/data/project/checkwiki/bin/translation.pl',
+    '-c', '/data/project/checkwiki/checkwiki.cfg');

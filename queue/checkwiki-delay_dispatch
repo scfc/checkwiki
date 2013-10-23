@@ -1,0 +1,22 @@
+#! /usr/bin/env perl
+
+use strict;
+use warnings;
+
+our @ProjectList = qw(enwiki dewiki eswiki frwiki arwiki cswiki);
+
+foreach ( @ProjectList ) {
+
+my $project = $_;
+
+system ('jsub',
+	'-j', 'y',
+    '-mem', '512m',
+	'-N', 'checkwiki-delay-' . $project,
+	'-o', '/data/project/checkwiki/var/log',
+	'-once',
+	'/data/project/checkwiki/bin/checkwiki.pl',
+    '-c', '/data/project/checkwiki/checkwiki.cfg',
+    '--load', 'delay',
+    '--project', $project);
+}

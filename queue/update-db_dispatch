@@ -1,0 +1,9 @@
+#! /usr/bin/env perl
+
+system ('jsub',
+	'-j', 'y',
+	'-N', 'update_db',
+	'-o', '/data/project/checkwiki/var/log',
+	'-once',
+	'/data/project/checkwiki/bin/update_db.pl',
+    '-c', '/data/project/checkwiki/checkwiki.cfg');
