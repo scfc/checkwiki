@@ -621,10 +621,10 @@ if (    $param_project ne q{}
                 my $result_under = $result;
                 $result_under =~ tr/ /_/;
 
-                print '<p>Article: <a href=https://"'
+                print '<p>Article: <a href=https://'
                   . $homepage 
                   . '/wiki/'
-                  . $result_under . '">'
+                  . $result_under . '>'
                   . $result
                   . '</a> - 
                      <a href="https://'
