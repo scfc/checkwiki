@@ -96,6 +96,14 @@ CREATE TABLE IF NOT EXISTS cw_overview_errors
  Prio SMALLINT)
  CHARACTER SET utf8 COLLATE utf8_unicode_ci;
 
+-- Table cw_template
+CREATE  TABLE `p50380g50450__checkwiki_p`.`cw_template` (
+ `Project` VARCHAR(20) NOT NULL ,
+ `Templates` VARCHAR(100) NOT NULL ,
+ `Error` SMALLINT NOT NULL ,
+ PRIMARY KEY (`Project`, `Templates`, `Error`) )
+ CHARACTER SET utf8 COLLATE utf8_unicode_ci;
+
 -- Table cw_whitelist
 CREATE  TABLE `p50380g50450__checkwiki_p`.`cw_whitelist` (
  `Project` VARCHAR(20) NOT NULL ,

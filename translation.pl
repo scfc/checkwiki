@@ -27,6 +27,7 @@ use URI::Escape;
 binmode( STDOUT, ":encoding(UTF-8)" );
 
 our $OUTPUT_DIRECTORY       = "/data/project/checkwiki/public_html/Translation";
+#our $OUTPUT_DIRECTORY       = "translations";
 our $TRANSLATION_FILE       = 'translation.txt';
 our $TOP_PRIORITY_SCRIPT    = 'Top priority';
 our $MIDDLE_PRIORITY_SCRIPT = 'Middle priority';
@@ -39,6 +40,7 @@ our $Number_of_error_description = 92;
 
 our $TranslationFile;
 our @Whitelist;
+our @Template;
 
 our $Top_priority_project    = q{};
 our $Middle_priority_project = q{};
@@ -136,11 +138,15 @@ foreach (@Projects) {
     get_error_description();
     $TranslationFile = get_translation_page();
     load_text_translation();
+
     clearWhitelistTable();
     add_whitelist_to_db();
+    clearTemplateTable();
+    add_templates_to_db();
 
     output_errors_desc_in_db();
     output_text_translation_wiki();
+
 }
 
 close_db();
@@ -345,6 +351,11 @@ sub load_text_translation {
         $current_error_number = $current_error_number . '0' if ( $i < 100 );
         $current_error_number = $current_error_number . $i;
 
+        # template
+        $Template[$i] =
+          get_translation_text( $translation_input,
+            $current_error_number . '_templates_' . $project . '=', 'END' );
+
         # whitelist
         $Whitelist[$i] =
           get_translation_text( $translation_input,
@@ -381,7 +392,7 @@ sub load_text_translation {
 }
 
 ###########################################################################
-## DELETE ARTICLES FROM DATABASE
+## DELETE WHITELIST ARTICLES FROM DATABASE
 ###########################################################################
 
 sub clearWhitelistTable {
@@ -411,15 +422,59 @@ sub add_whitelist_to_db {
 
             while ( $error_input =~ /\* \[\[/g ) {
                 my $pos_start = pos($error_input) - 4;
-                my $current   = substr( $error_input, $pos_start );
-                $current      =~ /\* \[\[([^\[]*)\]\]/;
-                my $title     = $1;
+                my $current = substr( $error_input, $pos_start );
+                $current =~ /\* \[\[([^\[]*)\]\]/;
+                my $title = $1;
 
                 if ( defined($title) ) {
                     my $sth = $dbh->prepare(
 'INSERT IGNORE INTO cw_whitelist (project, title, error, ok ) VALUES (?, ?, ?, 1)'
                     );
                     $sth->execute( $project, $title, $error )
+                      or die "Cannot execute: " . $sth->errstr . "\n";
+                }
+            }
+        }
+    }
+
+    return ();
+}
+
+###########################################################################
+## DELETE TEMPLATES FROM DATABASE
+###########################################################################
+
+sub clearTemplateTable {
+
+    my $sth = $dbh->prepare('DELETE FROM cw_template WHERE Project = ?;')
+      || die "Can not prepare statement: $DBI::errstr\n";
+    $sth->execute($project) or die "Cannot execute: " . $sth->errstr . "\n";
+
+    return ();
+
+}
+
+###########################################################################
+## ADD TEMPLATES TO DATABASE
+###########################################################################
+
+sub add_templates_to_db {
+
+    foreach my $error ( 1 .. $Number_of_error_description ) {
+
+        if ( defined( $Template[$error] ) ) {
+
+            my @array = split( /\n/, $Template[$error] );
+            foreach (@array) {
+
+                if ( $_ =~ /[a-zA-z0-0]/ ) {
+
+                    $_ =~ s/^\s+//;
+
+                    my $sth = $dbh->prepare(
+'INSERT IGNORE INTO cw_template (project, templates, error ) VALUES (?, ?, ?)'
+                    );
+                    $sth->execute( $project, $_, $error )
                       or die "Cannot execute: " . $sth->errstr . "\n";
                 }
             }
@@ -606,6 +661,13 @@ sub output_text_translation_wiki {
           . '_head_script='
           . $ErrorDescription[$i][1]
           . " END\n";
+        if ( $Whitelist[$i] =~ /[a-zA-z0-0]/ ) {
+            print TRANSLATION ' '
+              . $current_error_number
+              . '_whitelist='
+              . $Whitelist[$i]
+              . " END\n";
+        }
         print TRANSLATION ' '
           . $current_error_number
           . '_desc_script='
@@ -629,6 +691,14 @@ sub output_text_translation_wiki {
           . $project . '='
           . $ErrorDescription[$i][6]
           . " END\n";
+        if ( $Template[$i] =~ /[a-zA-z0-0]/ ) {
+            print TRANSLATION ' '
+              . $current_error_number
+              . '_templates_'
+              . $project . '='
+              . $Template[$i]
+              . " END\n";
+        }
         print TRANSLATION "\n";
         print TRANSLATION
 '###########################################################################'
