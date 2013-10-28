@@ -34,6 +34,10 @@ use MediaWiki::Bot;
 
 binmode( STDOUT, ":encoding(UTF-8)" );
 
+##############################
+##  Program wide variables
+##############################
+
 our $dump_or_live = q{};    # Scan modus (dump, live, delay)
 
 our $CheckOnlyOne = 0;      # Check only one error or all errors
@@ -66,24 +70,30 @@ our $time_found = time();    # For column "Found" in cw_error
 # File name
 our $TTFile;
 
+# Template list retrieved from Translation file
+our @Template_list;
+
+# Total number of Errors
+our $number_of_error_description = 0;
+
 ##############################
 ##  Wiki-special variables
 ##############################
 
-our @namespace;              # Namespace values
-                             # 0 number
-                             # 1 namespace in project language
-                             # 2 namespace in english language
+our @namespace;    # Namespace values
+                   # 0 number
+                   # 1 namespace in project language
+                   # 2 namespace in english language
 
-our @namespacealiases;       # Namespacealiases values
-                             # 0 number
-                             # 1 namespacealias
+our @namespacealiases;    # Namespacealiases values
+                          # 0 number
+                          # 1 namespacealias
 
-our @namespace_cat;          # All namespaces for categorys
-our @namespace_image;        # All namespaces for images
-our @namespace_templates;    # All namespaces for templates
-our $image_regex = q{};      # Regex used in get_images()
-our $cat_regex   = q{};      # Regex used in get_categories()
+our @namespace_cat;       # All namespaces for categorys
+our @namespace_image;     # All namespaces for images
+our @namespace_templates; # All namespaces for templates
+our $image_regex = q{};   # Regex used in get_images()
+our $cat_regex   = q{};   # Regex used in get_categories()
 
 our $magicword_defaultsort;
 
@@ -455,8 +465,7 @@ sub delete_done_article_from_db {
 ###########################################################################
 
 sub getErrors {
-    my $error_count                 = 0;
-    my $number_of_error_description = 0;
+    my $error_count = 0;
 
     my $sth =
       $dbh->prepare('SELECT COUNT(*) FROM cw_error_desc WHERE project = ?;')
@@ -599,6 +608,37 @@ sub readMetadata {
         @magicword_img_middle      = $aliases if ( $name eq 'img_middle' );
         @magicword_img_bottom      = $aliases if ( $name eq 'img_bottom' );
         @magicword_img_text_bottom = $aliases if ( $name eq 'img_text_bottom' );
+    }
+
+    return ();
+}
+
+###########################################################################
+##  READ TEMPLATES GIVEN IN TRANSLATION FILE
+###########################################################################
+
+sub readTemplates {
+
+    my $template_sql;
+
+    foreach my $i ( 1 .. $number_of_error_description ) {
+
+        $Template_list[$i][0] = '-9999';
+
+        my $sth = $dbh->prepare(
+            'SELECT templates FROM cw_template WHERE error=? AND project=?');
+        $sth->execute( $i, $project )
+          or die "Cannot execute: " . $sth->errstr . "\n";
+
+        $sth->bind_col( 1, \$template_sql );
+        while ( $sth->fetchrow_arrayref ) {
+            if ( defined($template_sql) ) {
+                if ( $Template_list[$i][0] eq '-9999' ) {
+                    my $bl = shift( @{ $Template_list[$i] } );
+                }
+                push( @{ $Template_list[$i] }, $template_sql );
+            }
+        }
     }
 
     return ();
@@ -1106,7 +1146,7 @@ sub get_isbn {
 
       )
     {
-        my $text_test = $text;
+        my $text_test = uc($text);
 
         if ( $text_test =~ / ISBN([-]|[:])/g ) {
             my $output = substr( $text_test, pos($text_test) - 5, 16 );
@@ -1776,7 +1816,7 @@ sub get_headlines {
 
 sub error_check {
     if ( $CheckOnlyOne > 0 ) {
-        error_084_section_without_text();
+        error_061_reference_with_punctuation();
     }
     else {
         #error_001_no_bold_title();                        # DEACTIVATED
@@ -1854,7 +1894,7 @@ sub error_check {
         error_064_link_equal_linktext();
         error_065_image_description_with_break();
         error_066_image_description_with_full_small();
-        error_067_reference_after_punctuation();    # DEACTIVATED
+        error_067_reference_after_punctuation();
         error_068_link_to_other_language();
 
         #error_069_isbn_wrong_syntax('');                  # get_isbn()
@@ -1946,6 +1986,8 @@ sub error_003_have_ref {
 
                 my $test      = "false";
                 my $test_text = lc($text);
+                my $template_sql;
+
                 $test = "true"
                   if (  $test_text =~ /<[ ]?+references>/
                     and $test_text =~ /<[ ]?+\/references>/ );
@@ -1953,105 +1995,17 @@ sub error_003_have_ref {
                 $test = "true" if ( $test_text =~ /<[ ]?+references group/ );
                 $test = "true" if ( $test_text =~ /\{\{[ ]?+refbegin/ );
                 $test = "true" if ( $test_text =~ /\{\{[ ]?+refend/ );
-                $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+reflist/ );    # in enwiki
-                $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+reflink/ );    # in enwiki
-                $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+reference list/ );    # in enwiki
-                $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+references-small/ );  # in enwiki
-                $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+references/ );        # in enwiki
-                $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+listaref / );         # in enwiki
-                $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+reference/ );         # in enwiki
-                $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+przypisy/ );          # in plwiki
-                $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+amaga/ );             # in cawiki
-                $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+referències/ );      # in cawiki
-                $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+viitteet/ );          # in fiwiki
-                $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+verwysings/ );        # in afwiki
-                $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+references/ );        # in itwiki
-                $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+références/ );      # in frwiki
-                $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+notes/ );             # in frwiki
-                $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+listaref/ );          # in nlwiki
-                $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+referenties/ );       # in cawiki
-                $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+ref-section/ );       # in ptwiki
-                $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+referências/ );      # in ptwiki
-                $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+refs/ );    # in nlwiki + enwiki
-                $test = "true" if ( $test_text =~ /\{\{[ ]?+noot/ ); # in nlwiki
-                $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+unreferenced/ );      # in nlwiki
-                $test = "true" if ( $test_text =~ /\{\{[ ]?+fnb/ );  # in nlwiki
-                $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+примечания/ )
-                  ;                                                  # in ruwiki
-                $test = "true"
-                  if ( $test_text =~
-                    /\{\{[ ]?+список примечаний/ );  # in ruwiki
-                $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+Примечания/ )
-                  ;    # in ruwiki (Problem with big letters)
-                $test = "true"
-                  if (
-                    $test_text =~ /\{\{[ ]?+Список примечаний/ )
-                  ;    # in ruwiki (Problem with big letters)
-                $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+kaynakça/ );    # in trwiki
-                $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+ثبت المراجع/ )
-                  ;                                             # in arwiki
-                $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+appendix/ );     # in nlwiki
-                $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+примітки/ );  # in ukwiki
-                $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+Примітки/ );  # in ukwiki
-                $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+hide ref/ );          # in zhwiki
-                $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+forrás/ );           # in huwiki
-                $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+註腳/ );            # in zhwiki
-                $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+註腳h/ );           # in zhwiki
-                $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+註腳f/ );           # in zhwiki
-                $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+kayan kaynakça/ );   # in trwiki
-                $test = "true" if ( $test_text =~ /\{\{[ ]?+r/ );    # in itwiki
-                $test = "true" if ( $test_text =~ /\{\{[ ]?+r/ );    # in itwiki
-                $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+הערות שוליים/ )
-                  ;                                                  # in hewiki
-                $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+הערה/ );          # in hewiki
-                $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+注脚/ );            # in zhwiki
-                $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+referências/ );      # in ptwiki
-                $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+רעפליסטע/ );  # in yiwiki
-                $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+apèndix/ );          # in cawiki
-                $test = "true"
-                  if ( $test_text =~ /\{\{[ ]?+παραπομπές/ )
-                  ;                                                  # in elwiki
 
+                if ( $Template_list[$error_code][0] ne '-9999' ) {
+
+                    my @ack = @{ $Template_list[$error_code] };
+
+                    for my $temp (@ack) {
+                        if ( $test_text =~ /\{\{[ ]?+($temp)/ ) {
+                            $test = "true";
+                        }
+                    }
+                }
                 if ( $test eq "false" ) {
                     error_register( $error_code, '' );
                 }
@@ -2471,7 +2425,7 @@ sub error_016_unicode_control_characters {
 
             # 200B is a problem with IPA characters in some wikis (czwiki)
             if ( $project eq 'enwiki' ) {
-                $search = "\x{200E}|\x{FEFF}\x{200B}";
+                $search = "\x{200E}|\x{FEFF}\x{200B}\x{2028}";
             }
             else {
                 $search = "\x{200E}|\x{FEFF}";
@@ -3484,6 +3438,9 @@ sub error_048_title_in_text {
 
             my $test_text = $text;
 
+            # OK (MUST) TO HAVE IN IMAGEMAPS
+            $test_text =~ s/<imagemap>(.*?)<\/imagemap>//sg;
+
             my $pos = index( $test_text, '[[' . $title . ']]' );
 
             if ( $pos == -1 ) {
@@ -3899,36 +3856,26 @@ sub error_061_reference_with_punctuation {
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
-            my $found_txt = q{};
-            my $pos       = -1;
-            $pos = index( $text, '</ref>.' )    if ( $pos == -1 );
-            $pos = index( $text, '</ref> .' )   if ( $pos == -1 );
-            $pos = index( $text, '</ref>  .' )  if ( $pos == -1 );
-            $pos = index( $text, '</ref>! ' )   if ( $pos == -1 );
-            $pos = index( $text, '</ref> ! ' )  if ( $pos == -1 );
-            $pos = index( $text, '</ref>  ! ' ) if ( $pos == -1 );
-            $pos = index( $text, '</ref>?' )    if ( $pos == -1 );
-            $pos = index( $text, '</ref> ?' )   if ( $pos == -1 );
-            $pos = index( $text, '</ref>  ?' )  if ( $pos == -1 );
-            $pos = index( $text, '</ref>,' )    if ( $pos == -1 );
-            $pos = index( $text, '</ref> ,' )   if ( $pos == -1 );
-            $pos = index( $text, '</ref>  ,' )  if ( $pos == -1 );
-            $pos = index( $text, '</ref>:' )    if ( $pos == -1 );
-            $pos = index( $text, '</ref> :' )   if ( $pos == -1 );
-            $pos = index( $text, '</ref>  :' )  if ( $pos == -1 );
-
-            if ( $pos > -1 ) {
-                error_register( $error_code, substr( $text, $pos, 40 ) );
+            if ( $text =~ /<\/ref>[ ]{0,2}(\.|,|\?|:|! )/ ) {
+                error_register( $error_code, substr( $text, $-[0], 40 ) );
             }
-            else {
-                if ( $text =~ /(<ref name(.*?)\/>\.)/ ) {
-                    $pos = index( $text, $1 );
-                }
-                elsif ( $text =~ /(<ref name(.*?)\/>,)/ ) {
-                    $pos = index( $text, $1 );
-                }
+            elsif ( $text =~ /(<ref name(.*?)\/>[ ]{0,2}(\.|,|\?|:|! ))/ ) {
+                error_register( $error_code, substr( $text, $-[0], 40 ) );
+            }
+            elsif ( $Template_list[$error_code][0] ne '-9999' ) {
 
-                if ( $pos > 0 ) {
+                my $pos = -1;
+                my @ack = @{ $Template_list[$error_code] };
+
+                for my $temp (@ack) {
+                    if ( $text =~
+                        /\{\{[ ]?+$temp[^\}]*\}{2,4}[ ]{0,2}([\.,\?:]|! )/
+                        and $pos == -1 )
+                    {
+                        $pos = $-[0];
+                    }
+                }
+                if ( $pos > -1 ) {
                     error_register( $error_code, substr( $text, $pos, 40 ) );
                 }
             }
@@ -4067,6 +4014,9 @@ sub error_064_link_equal_linktext {
 
             my $temp_text = $text;
 
+            # OK (MUST) TO HAVE IN TIMELINE
+            $temp_text =~ s/<timeline>(.*?)<\/timeline>//sg;
+
             # Account for [[Foo|foo]] and [[foo|Foo]] by capitalizing the
             # the first character after the [ and |.  Acount for
             # [[foo_foo|foo foo]] by removing all _.
@@ -4147,6 +4097,33 @@ sub error_066_image_description_with_full_small {
 ###########################################################################
 
 sub error_067_reference_after_punctuation {
+    my $error_code = 67;
+
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
+        if ( $page_namespace == 0 or $page_namespace == 104 ) {
+
+            my $pos = -1;
+            $pos = index( $text, '.<ref' )   if ( $pos == -1 );
+            $pos = index( $text, '. <ref' )  if ( $pos == -1 );
+            $pos = index( $text, '.  <ref' ) if ( $pos == -1 );
+            $pos = index( $text, '!<ref' )   if ( $pos == -1 );
+            $pos = index( $text, '! <ref' )  if ( $pos == -1 );
+            $pos = index( $text, '!  <ref' ) if ( $pos == -1 );
+            $pos = index( $text, '?<ref' )   if ( $pos == -1 );
+            $pos = index( $text, '? <ref' )  if ( $pos == -1 );
+            $pos = index( $text, '?  <ref' ) if ( $pos == -1 );
+            $pos = index( $text, ',<ref' )   if ( $pos == -1 );
+            $pos = index( $text, ' ,<ref' )  if ( $pos == -1 );
+            $pos = index( $text, '  ,<ref' ) if ( $pos == -1 );
+            $pos = index( $text, ':<ref' )   if ( $pos == -1 );
+            $pos = index( $text, ' :<ref' )  if ( $pos == -1 );
+            $pos = index( $text, '  :<ref' ) if ( $pos == -1 );
+
+            if ( $pos > -1 ) {
+                error_register( $error_code, substr( $text, $pos, 40 ) );
+            }
+        }
+    }
 
     return ();
 }
@@ -4611,27 +4588,44 @@ sub error_084_section_without_text {
             and ( $page_namespace == 0 or $page_namespace == 104 ) )
         {
 
-            my $number_of_headlines = @headlines;
+            my $section_text = q{};
+            my @my_lines = split( /\n/, $text_without_comments );
+            my @my_headlines;
+            my @my_section;
+
+            foreach (@my_lines) {
+                my $current_line = $_;
+
+                if ( substr( $current_line, 0, 1 ) eq '=' ) {
+                    push( @my_section, $section_text );
+                    $section_text = q{};
+                    push( @my_headlines, $current_line );
+                }
+                $section_text = $section_text . $_ . "\n";
+            }
+            push( @my_section, $section_text );
+
+            my $number_of_headlines = @my_headlines;
 
             for ( my $i = 0 ; $i < $number_of_headlines - 1 ; $i++ ) {
 
                 # Check level of headline and next headline
 
-                my $level_one = $headlines[$i];
-                my $level_two = $headlines[ $i + 1 ];
+                my $level_one = $my_headlines[$i];
+                my $level_two = $my_headlines[ $i + 1 ];
 
                 $level_one =~ s/^([=]+)//;
                 $level_two =~ s/^([=]+)//;
-                $level_one = length( $headlines[$i] ) - length($level_one);
+                $level_one = length( $my_headlines[$i] ) - length($level_one);
                 $level_two =
-                  length( $headlines[ $i + 1 ] ) - length($level_two);
+                  length( $my_headlines[ $i + 1 ] ) - length($level_two);
 
                 # If headline's level is identical or lower to next headline
                 # And headline's level is ==
                 if ( $level_one >= $level_two and $level_one == 2 ) {
-                    if ( $section[$i] ) {
-                        my $test_section  = $section[ $i + 1 ];
-                        my $test_headline = $headlines[$i];
+                    if ( $my_section[$i] ) {
+                        my $test_section  = $my_section[ $i + 1 ];
+                        my $test_headline = $my_headlines[$i];
                         $test_headline =~ s/\n//g;
 
                         $test_section =
@@ -4644,7 +4638,8 @@ sub error_084_section_without_text {
                             $test_section =~ s/\t//g;
 
                             if ( $test_section eq q{} ) {
-                                error_register( $error_code, $headlines[$i] );
+                                error_register( $error_code,
+                                    $my_headlines[$i] );
                             }
                         }
                     }
@@ -4910,12 +4905,12 @@ sub error_register {
 
     my $sth = $dbh->prepare(
         'SELECT OK FROM cw_whitelist WHERE error=? AND title=? AND project=?');
-    $sth->execute( $project, $title, $error_code )
+    $sth->execute( $error_code, $title, $project )
       or die "Cannot execute: " . $sth->errstr . "\n";
 
     my $whitelist = $sth->fetchrow_arrayref();
 
-    if ( !defined($whitelist ) ) {
+    if ( !defined($whitelist) ) {
         $notice =~ s/\n//g;
 
         print "\t" . $error_code . "\t" . $title . "\t" . $notice . "\n";
@@ -5180,6 +5175,7 @@ open_db();
 clearDumpscanTable() if ( $dump_or_live eq 'dump' );
 getErrors();
 readMetadata();
+readTemplates();
 
 # MAIN ROUTINE - SCAN PAGES FOR ERRORS
 scan_pages();
