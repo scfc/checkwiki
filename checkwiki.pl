@@ -141,6 +141,12 @@ our @foundation_projects = qw( b  n  s  v  m  q  w  meta  mw  nost  wikt  wmf
   wikiquote  wikipedia   wikisource wikispecies
   wiktionary wikiversity wikivoyage );
 
+# See http://turner.faculty.swau.edu/webstuff/htmlsymbols.html
+our @html_named_entities = qw( aacute acirc aeligi agrave aring  aumla bull
+  ccedil cent copy dagger euro hellip iexcl iquest lsquo  middot minus
+  ntilde oline ouml pound quot reg rswuo sect sup2 sup3 szling trade uuml
+  crarr darr harr larr rarr uarr );
+
 ###############################
 ## Variables for one article
 ###############################
@@ -888,7 +894,7 @@ sub get_nowiki {
         my $nowiki_begin = 0;
         my $nowiki_end   = 0;
 
-        $nowiki_begin = () = $test_text =~ /<nowiki/g;
+        $nowiki_begin = () = $test_text =~ /<nowiki>/g;
         $nowiki_end   = () = $test_text =~ /<\/nowiki>/g;
 
         if ( $nowiki_begin > $nowiki_end ) {
@@ -1816,7 +1822,7 @@ sub get_headlines {
 
 sub error_check {
     if ( $CheckOnlyOne > 0 ) {
-        error_061_reference_with_punctuation();
+        error_011_html_named_entities();
     }
     else {
         #error_001_no_bold_title();                        # DEACTIVATED
@@ -1832,7 +1838,7 @@ sub error_check {
         error_009_more_then_one_category_in_a_line();
 
         #error_010_count_square_breaks('');                # get_links()
-        error_011_html_names_entities();
+        error_011_html_named_entities();
         error_012_html_list_elements();
 
         #error_013_Math_no_correct_end('');                # get_math
@@ -1915,7 +1921,7 @@ sub error_check {
         error_084_section_without_text();
         error_085_tag_without_content();
         error_086_link_with_two_brackets_to_external_source();
-        error_087_html_names_entities_without_semicolon();
+        error_087_html_named_entities_without_semicolon();
         error_088_defaultsort_with_first_blank();
 
         # DEACTIVATED - Mediawiki software changed, so no longer a problem.
@@ -2243,7 +2249,7 @@ sub error_010_count_square_breaks {
 ## ERROR 11
 ###########################################################################
 
-sub error_011_html_names_entities {
+sub error_011_html_named_entities {
     my $error_code = 11;
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
@@ -2254,50 +2260,14 @@ sub error_011_html_names_entities {
             my $pos       = -1;
             my $test_text = lc($text);
 
-            # See http://turner.faculty.swau.edu/webstuff/htmlsymbols.html
-            $pos = index( $test_text, '&auml;' )   if ( $pos == -1 );
-            $pos = index( $test_text, '&ouml;' )   if ( $pos == -1 );
-            $pos = index( $test_text, '&uuml;' )   if ( $pos == -1 );
-            $pos = index( $test_text, '&szlig;' )  if ( $pos == -1 );
-            $pos = index( $test_text, '&aring;' )  if ( $pos == -1 );    # åÅ
-            $pos = index( $test_text, '&hellip;' ) if ( $pos == -1 );    # …
-            $pos = index( $test_text, '&quot;' )   if ( $pos == -1 );
-            $pos = index( $test_text, '&minus;' )  if ( $pos == -1 );
-            $pos = index( $test_text, '&oline;' )  if ( $pos == -1 );
-            $pos = index( $test_text, '&cent;' )   if ( $pos == -1 );
-            $pos = index( $test_text, '&pound;' )  if ( $pos == -1 );
-            $pos = index( $test_text, '&euro;' )   if ( $pos == -1 );
-            $pos = index( $test_text, '&sect;' )   if ( $pos == -1 );
-            $pos = index( $test_text, '&dagger;' ) if ( $pos == -1 );
-
-            $pos = index( $test_text, '&lsquo;' )  if ( $pos == -1 );
-            $pos = index( $test_text, '&rsquo;' )  if ( $pos == -1 );
-            $pos = index( $test_text, '&middot;' ) if ( $pos == -1 );
-            $pos = index( $test_text, '&bull;' )   if ( $pos == -1 );
-            $pos = index( $test_text, '&copy;' )   if ( $pos == -1 );
-            $pos = index( $test_text, '&reg;' )    if ( $pos == -1 );
-            $pos = index( $test_text, '&trade;' )  if ( $pos == -1 );
-            $pos = index( $test_text, '&iquest;' ) if ( $pos == -1 );
-            $pos = index( $test_text, '&iexcl;' )  if ( $pos == -1 );
-            $pos = index( $test_text, '&aelig;' )  if ( $pos == -1 );
-            $pos = index( $test_text, '&ccedil;' ) if ( $pos == -1 );
-            $pos = index( $test_text, '&ntilde;' ) if ( $pos == -1 );
-            $pos = index( $test_text, '&acirc;' )  if ( $pos == -1 );
-            $pos = index( $test_text, '&aacute;' ) if ( $pos == -1 );
-            $pos = index( $test_text, '&agrave;' ) if ( $pos == -1 );
-
-            #arrows
-            $pos = index( $test_text, '&darr;' )  if ( $pos == -1 );
-            $pos = index( $test_text, '&uarr;' )  if ( $pos == -1 );
-            $pos = index( $test_text, '&crarr;' ) if ( $pos == -1 );
-            $pos = index( $test_text, '&rarr;' )  if ( $pos == -1 );
-            $pos = index( $test_text, '&larr;' )  if ( $pos == -1 );
-            $pos = index( $test_text, '&harr;' )  if ( $pos == -1 );
+            foreach ( @html_named_entities ) {
+                if ( $test_text =~ /&$_;/g ) {
+                    $pos = $-[0];
+                }
+            }
 
             if ( $pos > -1 ) {
-                my $found_text = substr( $text, $pos, 40 );
-                $found_text =~ s/&/&amp;/g;
-                error_register( $error_code, $found_text );
+                error_register( $error_code, substr( $text, $pos, 40 ) );
             }
         }
     }
@@ -4718,7 +4688,7 @@ sub error_086_link_with_two_brackets_to_external_source {
 ## ERROR 87
 ###########################################################################
 
-sub error_087_html_names_entities_without_semicolon {
+sub error_087_html_named_entities_without_semicolon {
     my $error_code = 87;
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
@@ -4728,67 +4698,28 @@ sub error_087_html_names_entities_without_semicolon {
         {
 
             my $pos       = -1;
-            my $test_text = lc($text);
+            my $test_text = $text;
+
+            # IMAGE'S CAN HAVE HTML NAMED ENTITES AS PART OF THEIR FILENAME
+            foreach ( @images_all ) {
+                $test_text =~ s/\Q$_\E//sg;
+            }
+
+            $test_text = lc($test_text);
 
             # REFS USE '&' FOR INPUT
             $test_text =~ s/<ref(.*?)>https?:(.*?)<\/ref>//sg;
             $test_text =~ s/https?:(.*?)\n//g;
 
-            # See http://turner.faculty.swau.edu/webstuff/htmlsymbols.html
-            while ( $test_text =~ /&sup2[^;]/g )   { $pos = pos($test_text) }
-            while ( $test_text =~ /&sup3[^;]/g )   { $pos = pos($test_text) }
-            while ( $test_text =~ /&auml[^;]/g )   { $pos = pos($test_text) }
-            while ( $test_text =~ /&ouml[^;]/g )   { $pos = pos($test_text) }
-            while ( $test_text =~ /&uuml[^;]/g )   { $pos = pos($test_text) }
-            while ( $test_text =~ /&szlig[^;]/g )  { $pos = pos($test_text) }
-            while ( $test_text =~ /&aring[^;]/g )  { $pos = pos($test_text) }
-            while ( $test_text =~ /&hellip[^;]/g ) { $pos = pos($test_text) }
-
-            while ( $test_text =~ /&quot[^;]/g )   { $pos = pos($test_text) }
-            while ( $test_text =~ /&minus[^;]/g )  { $pos = pos($test_text) }
-            while ( $test_text =~ /&oline[^;]/g )  { $pos = pos($test_text) }
-            while ( $test_text =~ /&cent[^;]/g )   { $pos = pos($test_text) }
-            while ( $test_text =~ /&pound[^;]/g )  { $pos = pos($test_text) }
-            while ( $test_text =~ /&euro[^;]/g )   { $pos = pos($test_text) }
-            while ( $test_text =~ /&sect[^;]/g )   { $pos = pos($test_text) }
-            while ( $test_text =~ /&dagger[^;]/g ) { $pos = pos($test_text) }
-
-            while ( $test_text =~ /&lsquo[^;]/g )  { $pos = pos($test_text) }
-            while ( $test_text =~ /&rsquo[^;]/g )  { $pos = pos($test_text) }
-            while ( $test_text =~ /&middot[^;]/g ) { $pos = pos($test_text) }
-            while ( $test_text =~ /&bull[^;]/g )   { $pos = pos($test_text) }
-            while ( $test_text =~ /&copy[^;]/g )   { $pos = pos($test_text) }
-            while ( $test_text =~ /&reg[^;]/g )    { $pos = pos($test_text) }
-            while ( $test_text =~ /&trade[^;]/g )  { $pos = pos($test_text) }
-            while ( $test_text =~ /&iquest[^;]/g ) { $pos = pos($test_text) }
-            while ( $test_text =~ /&iexcl[^;]/g )  { $pos = pos($test_text) }
-            while ( $test_text =~ /&aelig[^;]/g )  { $pos = pos($test_text) }
-            while ( $test_text =~ /&ccedil[^;]/g ) { $pos = pos($test_text) }
-            while ( $test_text =~ /&ntilde[^;]/g ) { $pos = pos($test_text) }
-            while ( $test_text =~ /&acirc[^;]/g )  { $pos = pos($test_text) }
-            while ( $test_text =~ /&aacute[^;]/g ) { $pos = pos($test_text) }
-            while ( $test_text =~ /&agrave[^;]/g ) { $pos = pos($test_text) }
-
-            #arrows
-            while ( $test_text =~ /&darr[^;]/g )  { $pos = pos($test_text) }
-            while ( $test_text =~ /&uarr[^;]/g )  { $pos = pos($test_text) }
-            while ( $test_text =~ /&crarr[^;]/g ) { $pos = pos($test_text) }
-            while ( $test_text =~ /&rarr[^;]/g )  { $pos = pos($test_text) }
-            while ( $test_text =~ /&larr[^;]/g )  { $pos = pos($test_text) }
-            while ( $test_text =~ /&harr[^;]/g )  { $pos = pos($test_text) }
-
-            if ( $pos > -1 ) {
-
-                # Find the '&' to start the error text
-                my $text_char = substr( $test_text, $pos, 1 );
-                while ( $text_char ne '&' and $pos > 0 ) {
-                    $pos = $pos - 1;
-                    $text_char = substr( $test_text, $pos, 1 );
+            foreach ( @html_named_entities ) {
+                if ( $test_text =~ /&$_[^;]/g ) {
+                    $pos = $-[0];
                 }
-                $test_text = substr( $test_text, $pos, 40 );
-                error_register( $error_code, $test_text );
             }
 
+            if ( $pos > -1 ) {
+                error_register( $error_code, substr( $test_text, $pos, 40 ) );
+            }
         }
     }
 
