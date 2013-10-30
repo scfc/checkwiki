@@ -27,7 +27,6 @@ use URI::Escape;
 binmode( STDOUT, ":encoding(UTF-8)" );
 
 our $OUTPUT_DIRECTORY       = "/data/project/checkwiki/public_html/Translation";
-#our $OUTPUT_DIRECTORY       = "translations";
 our $TRANSLATION_FILE       = 'translation.txt';
 our $TOP_PRIORITY_SCRIPT    = 'Top priority';
 our $MIDDLE_PRIORITY_SCRIPT = 'Middle priority';
@@ -60,9 +59,9 @@ our $dbh;
 #------------------
 
 our %TranslationLocation = (
-    'afwiki' => 'Wikipedia:WikiProject Check Wikipedia/Translation',
-    'arwiki' =>
-'ﻮﻴﻜﻴﺒﻳﺪﻳﺍ:ﻒﺤﺻ_ﻮﻴﻜﻴﺒﻳﺪﻳﺍ/ﺕﺮﺠﻣﺓ',
+    'afwiki'      => 'Wikipedia:WikiProject Check Wikipedia/Translation',
+    'arwiki'      => 'ﻮﻴﻜﻴﺒﻳﺪﻳﺍ:ﻒﺤﺻ_ﻮﻴﻜﻴﺒﻳﺪﻳﺍ/ﺕﺮﺠﻣﺓ',
+    'arzwiki'     => 'ويكيبيديا:تشيك ويكيبيديا/ترجمه', 
     'cawiki'      => 'Viquipèdia:WikiProject Check Wikipedia/Translation',
     'cswiki'      => 'Wikipedie:WikiProjekt Check Wikipedia/Translation',
     'commonswiki' => 'Commons:WikiProject Check Wikipedia/Translation',
@@ -74,32 +73,30 @@ our %TranslationLocation = (
     'eswiki'      => 'Wikiproyecto:Check Wikipedia/Translation',
     'fiwiki'      => 'Wikipedia:Wikiprojekti Check Wikipedia/Translation',
     'frwiki'      => 'Projet:Correction syntaxique/Traduction',
-    'fywiki' =>
-      'Meidogger:Stefan Kühn/WikiProject Check Wikipedia/Translation',
-    'hewiki' => 'Wikipedia:WikiProject Check Wikipedia/Translation',
-    'huwiki' => 'Wikipédia:Ellenőrzőműhely/Fordítás',
-    'idwiki' => 'Wikipedia:ProyekWiki Cek Wikipedia/Terjemahan',
-    'iswiki' => 'Wikipedia:WikiProject Check Wikipedia/Translation',
-    'itwiki' => 'Wikipedia:WikiProjekt Check Wikipedia/Translation',
-    'jawiki' => 'プロジェクト:ウィキ文法のチェック/Translation',
-    'lawiki' => 'Vicipaedia:WikiProject Check Wikipedia/Translation',
-    'ndswiki'    => 'Wikipedia:Wikiproject Check Wikipedia/Translation',
-    'nds_nlwiki' => 'Wikipedie:WikiProject Check Wikipedia/Translation',
-    'nlwiki'     => 'Wikipedia:Wikiproject/Check Wikipedia/Vertaling',
-    'nowiki'     => 'Wikipedia:WikiProject Check Wikipedia/Translation',
-    'pdcwiki'    => 'Wikipedia:WikiProject Check Wikipedia/Translation',
-    'plwiki'     => 'Wikiprojekt:Check Wikipedia/Tłumaczenie',
-    'ptwiki'     => 'Wikipedia:Projetos/Check Wikipedia/Tradução',
-    'ruwiki' =>
-'Википедия:Страницы с ошибками в викитексте/Перевод',
-    'rowiki' => 'Wikipedia:WikiProject Check Wikipedia/Translation',
-    'skwiki' => 'Wikipédia:WikiProjekt Check Wikipedia/Translation',
-    'svwiki' => 'Wikipedia:Projekt wikifiering/Syntaxfel/Translation',
-    'trwiki' => 'Vikipedi:Vikipedi proje kontrolü/Çeviri',
-    'ukwiki' => 'Вікіпедія:Проект:Check Wikipedia/Translation',
-    'yiwiki' =>
-      'װיקיפּעדיע:קאנטראלירן_בלעטער/Translation',
-    'zhwiki' => '维基百科:错误检查专题/翻译',
+    'fywiki'      =>
+              'Meidogger:Stefan Kühn/WikiProject Check Wikipedia/Translation',
+    'hewiki'      => 'Wikipedia:WikiProject Check Wikipedia/Translation',
+    'huwiki'      => 'Wikipédia:Ellenőrzőműhely/Fordítás',
+    'idwiki'      => 'Wikipedia:ProyekWiki Cek Wikipedia/Terjemahan',
+    'iswiki'      => 'Wikipedia:WikiProject Check Wikipedia/Translation',
+    'itwiki'      => 'Wikipedia:WikiProjekt Check Wikipedia/Translation',
+    'jawiki'      => 'プロジェクト:ウィキ文法のチェック/Translation',
+    'lawiki'      => 'Vicipaedia:WikiProject Check Wikipedia/Translation',
+    'ndswiki'     => 'Wikipedia:Wikiproject Check Wikipedia/Translation',
+    'nds_nlwiki'  => 'Wikipedie:WikiProject Check Wikipedia/Translation',
+    'nlwiki'      => 'Wikipedia:Wikiproject/Check Wikipedia/Vertaling',
+    'nowiki'      => 'Wikipedia:WikiProject Check Wikipedia/Translation',
+    'pdcwiki'     => 'Wikipedia:WikiProject Check Wikipedia/Translation',
+    'plwiki'      => 'Wikiprojekt:Check Wikipedia/Tłumaczenie',
+    'ptwiki'      => 'Wikipedia:Projetos/Check Wikipedia/Tradução',
+    'ruwiki'      => 'Википедия:Страницы с ошибками в викитексте/Перевод',
+    'rowiki'      => 'Wikipedia:WikiProject Check Wikipedia/Translation',
+    'skwiki'      => 'Wikipédia:WikiProjekt Check Wikipedia/Translation',
+    'svwiki'      => 'Wikipedia:Projekt wikifiering/Syntaxfel/Translation',
+    'trwiki'      => 'Vikipedi:Vikipedi proje kontrolü/Çeviri',
+    'ukwiki'      => 'Вікіпедія:Проект:Check Wikipedia/Translation',
+    'yiwiki'      => 'װיקיפּעדיע:קאנטראלירן_בלעטער/Translation',
+    'zhwiki'      => '维基百科:错误检查专题/翻译',
 );
 
 ##########################################################################
@@ -141,8 +138,8 @@ foreach (@Projects) {
 
     clearWhitelistTable();
     add_whitelist_to_db();
-    clearTemplateTable();
-    add_templates_to_db();
+#   clearTemplateTable();
+#   add_templates_to_db();
 
     output_errors_desc_in_db();
     output_text_translation_wiki();
