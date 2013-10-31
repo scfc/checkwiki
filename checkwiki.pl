@@ -73,6 +73,8 @@ our $TTFile;
 # Template list retrieved from Translation file
 our @Template_list;
 
+our $ListFilename;
+
 # Total number of Errors
 our $number_of_error_description = 0;
 
@@ -297,6 +299,9 @@ sub scan_pages {
     }
     elsif ( $dump_or_live eq 'delay' ) {
         delay_scan();
+    }
+    elsif ( $dump_or_live eq 'list' ) {
+        list_scan();
     }
     else {
         die("Wrong Load_mode entered \n");
@@ -654,6 +659,42 @@ sub readTemplates {
 ## CHECK ARTICLES VIA A LIVE SCAN
 ###########################################################################
 
+sub list_scan {
+
+    $page_namespace = 0;
+    my $bot = MediaWiki::Bot->new(
+        {
+            assert   => 'bot',
+            protocol => 'http',
+            host     => $ServerName,
+        }
+    );
+
+    if ( !defined($ListFilename) ) {
+        die "The filename of the list was not defined";
+    }
+
+    open( my $list_of_titles, '<:encoding(UTF-8)', $ListFilename )
+      or die 'Could not open file ' . $ListFilename . "\n";
+
+    while (<$list_of_titles>) {
+        set_variables_for_article();
+        chomp($_);
+        $title = $_;
+        $text  = $bot->get_text($title);
+        if ( defined($text) ) {
+            check_article();
+        }
+    }
+
+    close($list_of_titles);
+    return ();
+}
+
+###########################################################################
+## CHECK ARTICLES VIA A LIVE SCAN
+###########################################################################
+
 sub live_scan {
 
     my @live_titles;
@@ -796,7 +837,7 @@ sub check_article {
     #------------------------------------------------------
 
     # CREATES @ref - USED IN #81
-    #get_ref();
+    get_ref();
 
     # CREATES @templates_all - USED IN #12, #31
     # CALLS #43
@@ -1152,16 +1193,16 @@ sub get_isbn {
 
       )
     {
-        my $text_test = uc($text);
+        my $test_text = uc($text);
 
-        if ( $text_test =~ / ISBN([-]|[:])/g ) {
-            my $output = substr( $text_test, pos($text_test) - 5, 16 );
+        if ( $test_text =~ / ISBN([-]|[:])/g ) {
+            my $output = substr( $test_text, pos($test_text) - 5, 16 );
             error_069_isbn_wrong_syntax($output);
         }
 
-        while ( $text_test =~ /ISBN([ ]|[-]|[=]|[:])/g ) {
-            my $pos_start = pos($text_test) - 5;
-            my $current_isbn = substr( $text_test, $pos_start );
+        while ( $test_text =~ /ISBN([ ]|[-]|[=]|[:])/g ) {
+            my $pos_start = pos($test_text) - 5;
+            my $current_isbn = substr( $test_text, $pos_start );
 
             $current_isbn =~
 /\b(?:ISBN(?:-?1[03])?:?\s*|(ISBN\s*=\s*))([\dX ‐—–-]{4,24}[\dX])\b/gi;
@@ -1226,15 +1267,15 @@ sub get_templates_all {
 
     my $pos_start = 0;
     my $pos_end   = 0;
-    my $text_test = $text;
+    my $test_text = $text;
 
-    $text_test =~ s/\n//g;    # Delete all breaks     --> only one line
-    $text_test =~ s/\t//g;    # Delete all tabulator  --> better for output
+    $test_text =~ s/\n//g;    # Delete all breaks     --> only one line
+    $test_text =~ s/\t//g;    # Delete all tabulator  --> better for output
 
-    while ( $text_test =~ /\{\{/g ) {
+    while ( $test_text =~ /\{\{/g ) {
 
-        $pos_start = pos($text_test) - 2;
-        my $temp_text      = substr( $text_test, $pos_start );
+        $pos_start = pos($test_text) - 2;
+        my $temp_text      = substr( $test_text, $pos_start );
         my $temp_text_2    = q{};
         my $brackets_begin = 1;
         my $brackets_end   = 0;
@@ -1457,14 +1498,14 @@ sub get_links {
     my $pos_start = 0;
     my $pos_end   = 0;
 
-    my $text_test = $text;
+    my $test_text = $text;
 
-    $text_test =~ s/\n//g;
+    $test_text =~ s/\n//g;
 
-    while ( $text_test =~ /\[\[/g ) {
+    while ( $test_text =~ /\[\[/g ) {
 
-        $pos_start = pos($text_test) - 2;
-        my $link_text      = substr( $text_test, $pos_start );
+        $pos_start = pos($test_text) - 2;
+        my $link_text      = substr( $test_text, $pos_start );
         my $link_text_2    = q{};
         my $brackets_begin = 1;
         my $brackets_end   = 0;
@@ -1681,15 +1722,15 @@ sub get_categories {
     foreach (@namespace_cat) {
 
         my $namespace_cat_word = $_;
-        my $pos_start          = 0;
         my $pos_end            = 0;
+        my $pos_start          = 0;
         my $counter            = 0;
-        my $text_test          = $text;
+        my $test_text          = $text;
         my $search_word        = $namespace_cat_word;
 
-        while ( $text_test =~ /\[\[([ ]+)?($search_word:)/ig ) {
-            my $pos_start = pos($text_test) - length($search_word) - 1;
-            $pos_end = index( $text_test, ']]', $pos_start );
+        while ( $test_text =~ /\[\[([ ]+)?($search_word:)/ig ) {
+            $pos_start = pos($test_text) - length($search_word) - 1;
+            $pos_end   = index( $test_text, ']]', $pos_start );
             $pos_start = $pos_start - 2;
 
             if ( $pos_start > -1 and $pos_end > -1 ) {
@@ -1699,7 +1740,7 @@ sub get_categories {
                 $category[$counter][0] = $pos_start;
                 $category[$counter][1] = $pos_end;
                 $category[$counter][4] =
-                  substr( $text_test, $pos_start, $pos_end - $pos_start );
+                  substr( $test_text, $pos_start, $pos_end - $pos_start );
                 $category[$counter][2] = $category[$counter][4];
                 $category[$counter][3] = $category[$counter][4];
 
@@ -1822,7 +1863,7 @@ sub get_headlines {
 
 sub error_check {
     if ( $CheckOnlyOne > 0 ) {
-        error_011_html_named_entities();
+        error_009_more_then_one_category_in_a_line();
     }
     else {
         #error_001_no_bold_title();                        # DEACTIVATED
@@ -2204,17 +2245,18 @@ sub error_009_more_then_one_category_in_a_line {
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
-            my $cat_number;
-            my $error_line = q{};
+            if ( $text =~
+                /\[\[($cat_regex):(.*?)\]\]([ ]*)\[\[($cat_regex):(.*?)\]\]/g )
+            {
 
-            foreach (@lines) {
-
-                #my $current_line = $_;
-
-                $cat_number = () = $_ =~ /\[\[($cat_regex):/ig;
-                if ( $cat_number > 1 ) {
-                    error_register( $error_code, substr( $_, 0, 40 ) );
-                }
+                my $error_text =
+                    '[['
+                  . $1 . ':'
+                  . $2 . ']]'
+                  . $3 . '[['
+                  . $4 . ':'
+                  . $5 . "]]\n";
+                error_register( $error_code, substr( $error_text, 0, 40 ) );
             }
         }
     }
@@ -2260,7 +2302,7 @@ sub error_011_html_named_entities {
             my $pos       = -1;
             my $test_text = lc($text);
 
-            foreach ( @html_named_entities ) {
+            foreach (@html_named_entities) {
                 if ( $test_text =~ /&$_;/g ) {
                     $pos = $-[0];
                 }
@@ -3093,6 +3135,7 @@ sub error_039_html_text_style_elements_paragraph {
                 if ( $test_text !~
                     /<blockquote|\{\{quote\s*|\{\{cquote|\{\{quotation/ )
                 {
+                    $test_text =~ s/<ref(.*?)<\/ref>//sg;
                     my $pos = index( $test_text, '<p>' );
                     if ( $pos > -1 ) {
                         error_register( $error_code,
@@ -3263,21 +3306,21 @@ sub error_046_count_square_breaks_begin {
             or $page_namespace == 6
             or $page_namespace == 104 )
         {
-            my $text_test = $text;
+            my $test_text = $text;
 
-            my $text_test_1_a = $text_test;
-            my $text_test_1_b = $text_test;
+            my $test_text_1_a = $test_text;
+            my $test_text_1_b = $test_text;
 
-            if ( ( $text_test_1_a =~ s/\[\[//g ) !=
-                ( $text_test_1_b =~ s/\]\]//g ) )
+            if ( ( $test_text_1_a =~ s/\[\[//g ) !=
+                ( $test_text_1_b =~ s/\]\]//g ) )
             {
                 my $found_text = q{};
                 my $begin_time = time();
-                while ( $text_test =~ /\]\]/g ) {
+                while ( $test_text =~ /\]\]/g ) {
 
                     # Begin of link
-                    my $pos_end     = pos($text_test) - 2;
-                    my $link_text   = substr( $text_test, 0, $pos_end );
+                    my $pos_end     = pos($test_text) - 2;
+                    my $link_text   = substr( $test_text, 0, $pos_end );
                     my $link_text_2 = q{};
                     my $beginn_square_brackets = 0;
                     my $end_square_brackets    = 1;
@@ -3442,22 +3485,22 @@ sub error_049_headline_with_html {
             or $page_namespace == 104 )
         {
 
-            my $text_test = lc($text);
+            my $test_text = lc($text);
             my $pos       = -1;
-            $pos = index( $text_test, '<h2>' )  if ( $pos == -1 );
-            $pos = index( $text_test, '<h3>' )  if ( $pos == -1 );
-            $pos = index( $text_test, '<h4>' )  if ( $pos == -1 );
-            $pos = index( $text_test, '<h5>' )  if ( $pos == -1 );
-            $pos = index( $text_test, '<h6>' )  if ( $pos == -1 );
-            $pos = index( $text_test, '</h2>' ) if ( $pos == -1 );
-            $pos = index( $text_test, '</h3>' ) if ( $pos == -1 );
-            $pos = index( $text_test, '</h4>' ) if ( $pos == -1 );
-            $pos = index( $text_test, '</h5>' ) if ( $pos == -1 );
-            $pos = index( $text_test, '</h6>' ) if ( $pos == -1 );
+            $pos = index( $test_text, '<h2>' )  if ( $pos == -1 );
+            $pos = index( $test_text, '<h3>' )  if ( $pos == -1 );
+            $pos = index( $test_text, '<h4>' )  if ( $pos == -1 );
+            $pos = index( $test_text, '<h5>' )  if ( $pos == -1 );
+            $pos = index( $test_text, '<h6>' )  if ( $pos == -1 );
+            $pos = index( $test_text, '</h2>' ) if ( $pos == -1 );
+            $pos = index( $test_text, '</h3>' ) if ( $pos == -1 );
+            $pos = index( $test_text, '</h4>' ) if ( $pos == -1 );
+            $pos = index( $test_text, '</h5>' ) if ( $pos == -1 );
+            $pos = index( $test_text, '</h6>' ) if ( $pos == -1 );
             if ( $pos != -1 ) {
-                $text_test = substr( $text_test, $pos, 40 );
-                $text_test =~ s/\n//g;
-                error_register( $error_code, $text_test );
+                $test_text = substr( $test_text, $pos, 40 );
+                $test_text =~ s/\n//g;
+                error_register( $error_code, $test_text );
             }
         }
     }
@@ -4701,7 +4744,7 @@ sub error_087_html_named_entities_without_semicolon {
             my $test_text = $text;
 
             # IMAGE'S CAN HAVE HTML NAMED ENTITES AS PART OF THEIR FILENAME
-            foreach ( @images_all ) {
+            foreach (@images_all) {
                 $test_text =~ s/\Q$_\E//sg;
             }
 
@@ -4711,7 +4754,7 @@ sub error_087_html_named_entities_without_semicolon {
             $test_text =~ s/<ref(.*?)>https?:(.*?)<\/ref>//sg;
             $test_text =~ s/https?:(.*?)\n//g;
 
-            foreach ( @html_named_entities ) {
+            foreach (@html_named_entities) {
                 if ( $test_text =~ /&$_[^;]/g ) {
                     $pos = $-[0];
                 }
@@ -4850,7 +4893,7 @@ sub error_register {
           $Error_number_counter[$error_code] + 1;
         $error_counter = $error_counter + 1;
 
-        insert_into_db( $error_code, $notice );
+        #        insert_into_db( $error_code, $notice );
     }
     else {
         print $title . " is in whitelist with error: " . $error_code . "\n";
@@ -5013,6 +5056,7 @@ my @Options = (
     'password=s'   => \$DbPassword,
     'user|u=s'     => \$DbUsername,
     'dumpfile=s'   => \$DumpFilename,
+    'listfile=s'   => \$ListFilename,
     'tt-file=s'    => \$TTFilename,
     'check'        => \$CheckOnlyOne,
 );
@@ -5031,7 +5075,8 @@ if (
         },
         @Options,
     )
-    || defined($DumpFilename) != defined($TTFilename)
+
+    #|| defined($DumpFilename) != defined($TTFilename)
   )
 {
     usage();
@@ -5094,6 +5139,9 @@ elsif ( $load_mode eq 'live' ) {
 }
 elsif ( $load_mode eq 'delay' ) {
     $dump_or_live = 'delay';
+}
+elsif ( $load_mode eq 'list' ) {
+    $dump_or_live = 'list';
 }
 else {
     die("No load name, for example: \"-l live\"\n");
