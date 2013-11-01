@@ -67,12 +67,10 @@ our $time_start = time();    # Start timer in secound
 our $time_end   = time();    # End time in secound
 our $time_found = time();    # For column "Found" in cw_error
 
-# File name
-our $TTFile;
-
 # Template list retrieved from Translation file
 our @Template_list;
 
+# Filename that contains a list of articles titles for list mode
 our $ListFilename;
 
 # Total number of Errors
@@ -1471,19 +1469,6 @@ sub get_template {
                 $output .= $template[$template_part_counter][4] . "\n";
             }
         }
-    }
-
-    # Output for TemplateTiger
-    if (
-        $dump_or_live eq 'dump'
-        and (  $page_namespace == 0
-            or $page_namespace == 6
-            or $page_namespace == 104 )
-      )
-    {
-
-        #$TTFile->print($output);
-
     }
 
     return ();
@@ -4893,7 +4878,7 @@ sub error_register {
           $Error_number_counter[$error_code] + 1;
         $error_counter = $error_counter + 1;
 
-        #        insert_into_db( $error_code, $notice );
+        insert_into_db( $error_code, $notice );
     }
     else {
         print $title . " is in whitelist with error: " . $error_code . "\n";
@@ -5046,7 +5031,7 @@ sub usage {
 ###########################################################################
 ###########################################################################
 
-my ( $load_mode, $DumpFilename, $TTFilename, $dump_date_for_output );
+my ( $load_mode, $DumpFilename, $dump_date_for_output );
 
 my @Options = (
     'load=s'       => \$load_mode,
@@ -5057,7 +5042,6 @@ my @Options = (
     'user|u=s'     => \$DbUsername,
     'dumpfile=s'   => \$DumpFilename,
     'listfile=s'   => \$ListFilename,
-    'tt-file=s'    => \$TTFilename,
     'check'        => \$CheckOnlyOne,
 );
 
@@ -5075,8 +5059,6 @@ if (
         },
         @Options,
     )
-
-    #|| defined($DumpFilename) != defined($TTFilename)
   )
 {
     usage();
@@ -5117,22 +5099,6 @@ s/^(?:.*\/)?\Q$project\E-(\d{4})(\d{2})(\d{2})-pages-articles\.xml(.*?)$/$1-$2-$
         $pages     = $pmwd->pages($DumpFilename);
         $file_size = ( stat($DumpFilename) )[7];
     }
-
-    # OPEN TEMPLATETIGER FILE
-    if (
-        !(
-            $TTFile = File::Temp->new(
-                DIR      => $ENV{'HOME'} . '/var/tmp',
-                TEMPLATE => $project . '-' . $dump_date_for_output . '-XXXX',
-                SUFFIX   => '.txt',
-                UNLINK   => 0
-            )
-        )
-      )
-    {
-        die("Couldn't open temporary file for Templatetiger\n");
-    }
-    binmode( $TTFile, ":encoding(UTF-8)" );
 }
 elsif ( $load_mode eq 'live' ) {
     $dump_or_live = 'live';
@@ -5164,23 +5130,6 @@ update_table_cw_error_from_dump();
 delete_done_article_from_db();
 
 close_db();
-
-# CLOSE TEMPLATETIGER FILE
-if ( defined($TTFile) ) {
-
-    # Move Templatetiger file to spool.
-    $TTFile->close() or die( $! . "\n" );
-    if ( !rename( $TTFile->filename(), $TTFilename ) ) {
-        die(    "Couldn't rename temporary Templatetiger file from "
-              . $TTFile->filename() . ' to '
-              . $TTFilename
-              . "\n" );
-    }
-    if ( !chmod( 0664, $TTFilename ) ) {
-        die( "Couldn't chmod 664 Templatetiger file " . $TTFilename . "\n" );
-    }
-    undef($TTFile);
-}
 
 print_line();
 two_column_display( 'Articles checked:', $artcount );
