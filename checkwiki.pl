@@ -73,6 +73,9 @@ our @Template_list;
 # Filename that contains a list of articles titles for list mode
 our $ListFilename;
 
+# Filename that contains the dump file for dump mode
+our $DumpFilename;
+
 # Total number of Errors
 our $number_of_error_description = 0;
 
@@ -96,29 +99,6 @@ our $image_regex = q{};   # Regex used in get_images()
 our $cat_regex   = q{};   # Regex used in get_categories()
 
 our $magicword_defaultsort;
-
-our @magicword_img_thumbnail;
-our @magicword_img_manualthumb;
-our @magicword_img_right;
-our @magicword_img_left;
-our @magicword_img_none;
-our @magicword_img_center;
-our @magicword_img_framed;
-our @magicword_img_frameless;
-our @magicword_img_page;
-our @magicword_img_upright;
-our @magicword_img_border;
-our @magicword_img_sub;
-our @magicword_img_super;
-our @magicword_img_link;
-our @magicword_img_alt;
-our @magicword_img_width;
-our @magicword_img_baseline;
-our @magicword_img_top;
-our @magicword_img_text_top;
-our @magicword_img_middle;
-our @magicword_img_bottom;
-our @magicword_img_text_bottom;
 
 our $error_counter = -1;    # Number of found errors in all article
 our @ErrorPriorityValue;    # Priority value each error has
@@ -278,6 +258,19 @@ sub scan_pages {
     my $page = q{};
 
     if ( $dump_or_live eq 'dump' ) {
+
+        # OPEN DUMPFILE BASED IF COMPRESSED OR NOT
+        if ( $DumpFilename =~ /(.*?)\.xml\.bz2$/ ) {
+            my $dump;
+            open( $dump, '-|', 'bzcat', '-q', $DumpFilename )
+              or die("Couldn't open dump file '$DumpFilename'");
+            $pages = $pmwd->pages($dump);
+        }
+        else {
+            $pages     = $pmwd->pages($DumpFilename);
+            $file_size = ( stat($DumpFilename) )[7];
+        }
+
         while ( defined( $page = $pages->next ) && $end_of_dump eq 'no' ) {
             next unless $page->namespace eq '';
             update_ui() if ++$artcount % 500 == 0;
@@ -594,29 +587,7 @@ sub readMetadata {
     foreach my $id ( @{ $res->{query}->{magicwords} } ) {
         my $aliases = $id->{aliases};
         my $name    = $id->{name};
-        $magicword_defaultsort     = $aliases if ( $name eq 'defaultsort' );
-        @magicword_img_thumbnail   = $aliases if ( $name eq 'img_thumbnail' );
-        @magicword_img_manualthumb = $aliases if ( $name eq 'img_manualthumb' );
-        @magicword_img_right       = $aliases if ( $name eq 'img_right' );
-        @magicword_img_left        = $aliases if ( $name eq 'img_left' );
-        @magicword_img_none        = $aliases if ( $name eq 'img_none' );
-        @magicword_img_center      = $aliases if ( $name eq 'img_center' );
-        @magicword_img_framed      = $aliases if ( $name eq 'img_framed' );
-        @magicword_img_frameless   = $aliases if ( $name eq 'img_frameless' );
-        @magicword_img_page        = $aliases if ( $name eq 'img_page' );
-        @magicword_img_upright     = $aliases if ( $name eq 'img_upright' );
-        @magicword_img_border      = $aliases if ( $name eq 'img_border' );
-        @magicword_img_sub         = $aliases if ( $name eq 'img_sub' );
-        @magicword_img_super       = $aliases if ( $name eq 'img_super' );
-        @magicword_img_link        = $aliases if ( $name eq 'img_link' );
-        @magicword_img_alt         = $aliases if ( $name eq 'img_alt' );
-        @magicword_img_width       = $aliases if ( $name eq 'img_width' );
-        @magicword_img_baseline    = $aliases if ( $name eq 'img_baseline' );
-        @magicword_img_top         = $aliases if ( $name eq 'img_top' );
-        @magicword_img_text_top    = $aliases if ( $name eq 'img_text_top' );
-        @magicword_img_middle      = $aliases if ( $name eq 'img_middle' );
-        @magicword_img_bottom      = $aliases if ( $name eq 'img_bottom' );
-        @magicword_img_text_bottom = $aliases if ( $name eq 'img_text_bottom' );
+        $magicword_defaultsort = $aliases if ( $name eq 'defaultsort' );
     }
 
     return ();
@@ -643,7 +614,7 @@ sub readTemplates {
         while ( $sth->fetchrow_arrayref ) {
             if ( defined($template_sql) ) {
                 if ( $Template_list[$i][0] eq '-9999' ) {
-                    my $bl = shift( @{ $Template_list[$i] } );
+                    shift( @{ $Template_list[$i] } );
                 }
                 push( @{ $Template_list[$i] }, $template_sql );
             }
@@ -777,10 +748,6 @@ sub delay_scan {
 
 sub check_article {
 
-    my $text_for_tests = "";
-
-    # $text = $text_for_tests;
-
     delete_old_errors_in_db();
 
     #------------------------------------------------------
@@ -821,9 +788,6 @@ sub check_article {
     # Following calls do not interact with other get_* or error #'s
     #------------------------------------------------------
 
-    # CALLS #29 and #25
-    get_gallery();
-
     # CALLS #28
     get_tables();
 
@@ -846,13 +810,9 @@ sub check_article {
     # CREATES @template - USED IN #59, #60
     get_template();
 
-    # CREATES @links_all & @images_all - USED IN #68, #74, #76, #82
-    # CALLS #10
+  # CREATES @links_all & @images_all - USED IN #65, #66, #67, #68, #74, #76, #82
+  # CALLS #10
     get_links();
-
-    # USES @images_all - USED IN #65, #66, #67
-    # CALLS #30
-    get_images();
 
     # SETS $page_is_redirect
     check_for_redirect();
@@ -1070,53 +1030,6 @@ sub get_hiero {
 }
 
 ###########################################################################
-## FIND MISSING GALLERY TAGS
-###########################################################################
-
-sub get_gallery {
-
-    my $test_text = lc($text);
-
-    if ( $test_text =~ /<gallery/ ) {
-        my $gallery_begin = 0;
-        my $gallery_end   = 0;
-
-        $gallery_begin = () = $test_text =~ /<gallery/g;
-        $gallery_end   = () = $test_text =~ /<\/gallery>/g;
-
-        if ( $gallery_begin > $gallery_end ) {
-            my $snippet = get_broken_tag( '<gallery', '</gallery>' );
-            error_029_gallery_no_correct_end($snippet);
-        }
-
-        my $search        = 1;
-        my $pos_start_old = 0;
-
-        while ( $search == 1 ) {
-            my $pos_start = 0;
-            my $pos_end   = 0;
-            $pos_start = index( $text, '<gallery',   $pos_start_old );
-            $pos_end   = index( $text, '</gallery>', $pos_start );
-            if ( $pos_start > -1 and $pos_end > -1 ) {
-                $pos_end       = $pos_end + length('</gallery>');
-                $pos_start_old = $pos_end;
-
-                my $text_before = substr( $text, 0, $pos_start );
-                my $text_after = substr( $text, $pos_end );
-                my $text_gallery =
-                  substr( $text, $pos_start, $pos_end - $pos_start );
-                error_035_gallery_without_description($text_gallery);
-            }
-            else {
-                $search = 0;
-            }
-        }
-    }
-
-    return ();
-}
-
-###########################################################################
 ## GET TABLES
 ###########################################################################
 
@@ -1131,8 +1044,6 @@ sub get_tables {
 
     if ( $diff > 0 ) {
 
-        my $pos_start        = 0;
-        my $pos_end          = 0;
         my $look_ahead_open  = 0;
         my $look_ahead_close = 0;
         my $look_ahead       = 0;
@@ -1329,7 +1240,6 @@ sub get_template {
         my $template_name = q{};
 
         my @template_split = split( /\|/, $current_template );
-        my $number_of_splits = @template_split;
 
         if ( index( $current_template, '|' ) == -1 ) {
 
@@ -1529,139 +1439,9 @@ sub get_links {
 ##
 ###########################################################################
 
-sub get_images {
-
-    my $found_error_text = q{};
-    foreach (@images_all) {
-
-        my $current_image = $_;
-
-        my $test_image = $current_image;
-
-        foreach (@magicword_img_thumbnail) {
-            my $current_magicword = $_;
-
-            $test_image =~ s/\|([ ]?)+$current_magicword([ ]?)+(\||\])/$3/i;
-        }
-
-        foreach (@magicword_img_right) {
-            my $current_magicword = $_;
-
-            $test_image =~ s/\|([ ]?)+$current_magicword([ ]?)+(\||\])/$3/i;
-        }
-
-        foreach (@magicword_img_left) {
-            my $current_magicword = $_;
-
-            $test_image =~ s/\|([ ]?)+$current_magicword([ ]?)+(\||\])/$3/i;
-        }
-
-        foreach (@magicword_img_none) {
-            my $current_magicword = $_;
-
-            $test_image =~ s/\|([ ]?)+$current_magicword([ ]?)+(\||\])/$3/i;
-        }
-
-        foreach (@magicword_img_center) {
-            my $current_magicword = $_;
-
-            $test_image =~ s/\|([ ]?)+$current_magicword([ ]?)+(\||\])/$3/i;
-        }
-
-        foreach (@magicword_img_framed) {
-            my $current_magicword = $_;
-
-            $test_image =~ s/\|([ ]?)+$current_magicword([ ]?)+(\||\])/$3/i;
-        }
-
-        foreach (@magicword_img_frameless) {
-            my $current_magicword = $_;
-
-            $test_image =~ s/\|([ ]?)+$current_magicword([ ]?)+(\||\])/$3/i;
-        }
-
-        foreach (@magicword_img_border) {
-            my $current_magicword = $_;
-
-            $test_image =~ s/\|([ ]?)+$current_magicword([ ]?)+(\||\])/$3/i;
-        }
-
-        foreach (@magicword_img_sub) {
-            my $current_magicword = $_;
-
-            $test_image =~ s/\|([ ]?)+$current_magicword([ ]?)+(\||\])/$3/i;
-        }
-
-        foreach (@magicword_img_super) {
-            my $current_magicword = $_;
-
-            $test_image =~ s/\|([ ]?)+$current_magicword([ ]?)+(\||\])/$3/i;
-        }
-
-        foreach (@magicword_img_baseline) {
-            my $current_magicword = $_;
-
-            $test_image =~ s/\|([ ]?)+$current_magicword([ ]?)+(\||\])/$3/i;
-        }
-
-        foreach (@magicword_img_top) {
-            my $current_magicword = $_;
-
-            $test_image =~ s/\|([ ]?)+$current_magicword([ ]?)+(\||\])/$3/i;
-        }
-
-        foreach (@magicword_img_text_top) {
-            my $current_magicword = $_;
-
-            $test_image =~ s/\|([ ]?)+$current_magicword([ ]?)+(\||\])/$3/i;
-        }
-
-        foreach (@magicword_img_middle) {
-            my $current_magicword = $_;
-
-            $test_image =~ s/\|([ ]?)+$current_magicword([ ]?)+(\||\])/$3/i;
-        }
-
-        foreach (@magicword_img_bottom) {
-            my $current_magicword = $_;
-
-            $test_image =~ s/\|([ ]?)+$current_magicword([ ]?)+(\||\])/$3/i;
-        }
-
-        $test_image =~ s/\|([ ]?)+[0-9]+(x[0-9]+)?px([ ]?)+(\||\])/$4/i;
-
-        if ( $found_error_text eq '' ) {
-            if ( index( $test_image, '|' ) == -1 ) {
-
-                $found_error_text = $current_image;
-            }
-            else {
-                my $pos_1 = index( $test_image, '|' );
-                my $pos_2 = index( $test_image, '|', $pos_1 + 1 );
-
-                if ( $pos_2 == -1
-                    and index( $test_image, '|]' ) > -1 )
-                {
-                    $found_error_text = $current_image;
-                }
-            }
-        }
-    }
-
-    if ( $found_error_text ne '' ) {
-        error_030_image_without_description($found_error_text);
-    }
-    return ();
-}
-
-###########################################################################
-##
-###########################################################################
-
 sub get_ref {
 
     my $pos_start_old = 0;
-    my $pos_end_old   = 0;
     my $end_search    = 0;
 
     while ( $end_search == 0 ) {
@@ -1885,8 +1665,9 @@ sub error_check {
         error_027_unicode_syntax();
 
         #error_028_table_no_correct_end('');               # get_tables()
-        #error_029_gallery_no_correct_end('');             # get_gallery()
-        #error_030_image_without_description('');          # get_images()
+        error_029_gallery_no_correct_end();
+
+        #error_030_image_without_description('');          # DEACTIVATED
         error_031_html_table_elements();
         error_032_double_pipe_in_link();
         error_033_html_text_style_elements_underline();
@@ -1921,7 +1702,7 @@ sub error_check {
         error_059_template_value_end_with_br();
         error_060_template_parameter_with_problem();
         error_061_reference_with_punctuation();
-        error_062_headline_alone();
+        error_062_headline_alone();    # DEACTIVATED
         error_063_html_text_style_elements_small_ref_sub_sup();
         error_064_link_equal_linktext();
         error_065_image_description_with_break();
@@ -1976,18 +1757,16 @@ sub error_001_no_bold_title {
 sub error_002_have_br {
     my $error_code = 2;
 
-    my $test      = 'no found';
-    my $test_line = q{};
-
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
+            my $test_line = q{};
             my $test_text = $text;
+
             if ( $test_text =~
 /(<\s*br\/[^ ]>|<\s*br[^ ]\/>|<\s*br[^ \/]>|<[^ ]br\s*>|<\s*br\s*\/[^ ]>)/i
               )
             {
-
                 my $pos = index( $test_text, $1 );
                 $test_line = substr( $text, $pos, 40 );
                 $test_line =~ s/[\n\r]//mg;
@@ -2008,9 +1787,7 @@ sub error_003_have_ref {
     my $error_code = 3;
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
-        if (   $page_namespace == 0
-            or $page_namespace == 104 )
-        {
+        if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
             if (   index( $text, '<ref>' ) > -1
                 or index( $text, '<ref name' ) > -1 )
@@ -2018,7 +1795,6 @@ sub error_003_have_ref {
 
                 my $test      = "false";
                 my $test_text = lc($text);
-                my $template_sql;
 
                 $test = "true"
                   if (  $test_text =~ /<[ ]?+references>/
@@ -2446,7 +2222,6 @@ sub error_016_unicode_control_characters {
 ###########################################################################
 
 sub error_017_category_double {
-    my ($comment) = @_;
     my $error_code = 17;
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
@@ -2777,18 +2552,25 @@ sub error_028_table_no_correct_end {
 ###########################################################################
 
 sub error_029_gallery_no_correct_end {
-    my ($comment) = @_;
     my $error_code = 29;
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
-        if (
-            $comment ne ''
-            and (  $page_namespace == 0
-                or $page_namespace == 6
-                or $page_namespace == 104 )
-          )
-        {
-            error_register( $error_code, $comment );
+        if ( $page_namespace == 0 or $page_namespace == 104 ) {
+
+            my $test_text = lc($text);
+
+            if ( $test_text =~ /<gallery/ ) {
+                my $gallery_begin = 0;
+                my $gallery_end   = 0;
+
+                $gallery_begin = () = $test_text =~ /<gallery/g;
+                $gallery_end   = () = $test_text =~ /<\/gallery>/g;
+
+                if ( $gallery_begin > $gallery_end ) {
+                    my $snippet = get_broken_tag( '<gallery', '</gallery>' );
+                    error_register( $error_code, $snippet );
+                }
+            }
         }
     }
 
@@ -2800,19 +2582,6 @@ sub error_029_gallery_no_correct_end {
 ###########################################################################
 
 sub error_030_image_without_description {
-    my ($comment) = @_;
-    my $error_code = 30;
-
-    if ( $ErrorPriorityValue[$error_code] > 0 ) {
-        if ( $comment ne '' ) {
-            if (   $page_namespace == 0
-                or $page_namespace == 6
-                or $page_namespace == 104 )
-            {
-                error_register( $error_code, $comment );
-            }
-        }
-    }
 
     return ();
 }
@@ -3291,8 +3060,8 @@ sub error_046_count_square_breaks_begin {
             or $page_namespace == 6
             or $page_namespace == 104 )
         {
-            my $test_text = $text;
 
+            my $test_text     = $text;
             my $test_text_1_a = $test_text;
             my $test_text_1_b = $test_text;
 
@@ -3358,14 +3127,7 @@ sub error_046_count_square_breaks_begin {
 ###########################################################################
 
 sub error_047_template_no_correct_begin {
-    my $error_code       = 47;
-    my $pos_start        = 0;
-    my $pos_end          = 0;
-    my $tag_open         = "{{";
-    my $tag_close        = "}}";
-    my $look_ahead_open  = 0;
-    my $look_ahead_close = 0;
-    my $look_ahead       = 0;
+    my $error_code = 47;
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
 
@@ -3374,7 +3136,12 @@ sub error_047_template_no_correct_begin {
             or $page_namespace == 104 )
         {
 
-            my $test_text = $text;
+            my $tag_open         = "{{";
+            my $tag_close        = "}}";
+            my $look_ahead_open  = 0;
+            my $look_ahead_close = 0;
+            my $look_ahead       = 0;
+            my $test_text        = $text;
 
             my $tag_open_num  = () = $test_text =~ /$tag_open/g;
             my $tag_close_num = () = $test_text =~ /$tag_close/g;
@@ -3746,7 +3513,6 @@ sub error_058_headline_with_capitalization {
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
-            my $found_text = q{};
             foreach (@headlines) {
                 my $current_line_normal = $_;
 
@@ -3888,76 +3654,6 @@ sub error_061_reference_with_punctuation {
 ###########################################################################
 
 sub error_062_headline_alone {
-    my $error_code = 62;
-
-    if ( $ErrorPriorityValue[$error_code] > 0 ) {
-        if ( $page_namespace == 0 or $page_namespace == 104 ) {
-
-            my $number_of_headlines = @headlines;
-            my $old_level           = 2;
-            my $found_txt           = q{};
-            if ( $number_of_headlines >= 5 ) {
-                foreach my $i ( 0 .. $number_of_headlines - 1 ) {
-
-                    my $headline_test_1 = $headlines[$i];
-                    my $headline_test_2 = $headlines[$i];
-                    $headline_test_1 =~ s/^([=]+)//;
-                    my $current_level =
-                      length($headline_test_2) - length($headline_test_1);
-
-                    if (    $current_level > 2
-                        and $old_level < $current_level
-                        and $i < $number_of_headlines - 1
-                        and $found_txt eq q{} )
-                    {
-                        # First headline in this level
-                        my $found_same_level = 'no';
-                        my $found_end        = 'no';
-                        foreach my $j ( $i + 1 .. $number_of_headlines - 1 ) {
-
-                            # Check all headlinds behind
-                            my $headline_test_1b = $headlines[$j];
-                            my $headline_test_2b = $headlines[$j];
-                            $headline_test_1b =~ s/^([=]+)//;
-                            my $test_level =
-                              length($headline_test_2b) -
-                              length($headline_test_1b);
-
-                            if ( $test_level < $current_level ) {
-                                $found_end = 'yes';
-                            }
-
-                            if (    $test_level = $current_level
-                                and $found_end eq 'no' )
-                            {
-                                $found_same_level = 'yes';
-                            }
-                        }
-
-                        if (    $found_txt eq q{}
-                            and $found_same_level eq 'no' )
-                        {
-                            # Found alone text
-                            $found_txt = $headlines[$i];
-                        }
-                    }
-
-                    if (    $current_level > 2
-                        and $old_level < $current_level
-                        and $i == $number_of_headlines - 1
-                        and $found_txt eq q{} )
-                    {
-                        # Found a last headline stand alone
-                        $found_txt = $headlines[$i];
-                    }
-                    $old_level = $current_level;
-                }
-            }
-            if ( $found_txt ne q{} ) {
-                error_register( $error_code, $found_txt );
-            }
-        }
-    }
 
     return ();
 }
@@ -4140,7 +3836,6 @@ sub error_068_link_to_other_language {
 
                 my $current_link = $_;
                 foreach (@inter_list) {
-                    my $current_lang = $_;
                     if ( $current_link =~ /^\[\[([ ]+)?:([ ]+)?$_:/i ) {
                         error_register( $error_code, $current_link );
                     }
@@ -4258,7 +3953,6 @@ sub error_074_link_with_no_target {
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
-            my $found_text = q{};
             foreach (@links_all) {
 
                 if ( index( $_, '[[|' ) > -1 ) {
@@ -4455,7 +4149,6 @@ sub error_080_external_link_with_line_break {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
             my $pos_start_old = 0;
-            my $pos_end_old   = 0;
             my $end_search    = 0;
             my $test_text     = lc($text);
 
@@ -4836,6 +4529,7 @@ sub error_092_headline_double {
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
+
             my $found_text          = q{};
             my $number_of_headlines = @headlines;
             for ( my $i = 0 ; $i < $number_of_headlines - 1 ; $i++ ) {
@@ -5031,7 +4725,7 @@ sub usage {
 ###########################################################################
 ###########################################################################
 
-my ( $load_mode, $DumpFilename, $dump_date_for_output );
+my ( $load_mode, $dump_date_for_output );
 
 my @Options = (
     'load=s'       => \$load_mode,
@@ -5087,18 +4781,6 @@ if ( defined($DumpFilename) ) {
     $dump_date_for_output = $DumpFilename;
     $dump_date_for_output =~
 s/^(?:.*\/)?\Q$project\E-(\d{4})(\d{2})(\d{2})-pages-articles\.xml(.*?)$/$1-$2-$3/;
-
-    # OPEN DUMPFILE BASED IF COMPRESSED OR NOT
-    if ( $DumpFilename =~ /(.*?)\.xml\.bz2$/ ) {
-        my $dump;
-        open( $dump, '-|', 'bzcat', '-q', $DumpFilename )
-          or die("Couldn't open dump file '$DumpFilename'");
-        $pages = $pmwd->pages($dump);
-    }
-    else {
-        $pages     = $pmwd->pages($DumpFilename);
-        $file_size = ( stat($DumpFilename) )[7];
-    }
 }
 elsif ( $load_mode eq 'live' ) {
     $dump_or_live = 'live';
