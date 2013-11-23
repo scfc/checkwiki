@@ -131,8 +131,9 @@ our @html_named_entities = qw( aacute acirc aeligi agrave aring  aumla bull
 ## Variables for one article
 ###############################
 
-our $title                 = q{};    # Title of the current article
-our $text                  = q{};    # Text of the current article
+our $title                 = q{};    # Title of current article
+our $text                  = q{};    # Text of current article
+our $lc_text               = q{};    # Text of current article in lower case
 our $text_without_comments = q{};
 
 # Text of article with comments only removed
@@ -616,7 +617,7 @@ sub readTemplates {
                 if ( $Template_list[$i][0] eq '-9999' ) {
                     shift( @{ $Template_list[$i] } );
                 }
-                push( @{ $Template_list[$i] }, $template_sql );
+                push( @{ $Template_list[$i] }, lc($template_sql) );
             }
         }
     }
@@ -783,6 +784,8 @@ sub check_article {
 
     # REMOVE FROM $text ANY CONTENT BETWEEN <hiero> TAGS.
     get_hiero();
+
+    $lc_text = lc($text);
 
     #------------------------------------------------------
     # Following calls do not interact with other get_* or error #'s
@@ -1471,7 +1474,7 @@ sub get_ref {
 
 sub check_for_redirect {
 
-    if ( index( lc($text), '#redirect' ) > -1 ) {
+    if ( index( $lc_text, '#redirect' ) > -1 ) {
         $page_is_redirect = 'yes';
     }
 
@@ -1794,7 +1797,7 @@ sub error_003_have_ref {
             {
 
                 my $test      = "false";
-                my $test_text = lc($text);
+                my $test_text = $lc_text;
 
                 $test = "true"
                   if (  $test_text =~ /<[ ]?+references>/
@@ -1864,16 +1867,8 @@ sub error_006_defaultsort_with_special_letters {
     my $error_code = 6;
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
-        if (
-                ( $page_namespace == 0 or $page_namespace == 104 )
-            and $project ne 'arwiki'
-            and $project ne 'hewiki'
-            and $project ne 'plwiki'
-            and $project ne 'jawiki'
-            and $project ne 'yiwiki'
-            and $project ne 'zhwiki'
-
-          )
+        if ( ( $page_namespace == 0 or $page_namespace == 104 )
+            and $project ne 'hewiki' )
         {
             # Is DEFAULTSORT found in article?
             my $isDefaultsort = -1;
@@ -2061,7 +2056,7 @@ sub error_011_html_named_entities {
             or $page_namespace == 104 )
         {
             my $pos       = -1;
-            my $test_text = lc($text);
+            my $test_text = $lc_text;
 
             foreach (@html_named_entities) {
                 if ( $test_text =~ /&$_;/g ) {
@@ -2088,7 +2083,7 @@ sub error_012_html_list_elements {
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
-            my $test_text = lc($text);
+            my $test_text = $lc_text;
 
             if (   index( $test_text, '<ol>' ) > -1
                 or index( $test_text, '<ul>' ) > -1
@@ -2470,7 +2465,7 @@ sub error_026_html_text_style_elements {
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
-            my $test_text = lc($text);
+            my $test_text = $lc_text;
             my $pos = index( $test_text, '<b>' );
 
             if ( $pos > -1 ) {
@@ -2517,30 +2512,25 @@ sub error_028_table_no_correct_end {
     my $error_code = 28;
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
-        if (    $comment ne ''
-            and ( $page_namespace == 0 or $page_namespace == 104 )
-            and index( $text, '{{end}}' ) == -1
-            and index( $text, '{{End box}}' ) == -1
-            and index( $text, '{{end box}}' ) == -1
-            and index( $text, '{{Fb cs footer' ) == -1
-            and index( $text, '{{Fb cl footer' ) == -1
-            and index( $text, '{{Fb disc footer' ) == -1
-            and index( $text, '{{Fb footer' ) == -1
-            and index( $text, '{{Fb kit footer' ) == -1
-            and index( $text, '{{Fb match footer' ) == -1
-            and index( $text, '{{Fb oi footer' ) == -1
-            and index( $text, '{{Fb r footer' ) == -1
-            and index( $text, '{{Fb rbr pos footer' ) == -1
-            and index( $text, '{{Ig footer' ) == -1
-            and index( $text, '{{Jctbtm' ) == -1
-            and index( $text, '{{jctbtm' ) == -1
-            and index( $text, '{{LegendRJL' ) == -1
-            and index( $text, '{{legendRJL' ) == -1
-            and index( $text, '{{PHL sports results footer' ) == -1
-            and index( $text, '{{WNBA roster footer' ) == -1
-            and index( $text, '{{NBA roster footer' ) == -1 )
+        if ( $comment ne ''
+            and ( $page_namespace == 0 or $page_namespace == 104 ) )
         {
-            error_register( $error_code, $comment );
+
+            my $test = "false";
+
+            if ( $Template_list[$error_code][0] ne '-9999' ) {
+
+                my @ack = @{ $Template_list[$error_code] };
+
+                for my $temp (@ack) {
+                    if ( index( $lc_text, $temp ) == -1 ) {
+                        $test = "true";
+                    }
+                }
+            }
+            if ( $test eq "true" ) {
+                error_register( $error_code, $comment );
+            }
         }
     }
 
@@ -2557,7 +2547,7 @@ sub error_029_gallery_no_correct_end {
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
-            my $test_text = lc($text);
+            my $test_text = $lc_text;
 
             if ( $test_text =~ /<gallery/ ) {
                 my $gallery_begin = 0;
@@ -2598,7 +2588,7 @@ sub error_031_html_table_elements {
             or $page_namespace == 6
             or $page_namespace == 104 )
         {
-            my $test_text = lc($text);
+            my $test_text = $lc_text;
 
             if ( index( $test_text, '<table' ) > -1 ) {
 
@@ -2666,7 +2656,7 @@ sub error_033_html_text_style_elements_underline {
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
-            my $test_text = lc($text);
+            my $test_text = $lc_text;
             my $pos = index( $test_text, '<u>' );
 
             if ( $pos > -1 ) {
@@ -2757,7 +2747,7 @@ sub error_036_redirect_not_correct {
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
 
         if ( $page_is_redirect eq 'yes' ) {
-            if ( lc($text) =~ /#redirect[ ]?+[^ :\[][ ]?+\[/ ) {
+            if ( $lc_text =~ /#redirect[ ]?+[^ :\[][ ]?+\[/ ) {
                 error_register( $error_code, substr( $text, 0, 40 ) );
             }
         }
@@ -2776,13 +2766,7 @@ sub error_037_title_with_special_letters_and_no_defaultsort {
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if (    ( $page_namespace == 0 or $page_namespace == 104 )
             and $category_counter > -1
-            and $project ne 'arwiki'
-            and $project ne 'jawiki'
             and $project ne 'hewiki'
-            and $project ne 'plwiki'
-            and $project ne 'trwiki'
-            and $project ne 'yiwiki'
-            and $project ne 'zhwiki'
             and length($title) > 2 )
         {
 
@@ -2831,15 +2815,6 @@ sub error_037_title_with_special_letters_and_no_defaultsort {
                 if ( $project eq 'rowiki' ) {
                     $test_title =~ s/[ăîâşţ]//g;
                 }
-                if ( $project eq 'ruwiki' ) {
-                    $test_title =~
-s/[АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЬЫЪЭЮЯабвгдежзийклмнопрстуфхцчшщьыъэюя]//g;
-                }
-                if ( $project eq 'ukwiki' ) {
-                    $test_title =~
-s/[АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЬЫЪЭЮЯабвгдежзийклмнопрстуфхцчшщьыъэюяiїґ]//g;
-                }
-
                 if ( $test_title ne '' ) {
                     error_register( $error_code, q{} );
                 }
@@ -2860,7 +2835,7 @@ sub error_038_html_text_style_elements_italic {
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
-            my $test_text = lc($text);
+            my $test_text = $lc_text;
             my $pos = index( $test_text, '<i>' );
 
             if ( $pos > -1 ) {
@@ -2882,7 +2857,7 @@ sub error_039_html_text_style_elements_paragraph {
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
-            my $test_text = lc($text);
+            my $test_text = $lc_text;
             if ( $test_text =~ /<p>|<p / ) {
 
                 # https://bugzilla.wikimedia.org/show_bug.cgi?id=6200
@@ -2918,7 +2893,7 @@ sub error_040_html_text_style_elements_font {
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
-            my $test_text = lc($text);
+            my $test_text = $lc_text;
             my $pos = index( $test_text, '<font' );
 
             if ( $pos > -1 ) {
@@ -2940,7 +2915,7 @@ sub error_041_html_text_style_elements_big {
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
-            my $test_text = lc($text);
+            my $test_text = $lc_text;
             my $pos = index( $test_text, '<big>' );
 
             if ( $pos > -1 ) {
@@ -3237,7 +3212,7 @@ sub error_049_headline_with_html {
             or $page_namespace == 104 )
         {
 
-            my $test_text = lc($text);
+            my $test_text = $lc_text;
             my $pos       = -1;
             $pos = index( $test_text, '<h2>' )  if ( $pos == -1 );
             $pos = index( $test_text, '<h3>' )  if ( $pos == -1 );
@@ -3269,8 +3244,8 @@ sub error_050_dash {
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         my $pos = -1;
-        $pos = index( lc($text), '&ndash;' );
-        $pos = index( lc($text), '&mdash;' ) if $pos == -1;
+        $pos = index( $lc_text, '&ndash;' );
+        $pos = index( $lc_text, '&mdash;' ) if $pos == -1;
 
         if ( $pos > -1
             and ( $page_namespace == 0 or $page_namespace == 104 ) )
@@ -3428,7 +3403,7 @@ sub error_055_html_text_style_elements_small_double {
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
-            my $test_text = lc($text);
+            my $test_text = $lc_text;
             if ( index( $test_text, '<small>' ) > -1 ) {
 
                 my $pos = -1;
@@ -3466,10 +3441,10 @@ sub error_056_arrow_as_ASCII_art {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
             my $pos = -1;
-            $pos = index( lc($text), '->' );
-            $pos = index( lc($text), '<-' ) if $pos == -1;
-            $pos = index( lc($text), '<=' ) if $pos == -1;
-            $pos = index( lc($text), '=>' ) if $pos == -1;
+            $pos = index( $lc_text, '->' );
+            $pos = index( $lc_text, '<-' ) if $pos == -1;
+            $pos = index( $lc_text, '<=' ) if $pos == -1;
+            $pos = index( $lc_text, '=>' ) if $pos == -1;
 
             if ( $pos > -1 ) {
                 my $test_text = substr( $text, $pos - 10, 40 );
@@ -3668,7 +3643,7 @@ sub error_063_html_text_style_elements_small_ref_sub_sup {
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
-            my $test_text = lc($text);
+            my $test_text = $lc_text;
             my $pos       = -1;
 
             if ( index( $test_text, '<small>' ) > -1 ) {
@@ -4058,7 +4033,7 @@ sub error_078_reference_double {
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
-            my $test_text      = lc($text);
+            my $test_text      = $lc_text;
             my $number_of_refs = 0;
             my $pos_first      = -1;
             my $pos_second     = -1;
@@ -4098,7 +4073,7 @@ sub error_079_external_link_without_description {
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
-            my $test_text  = lc($text);
+            my $test_text  = $lc_text;
             my $pos        = -1;
             my $found_text = q{};
             while (index( $test_text, '[http://', $pos + 1 ) > -1
@@ -4150,7 +4125,7 @@ sub error_080_external_link_with_line_break {
 
             my $pos_start_old = 0;
             my $end_search    = 0;
-            my $test_text     = lc($text);
+            my $test_text     = $lc_text;
 
             while ( $end_search == 0 ) {
                 my $pos_start   = 0;
@@ -4708,9 +4683,9 @@ sub two_column_display {
 
 sub usage {
     print STDERR "To scan a dump:\n"
-      . "$0 -p dewiki --dumpfile DUMPFILE --tt-file TEMPLATETIGERFILE\n"
-      . "$0 -p nds_nlwiki --dumpfile DUMPFILE --tt-file TEMPLATETIGERFILE\n"
-      . "$0 -p nds_nlwiki --dumpfile DUMPFILE --tt-file TEMPLATETIGERFILE --silent\n"
+      . "$0 -p dewiki --dumpfile DUMPFILE\n"
+      . "$0 -p nds_nlwiki --dumpfile DUMPFILE\n"
+      . "$0 -p nds_nlwiki --dumpfile DUMPFILE --silent\n"
       . "To scan a list of pages live:\n"
       . "$0 -p dewiki\n"
       . "$0 -p dewiki --silent\n"
