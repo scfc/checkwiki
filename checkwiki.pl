@@ -3771,25 +3771,19 @@ sub error_067_reference_after_punctuation {
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
-            my $pos = -1;
-            $pos = index( $text, '.<ref' )   if ( $pos == -1 );
-            $pos = index( $text, '. <ref' )  if ( $pos == -1 );
-            $pos = index( $text, '.  <ref' ) if ( $pos == -1 );
-            $pos = index( $text, '!<ref' )   if ( $pos == -1 );
-            $pos = index( $text, '! <ref' )  if ( $pos == -1 );
-            $pos = index( $text, '!  <ref' ) if ( $pos == -1 );
-            $pos = index( $text, '?<ref' )   if ( $pos == -1 );
-            $pos = index( $text, '? <ref' )  if ( $pos == -1 );
-            $pos = index( $text, '?  <ref' ) if ( $pos == -1 );
-            $pos = index( $text, ',<ref' )   if ( $pos == -1 );
-            $pos = index( $text, ' ,<ref' )  if ( $pos == -1 );
-            $pos = index( $text, '  ,<ref' ) if ( $pos == -1 );
-            $pos = index( $text, ':<ref' )   if ( $pos == -1 );
-            $pos = index( $text, ' :<ref' )  if ( $pos == -1 );
-            $pos = index( $text, '  :<ref' ) if ( $pos == -1 );
+            my $test_text = lc($text);
+            if ( $Template_list[$error_code][0] ne '-9999' ) {
 
-            if ( $pos > -1 ) {
-                error_register( $error_code, substr( $text, $pos, 40 ) );
+                my @ack = @{ $Template_list[$error_code] };
+
+                for my $temp (@ack) {
+                    $test_text =~ s/($temp)<ref//sg;
+                }
+
+                if ( $test_text =~ /[ ]{0,2}(\.|,|\?|:|!|;)<ref/ ) {
+                    error_register( $error_code,
+                        substr( $test_text, $-[0], 40 ) );
+                }
             }
         }
     }
