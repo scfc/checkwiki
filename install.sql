@@ -14,17 +14,6 @@ CREATE DATABASE IF NOT EXISTS p50380g50450__checkwiki_p;
 USE p50380g50450__checkwiki_p;
 
 
--- Table cw_project.
-CREATE TABLE IF NOT EXISTS cw_project
-(ID SMALLINT NOT NULL,
- Project VARCHAR(100) NOT NULL,
- Lang VARCHAR(100),
- Last_Dump VARCHAR(100),
- WikiPage VARCHAR(400),
- Translation_Page VARCHAR(400) )
- CHARACTER SET utf8 COLLATE utf8_unicode_ci;
-
-
 -- Table cw_dumpscan.
 CREATE TABLE IF NOT EXISTS cw_dumpscan
 (Project VARCHAR(20) NOT NULL,
@@ -51,7 +40,7 @@ CREATE TABLE IF NOT EXISTS cw_error
 CREATE INDEX Error_index ON cw_error (Error, Project, Ok);
 
 
--- Table cw_new.
+-- Table cw_new
 CREATE TABLE IF NOT EXISTS cw_new
 (Project VARCHAR(20) NOT Null,
  Title VARCHAR(100) NOT Null,
@@ -59,7 +48,7 @@ CREATE TABLE IF NOT EXISTS cw_new
  CHARACTER SET utf8 COLLATE utf8_unicode_ci;
 
 
--- Table cw_error_desc.
+-- Table cw_error_desc
 CREATE TABLE IF NOT EXISTS cw_error_desc
 (Project VARCHAR(100) NOT NULL,
  ID SMALLINT NOT NULL,
@@ -71,7 +60,7 @@ CREATE TABLE IF NOT EXISTS cw_error_desc
  CHARACTER SET utf8 COLLATE utf8_unicode_ci;
 
 
--- Table cw_overview (for overview, updated by cron job with merge).
+-- Table cw_overview
 CREATE TABLE IF NOT EXISTS cw_overview
 (ID SMALLINT,
  Project VARCHAR(100) NOT NULL,
@@ -81,11 +70,12 @@ CREATE TABLE IF NOT EXISTS cw_overview
  Last_Dump VARCHAR(100),
  Last_Update VARCHAR(100),
  Project_Page VARCHAR(400),
- Translation_Page VARCHAR(400) )
+ Translation_Page VARCHAR(400)
+ PRIMARY KEY (Project) )
  CHARACTER SET utf8 COLLATE utf8_unicode_ci;
 
 
--- Table cw_overview_errors.
+-- Table cw_overview_errors
 CREATE TABLE IF NOT EXISTS cw_overview_errors
 (Project VARCHAR(100) NOT NULL,
  ID SMALLINT,
@@ -96,6 +86,7 @@ CREATE TABLE IF NOT EXISTS cw_overview_errors
  Prio SMALLINT)
  CHARACTER SET utf8 COLLATE utf8_unicode_ci;
 
+
 -- Table cw_template
 CREATE  TABLE `p50380g50450__checkwiki_p`.`cw_template` (
  `Project` VARCHAR(20) NOT NULL ,
@@ -103,6 +94,7 @@ CREATE  TABLE `p50380g50450__checkwiki_p`.`cw_template` (
  `Error` SMALLINT NOT NULL ,
  PRIMARY KEY (`Project`, `Templates`, `Error`) )
  CHARACTER SET utf8 COLLATE utf8_unicode_ci;
+
 
 -- Table cw_whitelist
 CREATE  TABLE `p50380g50450__checkwiki_p`.`cw_whitelist` (
@@ -112,23 +104,3 @@ CREATE  TABLE `p50380g50450__checkwiki_p`.`cw_whitelist` (
  `OK` TINYINT NOT NULL ,
  PRIMARY KEY (`Project`, `Title`, `Error`) )
  CHARACTER SET utf8 COLLATE utf8_unicode_ci;
-
--- Table cw_change.
-CREATE TABLE IF NOT EXISTS cw_change
-(Project VARCHAR(100),
- Title VARCHAR(100),
- Daytime DATETIME,
- Scan_Live BOOLEAN DEFAULT FALSE)
- CHARACTER SET utf8 COLLATE utf8_unicode_ci;
-
-
--- Table tt (Templatetiger).
-CREATE TABLE IF NOT EXISTS tt
-(Project VARCHAR(100),
- ID SMALLINT,
- Title VARCHAR(100),
- Template INT,
- Name VARCHAR(4000),
- Number INT,
- Parameter VARCHAR(4000),
- Value TEXT);

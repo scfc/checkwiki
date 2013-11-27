@@ -10,7 +10,7 @@
 ##
 ##       AUTHOR: Stefan Kühn, Bryan White
 ##      LICENCE: GPLv3
-##      VERSION: 08/15/2013
+##      VERSION: 11/26/2013
 ##
 ###########################################################################
 
@@ -105,7 +105,7 @@ sub close_db {
 sub get_projects {
 
     my $result = q();
-    my $sth = $dbh->prepare('SELECT project FROM cw_project ORDER BY project;')
+    my $sth = $dbh->prepare('SELECT project FROM cw_overview ORDER BY project;')
       || die "Can not prepare statement: $DBI::errstr\n";
     $sth->execute or die "Cannot execute: " . $sth->errstr . "\n";
 

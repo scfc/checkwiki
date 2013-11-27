@@ -10,7 +10,7 @@
 ##
 ##       AUTHOR: Stefan Kühn, Bryan White
 ##      LICENCE: GPLv3
-##      VERSION: 07/22/2013 10:06:16 PM
+##      VERSION: 11/26/2013
 ##
 ###########################################################################
 
@@ -238,7 +238,7 @@ sub get_projects {
 
     print "Load projects from db\n";
     my $result = q();
-    my $sth = $dbh->prepare('SELECT project FROM cw_project ORDER BY project;')
+    my $sth = $dbh->prepare('SELECT project FROM cw_overview ORDER BY project;')
       || die "Can not prepare statement: $DBI::errstr\n";
     $sth->execute or die "Cannot execute: " . $sth->errstr . "\n";
 
@@ -264,7 +264,7 @@ sub insert_into_projects {
     my ($page) = @_;
 
     my $sql_text =
-        "UPDATE cw_project SET Translation_Page='"
+        "UPDATE cw_overview SET Translation_Page='"
       . $page
       . "' WHERE project='"
       . $project . "';";
@@ -352,6 +352,11 @@ sub load_text_translation {
         $Template[$i] =
           get_translation_text( $translation_input,
             $current_error_number . '_templates_' . $project . '=', 'END' );
+
+        # abbreviations 
+        $Template[$i] =
+          get_translation_text( $translation_input,
+            $current_error_number . '_abbreviations_' . $project . '=', 'END' );
 
         # whitelist
         $Whitelist[$i] =

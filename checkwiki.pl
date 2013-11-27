@@ -235,7 +235,7 @@ sub updateDumpDate {
     my ($date) = @_;
 
     my $sql_text =
-        "UPDATE cw_project SET Last_Dump = '"
+        "UPDATE cw_overview SET Last_Dump = '"
       . $date
       . "' WHERE Project = '"
       . $project . "';";

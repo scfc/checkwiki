@@ -1,4 +1,4 @@
-#! /usr/bin/perl -T
+#! /usr/bin/perl
 
 ###########################################################################
 #
@@ -8,7 +8,7 @@
 # DESCRIPTION:
 #
 # AUTHOR:  Stefan Kühn, Bryan White
-# VERSION: 2013-09-16
+# VERSION: 2013-11-26
 # LICENSE: GPLv3
 #
 ###########################################################################
@@ -20,7 +20,6 @@ use utf8;
 use CGI qw(:standard);
 use CGI::Carp qw(fatalsToBrowser);
 use CGI::Carp qw(fatalsToBrowser set_message);    # CGI-Error
-use Data::Dumper;
 use DBI;
 
 binmode( STDOUT, ":encoding(UTF-8)" );
@@ -984,11 +983,11 @@ sub project_info {
 
 
     my $sth = $dbh->prepare("SELECT project,
-    if(length(ifnull(wikipage,''))!=0,wikipage, 'no data') wikipage,
+    if(length(ifnull(project_page,''))!=0,project_page, 'no data') project_page,
     if(length(ifnull(translation_page,''))!=0,translation_page, 'no data') translation_page,
     date_format(last_dump,'%Y-%m-%d') last_dump, 
     ifnull(DATEDIFF(curdate(),last_dump),'')
-    FROM cw_project WHERE project= ? limit 1;") 
+    FROM cw_overview WHERE project= ? limit 1;") 
       || die "Can not prepare statement: $DBI::errstr\n";
     $sth->execute( $project) or die "Cannot execute: " . $sth->errstr . "\n";
 

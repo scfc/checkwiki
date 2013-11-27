@@ -15,7 +15,7 @@
 #               cw_overview contains data for main index.html page.
 #
 # AUTHOR:  Stefan Kühn, Bryan White
-# VERSION: 2013-08-01
+# VERSION: 2013-11-26
 # LICENSE: GPLv3
 #
 ##########################################################################
@@ -66,11 +66,9 @@ cw_overview_errors_update_errors();
 cw_overview_errors_update_done();
 cw_overview_errors_update_error_number();
 
-cw_overview_insert_new_projects();
 cw_overview_update_done();
 cw_overview_update_error_number();
 cw_overview_update_last_update();
-cw_overview_update_last_dump();
 
 #cw_overview_update_last_change();
 
@@ -123,7 +121,7 @@ sub get_projects {
 
     print "Load projects from db\n";
     my $result = q();
-    my $sth = $dbh->prepare('SELECT project FROM cw_project ORDER BY project;')
+    my $sth = $dbh->prepare('SELECT project FROM cw_overview ORDER BY project;')
       || die "Can not prepare statement: $DBI::errstr\n";
     $sth->execute or die "Cannot execute: " . $sth->errstr . "\n";
 
@@ -295,32 +293,6 @@ sub cw_overview_errors_update_error_number {
 }
 
 ###########################################################################
-## INSERT ANY NEW PROJECTS THAT MAY HAVE BEEN ADDED
-###########################################################################
-
-sub cw_overview_insert_new_projects {
-    $time_start = time();
-    print "Insert new_projects\n";
-
-    my $sql_text =
-"INSERT INTO cw_overview (id, project, lang, errors, done, last_dump, last_update, project_page, translation_page)
-    (SELECT a.id, a.project, a.lang, null errors, null done, a.last_dump, null last_update, a.wikipage, a.translation_page 
-    FROM cw_project a
-    LEFT OUTER JOIN cw_overview b
-	ON (a.id = b.id)
-	WHERE b.project is NULL);";
-
-    #print $sql_text . "\n\n\n";
-    my $sth = $dbh->prepare($sql_text)
-      || die "Can not prepare statement: $DBI::errstr\n";
-    $sth->execute or die "Cannot execute: " . $sth->errstr . "\n";
-
-    output_duration();
-
-    return ();
-}
-
-###########################################################################
 ## UPDATE THE NUMBER OF ERRORS CURRENTLY IN ARTICLES
 ###########################################################################
 
@@ -381,16 +353,9 @@ sub cw_overview_update_last_update {
         #print "\t\t" . $project . "\n";
         my $sql_text = "-- update last_update
         UPDATE cw_overview, (
-        SELECT a.project, b.found found 
-        FROM cw_project a
-        LEFT OUTER JOIN (
         SELECT max(found) found, project 
         FROM cw_error 
         WHERE project =  '" . $project . "'
-        GROUP BY project
-        ) b
-        ON a.project = b.project
-        WHERE a.project =  '" . $project . "'
         ) basis
         SET cw_overview.last_update = basis.found
         WHERE cw_overview.project = basis.project";
@@ -400,31 +365,6 @@ sub cw_overview_update_last_update {
           || die "Can not prepare statement: $DBI::errstr\n";
         $sth->execute or die "Cannot execute: " . $sth->errstr . "\n";
     }
-
-    output_duration();
-
-    return ();
-}
-
-###########################################################################
-## UPDATE THE LAST TIME A DUMP RAN FOR A PARTICULAR PROJECT
-###########################################################################
-
-sub cw_overview_update_last_dump {
-    $time_start = time();
-    print "Update last_dump\n";
-
-    my $sql_text = "-- UPDATE last_dump
-    UPDATE cw_overview, (
-    SELECT a.project, a.last_dump FROM cw_project a
-    ) basis
-    SET cw_overview.last_dump = basis.last_dump
-    WHERE cw_overview.project = basis.project;";
-
-    #print $sql_text . "\n\n\n";
-    my $sth = $dbh->prepare($sql_text)
-      || die "Can not prepare statement: $DBI::errstr\n";
-    $sth->execute or die "Cannot execute: " . $sth->errstr . "\n";
 
     output_duration();
 
