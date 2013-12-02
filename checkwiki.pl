@@ -471,13 +471,13 @@ sub getErrors {
     my $error_count = 0;
 
     my $sth =
-      $dbh->prepare('SELECT COUNT(*) FROM cw_error_desc WHERE project = ?;')
+      $dbh->prepare('SELECT COUNT(*) FROM cw_overview_errors WHERE project = ?;')
       || die "Can not prepare statement: $DBI::errstr\n";
     $sth->execute($project) or die "Cannot execute: " . $sth->errstr . "\n";
 
     $number_of_error_description = $sth->fetchrow();
 
-    $sth = $dbh->prepare('SELECT prio FROM cw_error_desc WHERE project = ?;')
+    $sth = $dbh->prepare('SELECT prio FROM cw_overview_errors WHERE project = ?;')
       || die "Can not prepare statement: $DBI::errstr\n";
     $sth->execute($project) or die "Cannot execute: " . $sth->errstr . "\n";
 

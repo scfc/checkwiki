@@ -61,16 +61,12 @@ GetOptions(
 open_db();
 get_projects();
 
-cw_overview_errors_insert_new_errors();
-cw_overview_errors_update_errors();
 cw_overview_errors_update_done();
 cw_overview_errors_update_error_number();
 
 cw_overview_update_done();
 cw_overview_update_error_number();
 cw_overview_update_last_update();
-
-#cw_overview_update_last_change();
 
 close_db();
 output_duration_script();
@@ -80,12 +76,6 @@ output_duration_script();
 ##########################################################################
 
 sub open_db {
-
-    # Database configuration.
-    #    my $DbName = 'p50380g50450__checkwiki_p';
-    #    my $DbServer;
-    #    my $DbUsername = 'p50380g50450';
-    #    my $DbPassword = 'zahgetumataefeex';
 
     $dbh = DBI->connect(
         'DBI:mysql:'
@@ -143,76 +133,6 @@ sub get_projects {
 }
 
 ###########################################################################
-## INSERT ANY NEW ERRORS INTO cw_overview_errors
-###########################################################################
-
-sub cw_overview_errors_insert_new_errors {
-    $time_start = time();
-    print "Insert all new errors into cw_overview_errors\n";
-
-    foreach (@projects) {
-        my $project = $_;
-
-        my $sql_text =
-"INSERT INTO cw_overview_errors (project, id, name, name_trans, prio, errors, done)
-        (SELECT a.project, a.id, a.name, a.name_trans, a.prio, null, null
-        FROM cw_error_desc a
-        LEFT OUTER JOIN cw_overview_errors b
-        ON (a.id = b.id and a.project=b.project)
-        WHERE b.project is null 
-        AND b.id IS NULL
-        AND a.project = '" . $project . "');";
-
-        #print $sql_text . "\n\n\n";
-        my $sth = $dbh->prepare($sql_text)
-          || die "Can not prepare statement: $DBI::errstr\n";
-        $sth->execute or die "Cannot execute: " . $sth->errstr . "\n";
-    }
-
-    output_duration();
-
-    return ();
-}
-
-###########################################################################
-## UPDATE ERROR DESCRIPTION AND PRIORITY (DOESN'T CHANGE OFTEN)
-###########################################################################
-
-sub cw_overview_errors_update_errors {
-    $time_start = time();
-
-    print "Update the error_headline and error_headline_translation\n";
-
-    foreach (@projects) {
-        my $project = $_;
-
-        #print "\t\t" . $project . "\n";
-        my $sql_text = "update cw_overview_errors, (
-        SELECT a.project, a.prio, a.id , a.name, a.text, a.name_trans, a.text_trans 
-        FROM cw_error_desc a
-        WHERE project =  '" . $project . "'
-        ) basis
-        SET 
-        cw_overview_errors.name       = basis.name,
-        cw_overview_errors.name_trans = basis.name_trans,
-        cw_overview_errors.prio       = basis.prio
-        WHERE cw_overview_errors.project = basis.project
-        AND cw_overview_errors.id = basis.id
-        AND cw_overview_errors.project =  '" . $project . "';
-        ";
-
-        #print $sql_text . "\n\n\n";
-        my $sth = $dbh->prepare($sql_text)
-          || die "Can not prepare statement: $DBI::errstr\n";
-        $sth->execute or die "Cannot execute: " . $sth->errstr . "\n";
-    }
-
-    output_duration();
-
-    return;
-}
-
-###########################################################################
 ## UPDATE THE NUMBER OF ARTICLES THAT HAVE BEEN DONE
 ###########################################################################
 
@@ -225,19 +145,14 @@ sub cw_overview_errors_update_done {
 
         #print "\t\t" . $project . "\n";
         my $sql_text = "UPDATE cw_overview_errors, (
-        SELECT a.project, a.id , b.done FROM cw_error_desc a
-        LEFT OUTER JOIN (
-        SELECT COUNT(*) done , error id , project
-        FROM cw_error WHERE ok = 1 AND project =  '" . $project . "' 
-        GROUP BY project, error
-        ) b
-        ON a.project = b.project AND a.project =  '" . $project . "'
-        AND a.id = b.id
-        ) basis
-        SET cw_overview_errors.done = basis.done
-        WHERE cw_overview_errors.project = basis.project
-        AND cw_overview_errors.project =  '" . $project . "'
-        AND cw_overview_errors.id = basis.id;";
+                          SELECT COUNT(*) done , error id , project 
+                          FROM cw_error
+                          WHERE ok = 1 AND project =  '" . $project . "' 
+                          GROUP BY project, error ) b
+                        SET cw_overview_errors.done = b.done
+                          WHERE cw_overview_errors.project = b.project
+                          AND cw_overview_errors.project =  '" . $project . "' 
+                          AND cw_overview_errors.id = b.id;";
 
         #print $sql_text . "\n\n\n";
         my $sth = $dbh->prepare($sql_text)
@@ -262,24 +177,16 @@ sub cw_overview_errors_update_error_number {
         my $project = $_;
 
         #print "\t\t" . $project . "\n";
+
         my $sql_text = "UPDATE cw_overview_errors, (
-        SELECT a.project, a.id, b.errors errors  
-        FROM cw_error_desc a
-        LEFT OUTER JOIN (
-        SELECT COUNT( *) errors, error id , project
-        FROM cw_error 
-        WHERE ok = 0
-        AND project =  '" . $project . "'
-        GROUP BY project, error
-        ) b
-        ON a.project = b.project
-        AND a.project =  '" . $project . "'
-        AND a.id = b.id
-        ) basis
-        SET cw_overview_errors.errors = basis.errors
-        WHERE cw_overview_errors.project = basis.project
-        AND cw_overview_errors.project =  '" . $project . "'
-        AND cw_overview_errors.id = basis.id;";
+                          SELECT COUNT(*) errors , error id , project 
+                          FROM cw_error
+                          WHERE ok = 0 AND project =  '" . $project . "' 
+                          GROUP BY project, error ) b
+                        SET cw_overview_errors.errors = b.errors
+                          WHERE cw_overview_errors.project = b.project
+                          AND cw_overview_errors.project =  '" . $project . "' 
+                          AND cw_overview_errors.id = b.id;";
 
         #print $sql_text . "\n\n\n";
         my $sth = $dbh->prepare($sql_text)

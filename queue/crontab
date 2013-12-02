@@ -2,6 +2,8 @@ PATH=/data/project/checkwiki/bin:/usr/local/bin:/usr/bin:/bin
 
 00,10,20,30,40,50 * * * * /data/project/checkwiki/queue/live-scan_dispatch > /dev/null 2>&1
 00 0 * * *    /data/project/checkwiki/queue/translation_dispatch > /dev/null 2>&1
-02 0 * * *    /data/project/checkwiki/queue/checkwiki-delay_dispatch > /dev/null 2>&1
-00,30 * * * * /data/project/checkwiki/queue/update-db_dispatch > /dev/null 2>&1 
-07,37 * * * * /data/project/checkwiki/queue/update-html_dispatch > /dev/null 2>&1 
+00 0 * * *    /data/project/checkwiki/queue/delete-done-articles_dispatch > /dev/null 2>&1
+05 0 * * *    /data/project/checkwiki/queue/checkwiki-delay_dispatch > /dev/null 2>&1
+00 06 * * *   /data/project/checkwiki/bin/dump_dispatcher.pl -c /data/project/checkwiki/checkwiki.cfg > /dev/null 2>&1
+00,15,30,45 * * * * /data/project/checkwiki/queue/update-db_dispatch > /dev/null 2>&1 
+03,33 * * * * /data/project/checkwiki/queue/update-html_dispatch > /dev/null 2>&1 

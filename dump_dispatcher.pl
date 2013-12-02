@@ -69,7 +69,7 @@ my $queued_count = 0;
 foreach (@Projects) {
 
     # Due to WMFlabs incompetence, below projects are very late showing up
-    if ( $_ ne 'enwiki' and $_ ne 'dewiki' and $_ ne 'commonswiki' and $_ ne 'svwiki' ) {
+    if ( $_ ne 'enwiki' and $_ ne 'frwiki' and $_ ne 'commonswiki' and $_ ne 'dewiki' ) {
         my $lastDump = $Last_Dump[$count];
         my ( $latestDumpDate, $latestDumpFilename ) = FindLatestDump($_);
 
@@ -181,8 +181,6 @@ sub queueUp {
         '-c', '/data/project/checkwiki/checkwiki.cfg',
         '-p', $lang,
         '--dumpfile', $file,
-        '--tt-file', '/data/project/checkwiki/var/spool/templatetiger/'
-          . $lang . '-' . $date . '.txt'
     );
 
     print "jsub\n";
@@ -195,6 +193,4 @@ sub queueUp {
     print "-c, /data/project/checkwiki/checkwiki.cfg\n";
     print '-p,' . $lang . "\n";
     print '--dumpfile,' . $file . "\n";
-    print '--tt-file, /data/project/checkwiki/var/spool/templatetiger/'
-          . $lang . '-' . $date . ".txt\n\n";
 }

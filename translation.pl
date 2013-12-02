@@ -189,7 +189,7 @@ sub get_error_description {
     two_column_display( 'load:', 'all error description from script' );
 
     my $sql_text =
-      "SELECT COUNT(*) FROM cw_error_desc WHERE project = 'enwiki';";
+      "SELECT COUNT(*) FROM cw_overview_errors WHERE project = 'enwiki';";
     my $sth = $dbh->prepare($sql_text)
       || die "Can not prepare statement: $DBI::errstr\n";
     $sth->execute or die "Cannot execute: " . $sth->errstr . "\n";
@@ -198,7 +198,7 @@ sub get_error_description {
     #$Number_of_error_description = 92;
 
     $sql_text =
-      "SELECT prio, name, text FROM cw_error_desc WHERE project = 'enwiki';";
+      "SELECT prio, name, text FROM cw_overview_errors WHERE project = 'enwiki';";
     $sth = $dbh->prepare($sql_text)
       || die "Can not prepare statement: $DBI::errstr\n";
     $sth->execute or die "Cannot execute: " . $sth->errstr . "\n";
@@ -505,7 +505,7 @@ sub output_errors_desc_in_db {
         $sql_desc = substr( $sql_desc_trans, 0, 3999 );
 
         # insert or update error
-        my $sql_text = "UPDATE cw_error_desc
+        my $sql_text = "UPDATE cw_overview_errors
         SET prio=" . $ErrorDescription[$i][4] . ",
         name='" . $sql_headline . "' ,
         text='" . $sql_desc . "',
@@ -522,7 +522,7 @@ sub output_errors_desc_in_db {
         if ( $x ne '1' ) {
             two_column_display( 'new error:', 'description insert into db' );
             $sql_text =
-"INSERT INTO cw_error_desc (project, id, prio, name, text, name_trans, text_trans) VALUES ('"
+"INSERT INTO cw_overview_errors (project, id, prio, name, text, name_trans, text_trans) VALUES ('"
               . $project . "', "
               . $i . ", "
               . $ErrorDescription[$i][4] . ", '"

@@ -56,12 +56,12 @@ open_db();
 
 if ( $ProjectName ne 'all' ) {
     $sth = $dbh->prepare(
-        'SELECT Project, Last_Dump FROM cw_project WHERE Project = ?;')
+        'SELECT Project, Last_Dump FROM cw_overview WHERE Project = ?;')
       || die "Problem with statement: $DBI::errstr\n";
     $sth->execute($ProjectName) or die "Cannot execute: " . $sth->errstr . "\n";
 }
 else {
-    $sth = $dbh->prepare('SELECT Project, Last_Dump FROM cw_project;')
+    $sth = $dbh->prepare('SELECT Project, Last_Dump FROM cw_overview;')
       || die "Problem with statement: $DBI::errstr\n";
     $sth->execute or die "Cannot execute: " . $sth->errstr . "\n";
 }
@@ -72,7 +72,8 @@ $sth->bind_col( 2, \$last_dump_sql );
 
 while ( $sth->fetchrow_arrayref ) {
     my ( $LatestDumpDate, $LatestDumpFilename ) = FindLatestDump($ProjectName);
-
+#     $LatestDumpFilename='/data/project/checkwiki/dumps/svwiki-20130726-pages-articles.xml';
+#     $LatestDumpDate ='20130726';
     if ( !defined($last_dump_sql) || $last_dump_sql ne $LatestDumpDate ) {
         system(
             'jsub',
@@ -92,12 +93,8 @@ while ( $sth->fetchrow_arrayref ) {
             $project_sql,
             '--dumpfile',
             $LatestDumpFilename,
-            '--tt-file',
-            '/data/project/checkwiki/var/spool/templatetiger/'
-              . $ProjectName . '-'
-              . $LatestDumpDate . '.txt'
         );
-    }
+#    }
 }
 
 close_db();
