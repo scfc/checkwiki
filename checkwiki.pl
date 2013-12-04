@@ -4810,7 +4810,6 @@ sub error_006_defaultsort_with_special_letters{
 		# {{ORDENA:Alfons I}}
 		if ( ($page_namespace == 0 or $page_namespace == 104)
 			and $project ne 'arwiki'
-			and $project ne 'hewiki'
 			and $project ne 'plwiki'
 			and $project ne 'jawiki'
 			and $project ne 'yiwiki'
@@ -4846,6 +4845,7 @@ sub error_006_defaultsort_with_special_letters{
 				$testtext =~ s/[ăîâşţ]//g   if ($project eq 'rowiki');
 				$testtext =~ s/[АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЬЫЪЭЮЯабвгдежзийклмнопрстуфхцчшщьыъэюя]//g      if ($project eq 'ruwiki');
 				$testtext =~ s/[АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЬЫЪЭЮЯабвгдежзийклмнопрстуфхцчшщьыъэюяіїґ]//g   if ($project eq 'ukwiki');
+        $testtext =~ s/[אבגדהוזחטיכךלמםנןסעפףצץקרשת]//g  if ($project eq 'hewiki'); # Hebrew has its own character set
 				$testtext =~ s/[~]//g  		if ($project eq 'huwiki');    # ~ for special letters
 				
 				#if ($testtext ne '') error_register(…);
