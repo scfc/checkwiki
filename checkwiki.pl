@@ -5820,7 +5820,6 @@ sub error_037_title_with_special_letters_and_no_defaultsort{
 			 and $category_counter > -1
 			 and $project ne 'arwiki'
 			 and $project ne 'jawiki'
-			 and $project ne 'hewiki'
 			 and $project ne 'plwiki'
 			 and $project ne 'trwiki'
 			 and $project ne 'yiwiki'
@@ -5865,6 +5864,7 @@ sub error_037_title_with_special_letters_and_no_defaultsort{
 				$testtext =~ s/[ÆØÅæøå]//g  if ($project eq 'nowiki');
 				$testtext =~ s/[ÆØÅæøå]//g  if ($project eq 'nnwiki');
 				$testtext =~ s/[ăîâşţ]//g   if ($project eq 'rowiki');
+        $testtext =~ s/[אבגדהוזחטיכךלמםנןסעפףצץקרשת]//g  if ($project eq 'hewiki'); # Hebrew has its own character set
 				$testtext =~ s/[АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЬЫЪЭЮЯабвгдежзийклмнопрстуфхцчшщьыъэюя]//g   if ($project eq 'ruwiki');
 				$testtext =~ s/[АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЬЫЪЭЮЯабвгдежзийклмнопрстуфхцчшщьыъэюяiїґ]//g   if ($project eq 'ukwiki');
 				
