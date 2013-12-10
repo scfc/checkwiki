@@ -131,52 +131,52 @@ our @html_named_entities = qw( aacute acirc aeligi agrave aring  aumla bull
 ## Variables for one article
 ###############################
 
-our $title                 = q{};    # Title of current article
-our $text                  = q{};    # Text of current article
-our $lc_text               = q{};    # Text of current article in lower case
-our $text_without_comments = q{};
+our $title         = q{};    # Title of current article
+our $text          = q{};    # Text of current article
+our $lc_text       = q{};    # Text of current article in lower case
+our $text_original = q{};
 
 # Text of article with comments only removed
 
-our $page_namespace;                 # Namespace of page
+our $page_namespace;         # Namespace of page
 our $page_is_redirect       = 'no';
 our $page_is_disambiguation = 'no';
 
 our $category_counter = -1;
-our $category_all     = q{};         # All categries
+our $category_all     = q{};    # All categries
 
-our @category;                       # 0 pos_start
-                                     # 1 pos_end
-                                     # 2 category	Test
-                                     # 3 linkname	Linkname
-                                     # 4 original	[[Category:Test|Linkname]]
+our @category;                  # 0 pos_start
+                                # 1 pos_end
+                                # 2 category	Test
+                                # 3 linkname	Linkname
+                                # 4 original	[[Category:Test|Linkname]]
 
-our @interwiki;                      # 0 pos_start
-                                     # 1 pos_end
-                                     # 2 interwiki	Test
-                                     # 3 linkname	Linkname
-                                     # 4 original	[[de:Test|Linkname]]
-                                     # 5 language
+our @interwiki;                 # 0 pos_start
+                                # 1 pos_end
+                                # 2 interwiki	Test
+                                # 3 linkname	Linkname
+                                # 4 original	[[de:Test|Linkname]]
+                                # 5 language
 
 our $interwiki_counter = -1;
 
-our @templates_all;                  # All templates
-our @template;                       # Templates with values
-                                     # 0 number of template
-                                     # 1 templatename
-                                     # 2 template_row
-                                     # 3 attribut
-                                     # 4 value
+our @templates_all;             # All templates
+our @template;                  # Templates with values
+                                # 0 number of template
+                                # 1 templatename
+                                # 2 template_row
+                                # 3 attribut
+                                # 4 value
 
-our $number_of_template_parts = -1;  # Number of all template parts
+our $number_of_template_parts = -1;    # Number of all template parts
 
-our @links_all;                      # All links
-our @images_all;                     # All images
-our @isbn;                           # All ibsn of books
-our @ref;                            # All ref
-our @headlines;                      # All headlines
-our @section;                        # Text between headlines
-our @lines;                          # Text seperated in lines
+our @links_all;                        # All links
+our @images_all;                       # All images
+our @isbn;                             # All ibsn of books
+our @ref;                              # All ref
+our @headlines;                        # All headlines
+our @section;                          # Text between headlines
+our @lines;                            # Text seperated in lines
 
 ###########################################################################
 ###########################################################################
@@ -471,13 +471,15 @@ sub getErrors {
     my $error_count = 0;
 
     my $sth =
-      $dbh->prepare('SELECT COUNT(*) FROM cw_overview_errors WHERE project = ?;')
+      $dbh->prepare(
+        'SELECT COUNT(*) FROM cw_overview_errors WHERE project = ?;')
       || die "Can not prepare statement: $DBI::errstr\n";
     $sth->execute($project) or die "Cannot execute: " . $sth->errstr . "\n";
 
     $number_of_error_description = $sth->fetchrow();
 
-    $sth = $dbh->prepare('SELECT prio FROM cw_overview_errors WHERE project = ?;')
+    $sth =
+      $dbh->prepare('SELECT prio FROM cw_overview_errors WHERE project = ?;')
       || die "Can not prepare statement: $DBI::errstr\n";
     $sth->execute($project) or die "Cannot execute: " . $sth->errstr . "\n";
 
@@ -487,6 +489,12 @@ sub getErrors {
             $error_count++;
         }
     }
+
+#### BG
+    $ErrorPriorityValue[4]  = 1;
+    $ErrorPriorityValue[42] = 1;
+    $ErrorPriorityValue[89] = 1;
+    $error_count            = $error_count + 3;
 
     two_column_display( 'Total # of errors possible:',
         $number_of_error_description );
@@ -750,6 +758,7 @@ sub delay_scan {
 sub check_article {
 
     delete_old_errors_in_db();
+    $text_original = $text;
 
     #------------------------------------------------------
     # Following alters text and must be run first
@@ -880,7 +889,6 @@ sub get_comments {
 
         $text =~ s/<!--(.*?)-->//sg;
     }
-    $text_without_comments = $text;
 
     return ();
 }
@@ -1634,11 +1642,11 @@ sub error_check {
         error_009_more_then_one_category_in_a_line();
     }
     else {
-        #error_001_no_bold_title();                        # DEACTIVATED
+        #error_001_html_text_style_elements_strike();
         error_002_have_br();
         error_003_have_ref();
 
-        #error_004_have_html_and_no_topic();               # DEACTIVATED
+        #error_004_html_text_style_elements_a();
 
         #error_005_Comment_no_correct_end('');             # get_comments()
         error_006_defaultsort_with_special_letters();
@@ -1684,7 +1692,7 @@ sub error_check {
         error_040_html_text_style_elements_font();
         error_041_html_text_style_elements_big();
 
-        #error_042_html_text_style_elements_small();       # DEACTIVATED
+        #error_042_html_text_style_elements_strike();
 
         #error_043_template_no_correct_end('');            # get_templates()
         error_044_headline_with_bold();
@@ -1734,8 +1742,7 @@ sub error_check {
         error_087_html_named_entities_without_semicolon();
         error_088_defaultsort_with_first_blank();
 
-        # DEACTIVATED - Mediawiki software changed, so no longer a problem.
-        #error_089_defaultsort_with_capitalization_in_the_middle_of_the_word();
+        #error_089_defaultsort_with_no_space_after_comma();
         #error_090_defaultsort_with_lowercase_letters();
         #error_091_title_with_lowercase_letters_and_no_defaultsort();
         error_092_headline_double();
@@ -1748,7 +1755,20 @@ sub error_check {
 ##  ERROR 01
 ###########################################################################
 
-sub error_001_no_bold_title {
+sub error_001_html_text_style_elements_strike {
+    my $error_code = 26;
+
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
+        if ( $page_namespace == 0 or $page_namespace == 104 ) {
+
+            my $test_text = $lc_text;
+            my $pos = index( $test_text, '<strike>' );
+
+            if ( $pos > -1 ) {
+                error_register( $error_code, substr( $text, $pos, 40 ) );
+            }
+        }
+    }
 
     return ();
 }
@@ -1831,7 +1851,20 @@ sub error_003_have_ref {
 ## ERROR 04
 ###########################################################################
 
-sub error_004_have_html_and_no_topic {
+sub error_004_html_text_style_elements_a {
+    my $error_code = 4;
+
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
+        if ( $page_namespace == 0 or $page_namespace == 104 ) {
+
+            my $test_text = $lc_text;
+            my $pos = index( $test_text, '<a>' );
+
+            if ( $pos > -1 ) {
+                error_register( $error_code, substr( $text, $pos, 40 ) );
+            }
+        }
+    }
 
     return ();
 }
@@ -1867,9 +1900,7 @@ sub error_006_defaultsort_with_special_letters {
     my $error_code = 6;
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
-        if ( ( $page_namespace == 0 or $page_namespace == 104 )
-            and $project ne 'hewiki' )
-        {
+        if ( $page_namespace == 0 or $page_namespace == 104 ) {
             # Is DEFAULTSORT found in article?
             my $isDefaultsort = -1;
             foreach ( @{$magicword_defaultsort} ) {
@@ -1901,6 +1932,9 @@ sub error_006_defaultsort_with_special_letters {
                 if ( $project eq 'dawiki' ) {
                     $test_text =~ s/[ÆØÅæøå]//g;
                 }
+                if ( $project eq 'hewiki') {
+					$test_text =~ s/[אבגדהוזחטיכךלמםנןסעפףצץקרשת]//g;
+				}
                 if ( $project eq 'nowiki' ) {
                     $test_text =~ s/[ÆØÅæøå]//g;
                 }
@@ -1923,7 +1957,6 @@ s/[АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЬЫЪЭЮЯабвгде�
                     $test_text2 = "{{" . $test_text2 . "}}";
                     error_register( $error_code, $test_text2 );
                 }
-
             }
         }
     }
@@ -2523,12 +2556,12 @@ sub error_028_table_no_correct_end {
                 my @ack = @{ $Template_list[$error_code] };
 
                 for my $temp (@ack) {
-                    if ( index( $lc_text, $temp ) == -1 ) {
+                    if ( index( $lc_text, $temp ) > -1 ) {
                         $test = "true";
                     }
                 }
             }
-            if ( $test eq "true" ) {
+            if ( $test eq "false" ) {
                 error_register( $error_code, $comment );
             }
         }
@@ -2766,7 +2799,6 @@ sub error_037_title_with_special_letters_and_no_defaultsort {
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if (    ( $page_namespace == 0 or $page_namespace == 104 )
             and $category_counter > -1
-            and $project ne 'hewiki'
             and length($title) > 2 )
         {
 
@@ -2806,6 +2838,9 @@ sub error_037_title_with_special_letters_and_no_defaultsort {
                 if ( $project eq 'dawiki' ) {
                     $test_title =~ s/[ÆØÅæøå]//g;
                 }
+                if ( $project eq 'hewiki') {
+                    $test_title =~ s/[אבגדהוזחטיכךלמםנןסעפףצץקרשת]//g;
+				}
                 if ( $project eq 'nowiki' ) {
                     $test_title =~ s/[ÆØÅæøå]//g;
                 }
@@ -2931,7 +2966,20 @@ sub error_041_html_text_style_elements_big {
 ## ERROR 42
 ###########################################################################
 
-sub error_042_html_text_style_elements_small {
+sub error_042_html_text_style_elements_strike {
+    my $error_code = 42;
+
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
+        if ( $page_namespace == 0 or $page_namespace == 104 ) {
+
+            my $test_text = $lc_text;
+            my $pos = index( $test_text, '<strike>' );
+
+            if ( $pos > -1 ) {
+                error_register( $error_code, substr( $text, $pos, 40 ) );
+            }
+        }
+    }
 
     return ();
 }
@@ -4249,7 +4297,7 @@ sub error_084_section_without_text {
         {
 
             my $section_text = q{};
-            my @my_lines = split( /\n/, $text_without_comments );
+            my @my_lines = split( /\n/, $text_original );
             my @my_headlines;
             my @my_section;
 
@@ -4466,7 +4514,37 @@ sub error_088_defaultsort_with_first_blank {
 ## ERROR 89
 ###########################################################################
 
-sub error_089_defaultsort_with_capitalization_in_the_middle_of_the_word {
+sub error_089_defaultsort_with_no_space_after_comma {
+    my $error_code = 89;
+
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
+        if ( ( $page_namespace == 0 or $page_namespace == 104 )
+            and $project ne 'hewiki' )
+        {
+
+            # Is DEFAULTSORT found in article?
+            my $isDefaultsort     = -1;
+            my $current_magicword = q{};
+            foreach ( @{$magicword_defaultsort} ) {
+                if ( $isDefaultsort == -1 and index( $text, $_ ) > -1 ) {
+                    $isDefaultsort = index( $text, $_ );
+                    $current_magicword = $_;
+                }
+            }
+
+            if ( $isDefaultsort > -1 ) {
+                my $pos2 = index( substr( $text, $isDefaultsort ), '}}' );
+                my $test_text = substr( $text, $isDefaultsort, $pos2 );
+
+                if ( $test_text =~
+/DEFAULTSORT:([A-Za-z0-9-.]+),([A-Za-z0-9-.]+)(\s*)([A-Za-z0-9-.]*)/
+                  )
+                {
+                    error_register( $error_code, $test_text );
+                }
+            }
+        }
+    }
 
     return ();
 }

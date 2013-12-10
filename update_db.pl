@@ -145,14 +145,19 @@ sub cw_overview_errors_update_done {
 
         #print "\t\t" . $project . "\n";
         my $sql_text = "UPDATE cw_overview_errors, (
-                          SELECT COUNT(*) done , error id , project 
-                          FROM cw_error
-                          WHERE ok = 1 AND project =  '" . $project . "' 
-                          GROUP BY project, error ) b
-                        SET cw_overview_errors.done = b.done
-                          WHERE cw_overview_errors.project = b.project
-                          AND cw_overview_errors.project =  '" . $project . "' 
-                          AND cw_overview_errors.id = b.id;";
+        SELECT a.project, a.id , b.done FROM cw_overview_errors a
+        LEFT OUTER JOIN (
+        SELECT COUNT(*) done , error id , project
+        FROM cw_error WHERE ok = 1 AND project =  '" . $project . "' 
+        GROUP BY project, error
+        ) b
+        ON a.project = b.project AND a.project =  '" . $project . "'
+        AND a.id = b.id
+        ) basis
+        SET cw_overview_errors.done = basis.done
+        WHERE cw_overview_errors.project = basis.project
+        AND cw_overview_errors.project =  '" . $project . "'
+        AND cw_overview_errors.id = basis.id;";
 
         #print $sql_text . "\n\n\n";
         my $sth = $dbh->prepare($sql_text)
@@ -179,14 +184,23 @@ sub cw_overview_errors_update_error_number {
         #print "\t\t" . $project . "\n";
 
         my $sql_text = "UPDATE cw_overview_errors, (
-                          SELECT COUNT(*) errors , error id , project 
-                          FROM cw_error
-                          WHERE ok = 0 AND project =  '" . $project . "' 
-                          GROUP BY project, error ) b
-                        SET cw_overview_errors.errors = b.errors
-                          WHERE cw_overview_errors.project = b.project
-                          AND cw_overview_errors.project =  '" . $project . "' 
-                          AND cw_overview_errors.id = b.id;";
+        SELECT a.project, a.id, b.errors errors  
+        FROM cw_overview_errors a
+        LEFT OUTER JOIN (
+        SELECT COUNT( *) errors, error id , project
+        FROM cw_error 
+        WHERE ok = 0
+        AND project =  '" . $project . "'
+        GROUP BY project, error
+        ) b
+        ON a.project = b.project
+        AND a.project =  '" . $project . "'
+        AND a.id = b.id
+        ) basis
+        SET cw_overview_errors.errors = basis.errors
+        WHERE cw_overview_errors.project = basis.project
+        AND cw_overview_errors.project =  '" . $project . "'
+        AND cw_overview_errors.id = basis.id;";
 
         #print $sql_text . "\n\n\n";
         my $sth = $dbh->prepare($sql_text)
