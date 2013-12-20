@@ -1646,7 +1646,7 @@ sub error_check {
         error_002_have_br();
         error_003_have_ref();
 
-        #error_004_html_text_style_elements_a();
+        error_004_html_text_style_elements_a();
 
         #error_005_Comment_no_correct_end('');             # get_comments()
         error_006_defaultsort_with_special_letters();
@@ -1692,7 +1692,7 @@ sub error_check {
         error_040_html_text_style_elements_font();
         error_041_html_text_style_elements_big();
 
-        #error_042_html_text_style_elements_strike();
+        error_042_html_text_style_elements_strike();
 
         #error_043_template_no_correct_end('');            # get_templates()
         error_044_headline_with_bold();
@@ -1742,7 +1742,8 @@ sub error_check {
         error_087_html_named_entities_without_semicolon();
         error_088_defaultsort_with_first_blank();
 
-        #error_089_defaultsort_with_no_space_after_comma();
+        error_089_defaultsort_with_no_space_after_comma();
+
         #error_090_defaultsort_with_lowercase_letters();
         #error_091_title_with_lowercase_letters_and_no_defaultsort();
         error_092_headline_double();
@@ -1757,18 +1758,6 @@ sub error_check {
 
 sub error_001_html_text_style_elements_strike {
     my $error_code = 26;
-
-    if ( $ErrorPriorityValue[$error_code] > 0 ) {
-        if ( $page_namespace == 0 or $page_namespace == 104 ) {
-
-            my $test_text = $lc_text;
-            my $pos = index( $test_text, '<strike>' );
-
-            if ( $pos > -1 ) {
-                error_register( $error_code, substr( $text, $pos, 40 ) );
-            }
-        }
-    }
 
     return ();
 }
@@ -1856,12 +1845,13 @@ sub error_004_html_text_style_elements_a {
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
+            if ( $project eq 'enwiki' ) {
+                my $test_text = $lc_text;
+                my $pos = index( $test_text, '<a ' );
 
-            my $test_text = $lc_text;
-            my $pos = index( $test_text, '<a>' );
-
-            if ( $pos > -1 ) {
-                error_register( $error_code, substr( $text, $pos, 40 ) );
+                if ( $pos > -1 ) {
+                    error_register( $error_code, substr( $text, $pos, 40 ) );
+                }
             }
         }
     }
@@ -1901,6 +1891,7 @@ sub error_006_defaultsort_with_special_letters {
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
+
             # Is DEFAULTSORT found in article?
             my $isDefaultsort = -1;
             foreach ( @{$magicword_defaultsort} ) {
@@ -1932,9 +1923,10 @@ sub error_006_defaultsort_with_special_letters {
                 if ( $project eq 'dawiki' ) {
                     $test_text =~ s/[ÆØÅæøå]//g;
                 }
-                if ( $project eq 'hewiki') {
-					$test_text =~ s/[אבגדהוזחטיכךלמםנןסעפףצץקרשת]//g;
-				}
+                if ( $project eq 'hewiki' ) {
+                    $test_text =~
+s/[אבגדהוזחטיכךלמםנןסעפףצץקרשת]//g;
+                }
                 if ( $project eq 'nowiki' ) {
                     $test_text =~ s/[ÆØÅæøå]//g;
                 }
@@ -2314,10 +2306,9 @@ sub error_019_headline_only_one {
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
-            if ( $headlines[0] ) {
-                if ( $headlines[0] =~ /^=[^=]/ ) {
-                    error_register( $error_code,
-                        substr( $headlines[0], 0, 40 ) );
+            foreach (@headlines) {
+                if ( $_ =~ /^=[^=]/ ) {
+                    error_register( $error_code, substr( $_, 0, 40 ) );
                 }
             }
         }
@@ -2389,7 +2380,8 @@ sub error_022_category_with_space {
             foreach my $i ( 0 .. $category_counter ) {
 
                 if (   $category[$i][4] =~ /\[\[ /
-                    or $category[$i][4] =~ /\[\[[^:]+ :/ )
+                    or $category[$i][4] =~
+                    /\[\[[^:]+(\s+:|:\s+|:[^ \|\]]+\s+\]\])/ )
                 {
                     error_register( $error_code, $category[$i][4] );
                 }
@@ -2838,9 +2830,10 @@ sub error_037_title_with_special_letters_and_no_defaultsort {
                 if ( $project eq 'dawiki' ) {
                     $test_title =~ s/[ÆØÅæøå]//g;
                 }
-                if ( $project eq 'hewiki') {
-                    $test_title =~ s/[אבגדהוזחטיכךלמםנןסעפףצץקרשת]//g;
-				}
+                if ( $project eq 'hewiki' ) {
+                    $test_title =~
+s/[אבגדהוזחטיכךלמםנןסעפףצץקרשת]//g;
+                }
                 if ( $project eq 'nowiki' ) {
                     $test_title =~ s/[ÆØÅæøå]//g;
                 }
@@ -2971,12 +2964,13 @@ sub error_042_html_text_style_elements_strike {
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
+            if ( $project eq 'enwiki' ) {
+                my $test_text = $lc_text;
+                my $pos = index( $test_text, '<strike>' );
 
-            my $test_text = $lc_text;
-            my $pos = index( $test_text, '<strike>' );
-
-            if ( $pos > -1 ) {
-                error_register( $error_code, substr( $text, $pos, 40 ) );
+                if ( $pos > -1 ) {
+                    error_register( $error_code, substr( $text, $pos, 40 ) );
+                }
             }
         }
     }
@@ -4341,13 +4335,17 @@ sub error_084_section_without_text {
                           if ($test_section);
 
                         if ($test_section) {
-                            $test_section =~ s/[ ]//g;
-                            $test_section =~ s/\n//g;
-                            $test_section =~ s/\t//g;
+                            $test_section  =~ s/\s//g;
+                            $test_headline =~ s/=//g;
+                            $test_headline =~ s/\s//g;
 
-                            if ( $test_section eq q{} ) {
-                                error_register( $error_code,
-                                    $my_headlines[$i] );
+                            my $length = length($test_headline);
+                            if ( $length > 1 ) {
+
+                                if ( $test_section eq q{} ) {
+                                    error_register( $error_code,
+                                        $my_headlines[$i] );
+                                }
                             }
                         }
                     }
@@ -4471,7 +4469,7 @@ sub error_087_html_named_entities_without_semicolon {
 sub error_088_defaultsort_with_first_blank {
     my $error_code = 88;
 
-    if ( $ErrorPriorityValue[$error_code] > 0 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 and $project eq 'enwiki' ) {
 
         if (    ( $page_namespace == 0 or $page_namespace == 104 )
             and $project ne 'arwiki'
@@ -4519,7 +4517,7 @@ sub error_089_defaultsort_with_no_space_after_comma {
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( ( $page_namespace == 0 or $page_namespace == 104 )
-            and $project ne 'hewiki' )
+            and $project eq 'enwiki' )
         {
 
             # Is DEFAULTSORT found in article?
