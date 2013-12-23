@@ -794,6 +794,9 @@ sub check_article {
     # REMOVE FROM $text ANY CONTENT BETWEEN <hiero> TAGS.
     get_hiero();
 
+    # REMOVE FROM $text ANY CONTENT BETWEEN <score> TAGS.
+    get_score();
+
     $lc_text = lc($text);
 
     #------------------------------------------------------
@@ -1036,6 +1039,17 @@ sub get_syntaxhighlight {
 sub get_hiero {
 
     $text =~ s/<hiero>(.*?)<\/hiero>//sg;
+
+    return ();
+}
+
+###########################################################################
+## REMOVE EVERYTHING BETWEEN THE SCORE TAGS
+###########################################################################
+
+sub get_score {
+
+    $text =~ s/<score>(.*?)<\/score>//sg;
 
     return ();
 }
@@ -2379,9 +2393,10 @@ sub error_022_category_with_space {
         {
             foreach my $i ( 0 .. $category_counter ) {
 
-                if (   $category[$i][4] =~ /\[\[ /
+                if (   $category[$i][4] =~ /[^ \|]\s+\]\]$/
+                or $category[$i][4] =~ /\[\[ /
                     or $category[$i][4] =~
-                    /\[\[[^:]+(\s+:|:\s+|:[^ \|\]]+\s+\]\])/ )
+                    /\[\[[^:]+(\s+:|:\s+)/ )
                 {
                     error_register( $error_code, $category[$i][4] );
                 }
