@@ -38,14 +38,12 @@ binmode( STDOUT, ":encoding(UTF-8)" );
 ##  Program wide variables
 ##############################
 
-our $dump_or_live = q{};    # Scan modus (dump, live, delay)
+our $Dump_or_Live = q{};    # Scan modus (dump, live, delay)
 
 our $CheckOnlyOne = 0;      # Check only one error or all errors
 
 our $ServerName  = q{};     # Address where api can be found
 our $project     = q{};     # Name of the project 'dewiki'
-our $language    = q{};     # Language of dump 'de', 'en';
-our $home        = q{};     # Base of article, 'http://de.wikipedia.org/wiki/'
 our $end_of_dump = q{};     # When last article from dump reached
 our $artcount    = 0;       # Number of articles processed
 our $file_size   = 0;       # How many MB of the dump has been processed.
@@ -180,7 +178,6 @@ our @lines;                            # Text seperated in lines
 
 ###########################################################################
 ###########################################################################
-
 ###########################################################################
 ## OPEN DATABASE
 ###########################################################################
@@ -251,61 +248,6 @@ sub updateDumpDate {
 ##
 ###########################################################################
 
-sub scan_pages {
-
-    print_line();
-
-    $end_of_dump = 'no';
-    my $page = q{};
-
-    if ( $dump_or_live eq 'dump' ) {
-
-        # OPEN DUMPFILE BASED IF COMPRESSED OR NOT
-        if ( $DumpFilename =~ /(.*?)\.xml\.bz2$/ ) {
-            my $dump;
-            open( $dump, '-|', 'bzcat', '-q', $DumpFilename )
-              or die("Couldn't open dump file '$DumpFilename'");
-            $pages = $pmwd->pages($dump);
-        }
-        else {
-            $pages     = $pmwd->pages($DumpFilename);
-            $file_size = ( stat($DumpFilename) )[7];
-        }
-
-        while ( defined( $page = $pages->next ) && $end_of_dump eq 'no' ) {
-            next unless $page->namespace eq '';
-            update_ui() if ++$artcount % 500 == 0;
-            set_variables_for_article();
-            $page_namespace = 0;
-            $title          = $page->title;
-            $title          = case_fixer($title);
-            $text           = ${ $page->text };
-            check_article();
-
-            #$end_of_dump = 'yes' if ( $artcount > 10000 );
-            #$end_of_dump = 'yes' if ( $error_counter > 40000 )
-        }
-    }
-    elsif ( $dump_or_live eq 'live' ) {
-        live_scan();
-    }
-    elsif ( $dump_or_live eq 'delay' ) {
-        delay_scan();
-    }
-    elsif ( $dump_or_live eq 'list' ) {
-        list_scan();
-    }
-    else {
-        die("Wrong Load_mode entered \n");
-    }
-
-    return ();
-}
-
-###########################################################################
-##
-###########################################################################
-
 sub update_ui {
     my $bytes = $pages->current_byte;
 
@@ -366,12 +308,16 @@ sub pretty_bytes {
 sub case_fixer {
     my ($my_title) = @_;
 
-    #check for namespace
-    if ( $my_title =~ /^(.+?):(.+)/ ) {
-        $my_title = $1 . ':' . ucfirst($2);
-    }
-    else {
-        $my_title = ucfirst($title);
+    # wiktionary article titles are case sensitive
+    if ( $project !~ /wiktionary/ ) {
+
+        #check for namespace
+        if ( $my_title =~ /^(.+?):(.+)/ ) {
+            $my_title = $1 . ':' . ucfirst($2);
+        }
+        else {
+            $my_title = ucfirst($title);
+        }
     }
 
     return ($my_title);
@@ -433,7 +379,7 @@ sub set_variables_for_article {
 
 sub update_table_cw_error_from_dump {
 
-    if ( $dump_or_live eq 'dump' ) {
+    if ( $Dump_or_Live eq 'dump' ) {
 
         my $sth = $dbh->prepare('DELETE FROM cw_error WHERE Project = ?;')
           || die "Can not prepare statement: $DBI::errstr\n";
@@ -464,6 +410,22 @@ sub delete_done_article_from_db {
 }
 
 ###########################################################################
+## DELETE ARTICLE IN DATABASE
+###########################################################################
+
+sub delete_old_errors_in_db {
+    if ( $Dump_or_Live eq 'live' && $title ne '' ) {
+        my $sth =
+          $dbh->prepare('DELETE FROM cw_error WHERE Title = ? AND Project = ?;')
+          || die "Can not prepare statement: $DBI::errstr\n";
+        $sth->execute( $title, $project )
+          or die "Cannot execute: " . $sth->errstr . "\n";
+    }
+
+    return ();
+}
+
+###########################################################################
 ## GET @ErrorPriorityValue
 ###########################################################################
 
@@ -489,12 +451,6 @@ sub getErrors {
             $error_count++;
         }
     }
-
-#### BG
-    $ErrorPriorityValue[4]  = 1;
-    $ErrorPriorityValue[42] = 1;
-    $ErrorPriorityValue[89] = 1;
-    $error_count            = $error_count + 3;
 
     two_column_display( 'Total # of errors possible:',
         $number_of_error_description );
@@ -545,9 +501,8 @@ sub readMetadata {
 
     two_column_display( 'Sitename:', $res->{query}->{general}->{sitename} );
 
-    $home = $res->{query}->{general}->{base};
+    my $home = $res->{query}->{general}->{base};
     two_column_display( 'Base:', $home );
-    $home =~ s/[^\/]+$//;
 
     two_column_display( 'Pages online:', $res->{query}->{statistics}->{pages} );
     two_column_display( 'Images online:',
@@ -634,7 +589,62 @@ sub readTemplates {
 }
 
 ###########################################################################
-## CHECK ARTICLES VIA A LIVE SCAN
+##
+###########################################################################
+
+sub scan_pages {
+
+    print_line();
+
+    $end_of_dump = 'no';
+    my $page = q{};
+
+    if ( $Dump_or_Live eq 'dump' ) {
+
+        # OPEN DUMPFILE BASED IF COMPRESSED OR NOT
+        if ( $DumpFilename =~ /(.*?)\.xml\.bz2$/ ) {
+            my $dump;
+            open( $dump, '-|', 'bzcat', '-q', $DumpFilename )
+              or die("Couldn't open dump file '$DumpFilename'");
+            $pages = $pmwd->pages($dump);
+        }
+        else {
+            $pages     = $pmwd->pages($DumpFilename);
+            $file_size = ( stat($DumpFilename) )[7];
+        }
+
+        while ( defined( $page = $pages->next ) && $end_of_dump eq 'no' ) {
+            next unless $page->namespace eq '';
+            update_ui() if ++$artcount % 500 == 0;
+            set_variables_for_article();
+            $page_namespace = 0;
+            $title          = $page->title;
+            $title          = case_fixer($title);
+            $text           = ${ $page->text };
+            check_article();
+
+            #$end_of_dump = 'yes' if ( $artcount > 10000 );
+            #$end_of_dump = 'yes' if ( $error_counter > 40000 )
+        }
+    }
+    elsif ( $Dump_or_Live eq 'live' ) {
+        live_scan();
+    }
+    elsif ( $Dump_or_Live eq 'delay' ) {
+        delay_scan();
+    }
+    elsif ( $Dump_or_Live eq 'list' ) {
+        list_scan();
+    }
+    else {
+        die("Wrong Load_mode entered \n");
+    }
+
+    return ();
+}
+
+###########################################################################
+## CHECK ARTICLES VIA A LIST SCAN
 ###########################################################################
 
 sub list_scan {
@@ -856,22 +866,6 @@ sub check_article {
 }
 
 ###########################################################################
-## DELETE ARTICLE IN DATABASE
-###########################################################################
-
-sub delete_old_errors_in_db {
-    if ( $dump_or_live eq 'live' && $title ne '' ) {
-        my $sth =
-          $dbh->prepare('DELETE FROM cw_error WHERE Title = ? AND Project = ?;')
-          || die "Can not prepare statement: $DBI::errstr\n";
-        $sth->execute( $title, $project )
-          or die "Cannot execute: " . $sth->errstr . "\n";
-    }
-
-    return ();
-}
-
-###########################################################################
 ## FIND MISSING COMMENTS TAGS AND REMOVE EVERYTHING BETWEEN THE TAGS
 ###########################################################################
 
@@ -1049,7 +1043,7 @@ sub get_hiero {
 
 sub get_score {
 
-    $text =~ s/<score>(.*?)<\/score>//sg;
+    $text =~ s/<score(.*?)<\/score>//sg;
 
     return ();
 }
@@ -1194,7 +1188,37 @@ sub get_isbn {
 }
 
 ###########################################################################
-##
+##  GET_REF
+###########################################################################
+
+sub get_ref {
+
+    my $pos_start_old = 0;
+    my $end_search    = 0;
+
+    while ( $end_search == 0 ) {
+        my $pos_start = 0;
+        my $pos_end   = 0;
+        $end_search = 1;
+
+        $pos_start = index( $text, '<ref>',  $pos_start_old );
+        $pos_end   = index( $text, '</ref>', $pos_start );
+
+        if ( $pos_start > -1 and $pos_end > -1 ) {
+
+            $pos_end       = $pos_end + length('</ref>');
+            $end_search    = 0;
+            $pos_start_old = $pos_end;
+
+            push( @ref, substr( $text, $pos_start, $pos_end - $pos_start ) );
+        }
+    }
+
+    return ();
+}
+
+###########################################################################
+## GET TEMPLATES ALL
 ###########################################################################
 
 sub get_templates_all {
@@ -1464,36 +1488,6 @@ sub get_links {
 ##
 ###########################################################################
 
-sub get_ref {
-
-    my $pos_start_old = 0;
-    my $end_search    = 0;
-
-    while ( $end_search == 0 ) {
-        my $pos_start = 0;
-        my $pos_end   = 0;
-        $end_search = 1;
-
-        $pos_start = index( $text, '<ref>',  $pos_start_old );
-        $pos_end   = index( $text, '</ref>', $pos_start );
-
-        if ( $pos_start > -1 and $pos_end > -1 ) {
-
-            $pos_end       = $pos_end + length('</ref>');
-            $end_search    = 0;
-            $pos_start_old = $pos_end;
-
-            push( @ref, substr( $text, $pos_start, $pos_end - $pos_start ) );
-        }
-    }
-
-    return ();
-}
-
-###########################################################################
-##
-###########################################################################
-
 sub check_for_redirect {
 
     if ( index( $lc_text, '#redirect' ) > -1 ) {
@@ -1647,16 +1641,49 @@ sub get_headlines {
     return ();
 }
 
-###########################################################################
+##########################################################################
+##
+##########################################################################
+
+sub get_broken_tag {
+    my ( $tag_open, $tag_close ) = @_;
+    my $text_snippet = q{};
+    my $found        = -1;    # Open tag could be at position 0
+
+    my $test_text = lc($text);
+
+    my $pos_open  = index( $test_text, $tag_open );
+    my $pos_open2 = index( $test_text, $tag_open, $pos_open + 3 );
+    my $pos_close = index( $test_text, $tag_close );
+
+    while ( $found == -1 ) {
+        if ( $pos_open2 == -1 ) {    # End of article and no closing tag found
+            $found = $pos_open;
+        }
+        elsif ( $pos_open2 < $pos_close ) {
+            $found = $pos_open;
+        }
+        else {
+            $pos_open  = $pos_open2;
+            $pos_open2 = index( $test_text, $tag_open, $pos_open + 3 );
+            $pos_close = index( $test_text, $tag_close, $pos_close + 3 );
+        }
+    }
+
+    $text_snippet = substr( $text, $found, 40 );
+    return ($text_snippet);
+}
+
+##########################################################################
 ##
 ##########################################################################
 
 sub error_check {
     if ( $CheckOnlyOne > 0 ) {
-        error_009_more_then_one_category_in_a_line();
+        error_001_template_with_word_template();
     }
     else {
-        #error_001_html_text_style_elements_strike();
+        error_001_template_with_word_template();
         error_002_have_br();
         error_003_have_ref();
 
@@ -1727,7 +1754,7 @@ sub error_check {
         error_059_template_value_end_with_br();
         error_060_template_parameter_with_problem();
         error_061_reference_with_punctuation();
-        error_062_headline_alone();    # DEACTIVATED
+        error_062_url_without_http();
         error_063_html_text_style_elements_small_ref_sub_sup();
         error_064_link_equal_linktext();
         error_065_image_description_with_break();
@@ -1758,8 +1785,8 @@ sub error_check {
 
         error_089_defaultsort_with_no_space_after_comma();
 
-        #error_090_defaultsort_with_lowercase_letters();
-        #error_091_title_with_lowercase_letters_and_no_defaultsort();
+        error_090_Internal_link_written_as_an_external_link();
+        error_091_Interwiki_link_written_as_an_external_link();
         error_092_headline_double();
     }
 
@@ -1770,8 +1797,20 @@ sub error_check {
 ##  ERROR 01
 ###########################################################################
 
-sub error_001_html_text_style_elements_strike {
-    my $error_code = 26;
+sub error_001_template_with_word_template {
+    my $error_code = 1;
+
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
+        if ( $page_namespace == 0 or $page_namespace == 104 ) {
+
+            my $test_text = $lc_text;
+
+            if ( $test_text =~ /(\{\{\s*template:)/ ) {
+                my $pos = index( $test_text, $1 );
+                error_register( $error_code, substr( $text, $pos, 40 ) );
+            }
+        }
+    }
 
     return ();
 }
@@ -1829,6 +1868,7 @@ sub error_003_have_ref {
                 $test = "true" if ( $test_text =~ /<[ ]?+references group/ );
                 $test = "true" if ( $test_text =~ /\{\{[ ]?+refbegin/ );
                 $test = "true" if ( $test_text =~ /\{\{[ ]?+refend/ );
+                $test = "true" if ( $test_text =~ /\{\{[ ]?+reflist/ );
 
                 if ( $Template_list[$error_code][0] ne '-9999' ) {
 
@@ -2394,9 +2434,8 @@ sub error_022_category_with_space {
             foreach my $i ( 0 .. $category_counter ) {
 
                 if (   $category[$i][4] =~ /[^ \|]\s+\]\]$/
-                or $category[$i][4] =~ /\[\[ /
-                    or $category[$i][4] =~
-                    /\[\[[^:]+(\s+:|:\s+)/ )
+                    or $category[$i][4] =~ /\[\[ /
+                    or $category[$i][4] =~ /\[\[[^:]+(\s+:|:\s+)/ )
                 {
                     error_register( $error_code, $category[$i][4] );
                 }
@@ -3685,7 +3724,20 @@ sub error_061_reference_with_punctuation {
 ## ERROR 62
 ###########################################################################
 
-sub error_062_headline_alone {
+sub error_062_url_without_http {
+    my $error_code = 62;
+
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
+        if ( $page_namespace == 0 or $page_namespace == 104 ) {
+
+            my $test_text = $lc_text;
+
+            if ( $test_text =~ /(<ref>\s*www\.|url\s*=\s*www\.)/ ) {
+                my $pos = index( $text, $1 );
+                error_register( $error_code, substr( $text, $pos, 40 ) );
+            }
+        }
+    }
 
     return ();
 }
@@ -4550,7 +4602,7 @@ sub error_089_defaultsort_with_no_space_after_comma {
                 my $test_text = substr( $text, $isDefaultsort, $pos2 );
 
                 if ( $test_text =~
-/DEFAULTSORT:([A-Za-z0-9-.]+),([A-Za-z0-9-.]+)(\s*)([A-Za-z0-9-.]*)/
+/DEFAULTSORT:([A-Za-z'-.]+),([A-Za-z'-.]+)(\s*)([A-Za-z0-9-.]*)/
                   )
                 {
                     error_register( $error_code, $test_text );
@@ -4566,7 +4618,20 @@ sub error_089_defaultsort_with_no_space_after_comma {
 ## ERROR 90
 ###########################################################################
 
-sub error_090_defaultsort_with_lowercase_letters {
+sub error_090_Internal_link_written_as_an_external_link {
+    my $error_code = 90;
+
+    if ( $project eq 'enwiki' ) {
+        if ( $ErrorPriorityValue[$error_code] > 0 ) {
+            if ( $page_namespace == 0 or $page_namespace == 104 ) {
+
+                my $test_text = $lc_text;
+                if ( $test_text =~ /(\[\s*https?:\/\/$ServerName\/wiki)/i ) {
+                    error_register( $error_code, substr( $1, 0, 40 ) );
+                }
+            }
+        }
+    }
 
     return ();
 }
@@ -4575,7 +4640,23 @@ sub error_090_defaultsort_with_lowercase_letters {
 ## ERROR 91
 ###########################################################################
 
-sub error_091_title_with_lowercase_letters_and_no_defaultsort {
+sub error_091_Interwiki_link_written_as_an_external_link {
+    my $error_code = 91;
+
+    if ( $project eq 'enwiki' ) {
+        if ( $ErrorPriorityValue[$error_code] > 0 ) {
+            if ( $page_namespace == 0 or $page_namespace == 104 ) {
+
+                my $test_text = $lc_text;
+                $test_text =~ s/(\[\s*https?:\/\/$ServerName)//ig;
+                if ( $test_text =~
+                    /(\[\s*https?:\/\/[a-z]{2}\.wikipedia\.org\/wiki)/i )
+                {
+                    error_register( $error_code, substr( $1, 0, 40 ) );
+                }
+            }
+        }
+    }
 
     return ();
 }
@@ -4641,37 +4722,6 @@ sub error_register {
     return ();
 }
 
-######################################################################
-
-sub get_broken_tag {
-    my ( $tag_open, $tag_close ) = @_;
-    my $text_snippet = q{};
-    my $found        = -1;    # Open tag could be at position 0
-
-    my $test_text = lc($text);
-
-    my $pos_open  = index( $test_text, $tag_open );
-    my $pos_open2 = index( $test_text, $tag_open, $pos_open + 3 );
-    my $pos_close = index( $test_text, $tag_close );
-
-    while ( $found == -1 ) {
-        if ( $pos_open2 == -1 ) {    # End of article and no closing tag found
-            $found = $pos_open;
-        }
-        elsif ( $pos_open2 < $pos_close ) {
-            $found = $pos_open;
-        }
-        else {
-            $pos_open  = $pos_open2;
-            $pos_open2 = index( $test_text, $tag_open, $pos_open + 3 );
-            $pos_close = index( $test_text, $tag_close, $pos_close + 3 );
-        }
-    }
-
-    $text_snippet = substr( $text, $found, 40 );
-    return ($text_snippet);
-}
-
 ######################################################################}
 
 sub insert_into_db {
@@ -4692,7 +4742,7 @@ sub insert_into_db {
     $notice =~ s/>/&gt;/g;
     $notice =~ s/\"/&quot;/g;
 
-    if ( $dump_or_live eq 'live' or $dump_or_live eq 'delay' ) {
+    if ( $Dump_or_Live eq 'live' or $Dump_or_Live eq 'delay' ) {
         $table_name = 'cw_error';
         $date_found = strftime( '%F %T', gmtime() );
     }
@@ -4824,10 +4874,6 @@ if ( !defined($project) ) {
     die("$0: No project name, for example: \"-p dewiki\"\n");
 }
 
-$language = $project;
-$language =~ s/source$//;
-$language =~ s/wiki$//;
-
 print "\n\n";
 print_line();
 two_column_display( 'Start time:',
@@ -4835,7 +4881,7 @@ two_column_display( 'Start time:',
 $time_found = strftime( '%F %T', gmtime() );
 
 if ( defined($DumpFilename) ) {
-    $dump_or_live = 'dump';
+    $Dump_or_Live = 'dump';
 
     # GET DATE FROM THE DUMP FILENAME
     $dump_date_for_output = $DumpFilename;
@@ -4843,23 +4889,23 @@ if ( defined($DumpFilename) ) {
 s/^(?:.*\/)?\Q$project\E-(\d{4})(\d{2})(\d{2})-pages-articles\.xml(.*?)$/$1-$2-$3/;
 }
 elsif ( $load_mode eq 'live' ) {
-    $dump_or_live = 'live';
+    $Dump_or_Live = 'live';
 }
 elsif ( $load_mode eq 'delay' ) {
-    $dump_or_live = 'delay';
+    $Dump_or_Live = 'delay';
 }
 elsif ( $load_mode eq 'list' ) {
-    $dump_or_live = 'list';
+    $Dump_or_Live = 'list';
 }
 else {
     die("No load name, for example: \"-l live\"\n");
 }
 
 two_column_display( 'Project:',   $project );
-two_column_display( 'Scan type:', $dump_or_live . " scan" );
+two_column_display( 'Scan type:', $Dump_or_Live . " scan" );
 
 open_db();
-clearDumpscanTable() if ( $dump_or_live eq 'dump' );
+clearDumpscanTable() if ( $Dump_or_Live eq 'dump' );
 getErrors();
 readMetadata();
 readTemplates();
@@ -4867,7 +4913,7 @@ readTemplates();
 # MAIN ROUTINE - SCAN PAGES FOR ERRORS
 scan_pages();
 
-updateDumpDate($dump_date_for_output) if ( $dump_or_live eq 'dump' );
+updateDumpDate($dump_date_for_output) if ( $Dump_or_Live eq 'dump' );
 update_table_cw_error_from_dump();
 delete_done_article_from_db();
 
