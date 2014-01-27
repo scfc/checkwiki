@@ -96,6 +96,7 @@ our @Namespace_aliases;    # Namespacealiases values
 our @Namespace_cat;        # All namespaces for categorys
 our @Namespace_image;      # All namespaces for images
 our @Namespace_templates;  # All namespaces for templates
+our @Template_regex;       # Template regex fron translation file
 our $Image_regex = q{};    # Regex used in get_images()
 our $Cat_regex   = q{};    # Regex used in get_categories()
 
@@ -565,6 +566,11 @@ sub readTemplates {
             if ( defined($template_sql) ) {
                 if ( $Template_list[$i][0] eq '-9999' ) {
                     shift( @{ $Template_list[$i] } );
+                    $Template_regex[$i] = '\{\{' . lc($template_sql);
+                }
+                else {
+                    $Template_regex[$i] =
+                      $Template_regex[$i] . '|\{\{' . lc($template_sql);
                 }
                 push( @{ $Template_list[$i] }, lc($template_sql) );
             }
@@ -1653,13 +1659,12 @@ sub get_broken_tag {
 
 sub error_check {
     if ( $CheckOnlyOne > 0 ) {
-        error_001_template_with_word_template();
+        error_095_user_signature();
     }
     else {
         error_001_template_with_word_template();
         error_002_have_br();
         error_003_have_ref();
-
         error_004_html_text_style_elements_a();
 
         #error_005_Comment_no_correct_end('');             # get_comments()
@@ -1692,20 +1697,19 @@ sub error_check {
         #error_028_table_no_correct_end('');               # get_tables()
         error_029_gallery_no_correct_end();
 
-        #error_030_image_without_description('');          # DEACTIVATED
+        #error_030                                         # DEACTIVATED
         error_031_html_table_elements();
         error_032_double_pipe_in_link();
         error_033_html_text_style_elements_underline();
         error_034_template_programming_elements();
 
-        #error_035_gallery_without_description('');        # get_gallery()
+        #error_035                                         # DEACTIVATED
         error_036_redirect_not_correct();
         error_037_title_with_special_letters_and_no_defaultsort();
         error_038_html_text_style_elements_italic();
         error_039_html_text_style_elements_paragraph();
         error_040_html_text_style_elements_font();
         error_041_html_text_style_elements_big();
-
         error_042_html_text_style_elements_strike();
 
         #error_043_template_no_correct_end('');            # get_templates()
@@ -1745,7 +1749,8 @@ sub error_check {
         error_076_link_with_no_space();
         error_077_image_description_with_partial_small();
         error_078_reference_double();
-        error_079_external_link_without_description();
+
+        #error_079                                         # DEACTIVATED
         error_080_external_link_with_line_break();
         error_081_ref_double();
         error_082_link_to_other_wikiproject();
@@ -1755,12 +1760,15 @@ sub error_check {
         error_086_link_with_two_brackets_to_external_source();
         error_087_html_named_entities_without_semicolon();
         error_088_defaultsort_with_first_blank();
-
         error_089_defaultsort_with_no_space_after_comma();
-
         error_090_Internal_link_written_as_an_external_link();
         error_091_Interwiki_link_written_as_an_external_link();
         error_092_headline_double();
+        error_093_double_http();
+        error_094_ref_no_correct_match();
+        error_095_user_signature();
+        error_096_toc_after_first_headline();
+        error_097_toc_has_material_after_it();
     }
 
     return ();
@@ -1776,11 +1784,8 @@ sub error_001_template_with_word_template {
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
-            my $test_text = $lc_text;
-
-            if ( $test_text =~ /(\{\{\s*template:)/ ) {
-                my $pos = index( $test_text, $1 );
-                error_register( $error_code, substr( $text, $pos, 40 ) );
+            if ( $lc_text =~ /(\{\{\s*template:)/ ) {
+                error_register( $error_code, substr( $text, $-[0], 40 ) );
             }
         }
     }
@@ -1798,17 +1803,12 @@ sub error_002_have_br {
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
-            my $test_line = q{};
-            my $test_text = $text;
-
-            if ( $test_text =~
+            if ( $lc_text =~
 /(<\s*br\/[^ ]>|<\s*br[^ ]\/>|<\s*br[^ \/]>|<[^ ]br\s*>|<\s*br\s*\/[^ ]>)/i
               )
             {
-                my $pos = index( $test_text, $1 );
-                $test_line = substr( $text, $pos, 40 );
+                my $test_line = substr( $text, $-[0], 40 );
                 $test_line =~ s/[\n\r]//mg;
-
                 error_register( $error_code, $test_line );
             }
         }
@@ -1872,9 +1872,12 @@ sub error_004_html_text_style_elements_a {
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
-            if ( $project eq 'enwiki' ) {
-                my $test_text = $lc_text;
-                my $pos = index( $test_text, '<a ' );
+            if (   $project eq 'enwiki'
+                or $project eq 'frwiki'
+                or $project eq 'cswiki' )
+            {
+
+                my $pos = index( $lc_text, '<a ' );
 
                 if ( $pos > -1 ) {
                     error_register( $error_code, substr( $text, $pos, 40 ) );
@@ -2097,11 +2100,10 @@ sub error_011_html_named_entities {
             or $page_namespace == 6
             or $page_namespace == 104 )
         {
-            my $pos       = -1;
-            my $test_text = $lc_text;
+            my $pos = -1;
 
             foreach (@HTML_NAMED_ENTITIES) {
-                if ( $test_text =~ /&$_;/g ) {
+                if ( $lc_text =~ /&$_;/g ) {
                     $pos = $-[0];
                 }
             }
@@ -2231,13 +2233,14 @@ sub error_016_unicode_control_characters {
             or $page_namespace == 6
             or $page_namespace == 104 )
         {
-            my $search;
 
             # 200B is a problem with IPA characters in some wikis (czwiki)
+            # \p{Co} or PUA is Private Unicode Area
 
-            $search = "\x{200E}|\x{FEFF}";
+            my $search = "\x{200E}|\x{FEFF}";
             if ( $project eq 'enwiki' ) {
-                $search = $search . "|\x{200B}|\x{2028}|\x{202A}|\x{202C}";
+                $search = $search
+                  . "|\x{200B}|\x{2028}|\x{202A}|\x{202C}|\x{202D}|\x{202E}";
             }
 
             if ( $text =~ /($search)/ or $text =~ /(\p{Co})/ ) {
@@ -2245,11 +2248,13 @@ sub error_016_unicode_control_characters {
                 my $pos = index( $test_text, $1 );
                 $test_text = substr( $test_text, $pos, 40 );
                 $test_text =~ s/\p{Co}/\{PUA\}/;
-                $test_text =~ s/\x{202C}/\{202C\}/;
+                $test_text =~ s/\x{200B}/\{200B\}/;
                 $test_text =~ s/\x{200E}/\{200E\}/;
                 $test_text =~ s/\x{202A}/\{202A\}/;
-                $test_text =~ s/\x{202B}/\{202B\}/;
                 $test_text =~ s/\x{2028}/\{2028\}/;
+                $test_text =~ s/\x{202C}/\{202C\}/;
+                $test_text =~ s/\x{202D}/\{202D\}/;
+                $test_text =~ s/\x{202E}/\{202E\}/;
                 $test_text =~ s/\x{FEFF}/\{FEFF\}/;
 
                 error_register( $error_code, $test_text );
@@ -2369,8 +2374,7 @@ sub error_021_category_is_english {
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
-            if (    $project ne 'enwiki'
-                and $project ne 'commonswiki'
+            if (    $project ne 'commonswiki'
                 and $Namespace_cat[0] ne 'Category' )
             {
 
@@ -2513,8 +2517,7 @@ sub error_026_html_text_style_elements {
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
-            my $test_text = $lc_text;
-            my $pos = index( $test_text, '<b>' );
+            my $pos = index( $lc_text, '<b>' );
 
             if ( $pos > -1 ) {
                 error_register( $error_code, substr( $text, $pos, 40 ) );
@@ -2616,15 +2619,6 @@ sub error_029_gallery_no_correct_end {
 }
 
 ###########################################################################
-## ERROR 30
-###########################################################################
-
-sub error_030_image_without_description {
-
-    return ();
-}
-
-###########################################################################
 ## ERROR 31
 ###########################################################################
 
@@ -2636,12 +2630,11 @@ sub error_031_html_table_elements {
             or $page_namespace == 6
             or $page_namespace == 104 )
         {
-            my $test_text = $lc_text;
 
-            if ( index( $test_text, '<table' ) > -1 ) {
+            if ( index( $lc_text, '<table' ) > -1 ) {
 
                 # <table> in templates can be the only way to do a table.
-                $test_text = $text;
+                my $test_text = $text;
                 foreach (@Templates_all) {
                     $test_text =~ s/\Q$_\E//s;
                 }
@@ -2673,17 +2666,15 @@ sub error_032_double_pipe_in_link {
             or $page_namespace == 104 )
         {
             foreach (@Lines) {
-                my $current_line    = $_;
-                my $current_line_lc = lc($current_line);
-                if ( $current_line_lc =~ /\[\[[^\]:\{]+\|([^\]\{]+\||\|)/g ) {
-                    my $pos              = pos($current_line_lc);
-                    my $first_part       = substr( $current_line, 0, $pos );
-                    my $second_part      = substr( $current_line, $pos );
+                if ( $_ =~ /\[\[[^\]:\{]+\|([^\]\{]+\||\|)/g ) {
+                    my $pos              = pos($_);
+                    my $first_part       = substr( $_, 0, $pos );
+                    my $second_part      = substr( $_, $pos );
                     my @first_part_split = split( /\[\[/, $first_part );
                     foreach (@first_part_split) {
                         $first_part = '[[' . $_;  # Find last link in first_part
                     }
-                    $current_line = $first_part . $second_part;
+                    my $current_line = $first_part . $second_part;
                     error_register( $error_code,
                         substr( $current_line, 0, 40 ) );
                 }
@@ -2704,8 +2695,7 @@ sub error_033_html_text_style_elements_underline {
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
-            my $test_text = $lc_text;
-            my $pos = index( $test_text, '<u>' );
+            my $pos = index( $lc_text, '<u>' );
 
             if ( $pos > -1 ) {
                 error_register( $error_code, substr( $text, $pos, 40 ) );
@@ -2725,58 +2715,13 @@ sub error_034_template_programming_elements {
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
-            my $test_line = q{};
 
-            my $test_text = $text;
-            if ( $test_text =~
+            if ( $text =~
 /({{{|#if:|#ifeq:|#switch:|#ifexist:|{{fullpagename}}|{{sitename}}|{{namespace}})/i
               )
             {
-                my $pos = index( $test_text, $1 );
-                $test_line = substr( $text, $pos, 40 );
+                my $test_line = substr( $text, $-[0], 40 );
                 $test_line =~ s/[\n\r]//mg;
-
-                error_register( $error_code, $test_line );
-            }
-        }
-    }
-
-    return ();
-}
-
-###########################################################################
-## ERROR 35
-###########################################################################
-
-sub error_035_gallery_without_description {
-    my ($text_gallery) = @_;
-    my $error_code = 35;
-
-    if ( $ErrorPriorityValue[$error_code] > 0 ) {
-
-        my $test = q{};
-        if (
-            $text_gallery ne q{}
-            and (  $page_namespace == 0
-                or $page_namespace == 6
-                or $page_namespace == 104 )
-          )
-        {
-            my @split_gallery = split( /\n/, $text_gallery );
-            my $test_line = q{};
-            foreach (@split_gallery) {
-                my $current_line = $_;
-
-                foreach (@Namespace_image) {
-                    my $namespace_image_word = $_;
-
-                    if ( $current_line =~ /^$namespace_image_word:[^\|]+$/ ) {
-                        $test = 'found';
-                        $test_line = $current_line if ( $test_line eq q{} );
-                    }
-                }
-            }
-            if ( $test eq 'found' ) {
                 error_register( $error_code, $test_line );
             }
         }
@@ -2885,8 +2830,7 @@ sub error_038_html_text_style_elements_italic {
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
-            my $test_text = $lc_text;
-            my $pos = index( $test_text, '<i>' );
+            my $pos = index( $lc_text, '<i>' );
 
             if ( $pos > -1 ) {
                 error_register( $error_code, substr( $text, $pos, 40 ) );
@@ -2943,8 +2887,7 @@ sub error_040_html_text_style_elements_font {
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
-            my $test_text = $lc_text;
-            my $pos = index( $test_text, '<font' );
+            my $pos = index( $lc_text, '<font' );
 
             if ( $pos > -1 ) {
                 error_register( $error_code, substr( $text, $pos, 40 ) );
@@ -2965,8 +2908,7 @@ sub error_041_html_text_style_elements_big {
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
-            my $test_text = $lc_text;
-            my $pos = index( $test_text, '<big>' );
+            my $pos = index( $lc_text, '<big>' );
 
             if ( $pos > -1 ) {
                 error_register( $error_code, substr( $text, $pos, 40 ) );
@@ -2986,9 +2928,12 @@ sub error_042_html_text_style_elements_strike {
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
-            if ( $project eq 'enwiki' ) {
-                my $test_text = $lc_text;
-                my $pos = index( $test_text, '<strike>' );
+            if (   $project eq 'enwiki'
+                or $project eq 'frwiki'
+                or $project eq 'cswiki' )
+            {
+
+                my $pos = index( $lc_text, '<strike>' );
 
                 if ( $pos > -1 ) {
                     error_register( $error_code, substr( $text, $pos, 40 ) );
@@ -3617,18 +3562,13 @@ sub error_060_template_parameter_with_problem {
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
-            my $found_text = q{};
             foreach my $i ( 0 .. $Number_of_template_parts ) {
 
-                if ( $Template[$i][3] =~ /(\[|\]|\|:|\*)/ ) {
-                    if ( $found_text eq q{} ) {
-                        $found_text =
-                          $Template[$i][1] . ', ' . $Template[$i][3];
-                    }
+                if ( $Template[$i][3] =~ /\[|\]|\|:|\*/ ) {
+                    my $found_text = $Template[$i][1] . ', ' . $Template[$i][3];
+                    error_register( $error_code, $found_text );
+                    last;
                 }
-            }
-            if ( $found_text ne q{} ) {
-                error_register( $error_code, $found_text );
             }
         }
     }
@@ -3686,14 +3626,17 @@ sub error_061_reference_with_punctuation {
 sub error_062_url_without_http {
     my $error_code = 62;
 
-    if ( $ErrorPriorityValue[$error_code] > 0 ) {
-        if ( $page_namespace == 0 or $page_namespace == 104 ) {
+    if ( $project eq 'enwiki' or $project eq 'frwiki' or $project eq 'cswiki' )
+    {
 
-            my $test_text = $lc_text;
+        if ( $ErrorPriorityValue[$error_code] > 0 ) {
+            if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
-            if ( $test_text =~ /(<ref\b[^<>]*>\s*\[?www\.)/ ) {
-                my $pos = index( $text, $1 );
-                error_register( $error_code, substr( $text, $pos, 40 ) );
+                if ( $lc_text =~
+                    /(<ref\b[^<>]*>\s*\[?www\w*\.)(?![^<>[\]{|}]*\[\w*:?\/\/)/ )
+                {
+                    error_register( $error_code, substr( $text, $-[0], 40 ) );
+                }
             }
         }
     }
@@ -4130,56 +4073,6 @@ sub error_078_reference_double {
 }
 
 ###########################################################################
-## ERROR 79
-###########################################################################
-
-sub error_079_external_link_without_description {
-    my $error_code = 79;
-
-    if ( $ErrorPriorityValue[$error_code] > 0 ) {
-        if ( $page_namespace == 0 or $page_namespace == 104 ) {
-
-            my $test_text  = $lc_text;
-            my $pos        = -1;
-            my $found_text = q{};
-            while (index( $test_text, '[http://', $pos + 1 ) > -1
-                or index( $test_text, '[ftp://',   $pos + 1 ) > -1
-                or index( $test_text, '[https://', $pos + 1 ) > -1 )
-            {
-                my $pos1 = index( $test_text, '[http://',  $pos + 1 );
-                my $pos2 = index( $test_text, '[ftp://',   $pos + 1 );
-                my $pos3 = index( $test_text, '[https://', $pos + 1 );
-
-                my $next_pos = -1;
-                $next_pos = $pos1 if ( $pos1 > -1 );
-                $next_pos = $pos2
-                  if ( ( $next_pos == -1 and $pos2 > -1 )
-                    or ( $pos2 > -1 and $next_pos > $pos2 ) );
-                $next_pos = $pos3
-                  if ( ( $next_pos == -1 and $pos3 > -1 )
-                    or ( $pos3 > -1 and $next_pos > $pos3 ) );
-
-                my $pos_end = index( $test_text, ']', $next_pos );
-
-                my $weblink =
-                  substr( $text, $next_pos, $pos_end - $next_pos + 1 );
-
-                if ( index( $weblink, q{ } ) == -1 ) {
-                    $found_text = $weblink if ( $found_text eq q{} );
-                }
-                $pos = $next_pos;
-            }
-
-            if ( $found_text ne q{} ) {
-                error_register( $error_code, substr( $found_text, 0, 40 ) );
-            }
-        }
-    }
-
-    return ();
-}
-
-###########################################################################
 ## ERROR 80
 ###########################################################################
 
@@ -4485,7 +4378,7 @@ sub error_087_html_named_entities_without_semicolon {
 sub error_088_defaultsort_with_first_blank {
     my $error_code = 88;
 
-    if ( $ErrorPriorityValue[$error_code] > 0 and $project eq 'enwiki' ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
 
         if (    ( $page_namespace == 0 or $page_namespace == 104 )
             and $project ne 'arwiki'
@@ -4533,7 +4426,9 @@ sub error_089_defaultsort_with_no_space_after_comma {
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( ( $page_namespace == 0 or $page_namespace == 104 )
-            and $project eq 'enwiki' )
+            and $project eq 'enwiki'
+            or $project  eq 'frwiki'
+            or $project  eq 'cswiki' )
         {
 
             # Is DEFAULTSORT found in article?
@@ -4570,12 +4465,12 @@ sub error_089_defaultsort_with_no_space_after_comma {
 sub error_090_Internal_link_written_as_an_external_link {
     my $error_code = 90;
 
-    if ( $project eq 'enwiki' ) {
+    if ( $project eq 'enwiki' or $project eq 'frwiki' or $project eq 'cswiki' )
+    {
         if ( $ErrorPriorityValue[$error_code] > 0 ) {
             if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
-                my $test_text = $lc_text;
-                if ( $test_text =~ /(\[\s*https?:\/\/$ServerName\/wiki)/i ) {
+                if ( $lc_text =~ /(\[\s*https?:\/\/$ServerName\/wiki)/i ) {
                     error_register( $error_code, substr( $1, 0, 40 ) );
                 }
             }
@@ -4592,7 +4487,8 @@ sub error_090_Internal_link_written_as_an_external_link {
 sub error_091_Interwiki_link_written_as_an_external_link {
     my $error_code = 91;
 
-    if ( $project eq 'enwiki' ) {
+    if ( $project eq 'enwiki' or $project eq 'frwiki' or $project eq 'cswiki' )
+    {
         if ( $ErrorPriorityValue[$error_code] > 0 ) {
             if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
@@ -4632,6 +4528,131 @@ sub error_092_headline_double {
             }
             if ( $found_text ne q{} ) {
                 error_register( $error_code, $found_text );
+            }
+        }
+    }
+
+    return ();
+}
+
+###########################################################################
+## ERROR 93
+###########################################################################
+
+sub error_093_double_http {
+    my $error_code = 93;
+
+    if ( $project eq 'enwiki' or $project eq 'frwiki' or $project eq 'cswiki' )
+    {
+
+        if ( $ErrorPriorityValue[$error_code] > 0 ) {
+            if ( $page_namespace == 0 or $page_namespace == 104 ) {
+
+                if ( $lc_text =~ /(https?:[\/]{0,2}https?:)/ ) {
+                    error_register( $error_code, substr( $text, $-[0], 40 ) );
+                }
+            }
+        }
+    }
+    return ();
+}
+
+###########################################################################
+## ERROR 94
+###########################################################################
+
+sub error_094_ref_no_correct_match {
+    my $error_code = 94;
+
+    if ( $project eq 'enwiki' or $project eq 'frwiki' or $project eq 'cswiki' )
+    {
+
+        if ( $ErrorPriorityValue[$error_code] > 0 ) {
+            if ( $page_namespace == 0 or $page_namespace == 104 ) {
+
+                my $ref_begin = () = $lc_text =~ /<ref\b[^<>]*(?<!\/)>/g;
+                my $ref_end   = () = $lc_text =~ /<\/ref>/g;
+
+                if ( $ref_begin != $ref_end ) {
+                    error_register( $error_code, "" );
+                }
+            }
+        }
+    }
+
+    return ();
+}
+
+###########################################################################
+## ERROR 95
+###########################################################################
+
+sub error_095_user_signature {
+    my $error_code = 95;
+
+    if ( $project eq 'enwiki' or $project eq 'frwiki' or $project eq 'cswiki' )
+    {
+
+        if ( $ErrorPriorityValue[$error_code] > 0 ) {
+            if ( $page_namespace == 0 or $page_namespace == 104 ) {
+
+                if ( $lc_text =~ /(\[\[user:|\[\[user talk:)/ ) {
+                    error_register( $error_code, substr( $text, $-[0], 40 ) );
+                }
+
+            }
+        }
+    }
+
+    return ();
+}
+###########################################################################
+## ERROR 96
+###########################################################################
+
+sub error_096_toc_after_first_headline {
+    my $error_code = 96;
+
+    if ( $project eq 'enwiki' ) {
+
+        if ( $ErrorPriorityValue[$error_code] > 0 ) {
+            if ( $page_namespace == 0 or $page_namespace == 104 ) {
+
+                if ( $lc_text =~ /$Template_regex[96]|__toc__/ ) {
+                    my $toc_pos = $-[0];
+                    my $headline_pos = index( $text, $Headlines[0] );
+                    if ( $toc_pos > $headline_pos ) {
+                        error_register( $error_code,
+                            substr( $text, $-[0], 40 ) );
+                    }
+                }
+            }
+        }
+    }
+
+    return ();
+}
+
+###########################################################################
+## ERROR 97
+###########################################################################
+
+sub error_097_toc_has_material_after_it {
+    my $error_code = 97;
+
+    if ( $project eq 'enwiki' ) {
+
+        if ( $ErrorPriorityValue[$error_code] > 0 ) {
+            if ( $page_namespace == 0 or $page_namespace == 104 ) {
+
+                if ( $lc_text =~ /$Template_regex[97]|__toc__/ ) {
+                    my $toc_pos = $-[0];
+                    my $headline_pos = index( $text, $Headlines[0] );
+                    if ( ( $headline_pos - $toc_pos ) > 40 ) {
+                        error_register( $error_code,
+                            substr( $text, $-[0], 40 ) );
+                    }
+                }
             }
         }
     }
