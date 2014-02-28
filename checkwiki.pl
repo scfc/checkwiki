@@ -11,7 +11,7 @@
 ##
 ##        AUTHOR: Stefan Kühn, Bryan White
 ##       LICENCE: GPLv3
-##       VERSION: 2014/01/20
+##       VERSION: 2014/02/28
 ##
 ###########################################################################
 
@@ -77,6 +77,12 @@ our $ListFilename;
 # Filename that contains the dump file for dump mode
 our $DumpFilename;
 
+# Should Template Tiger output be generated?
+our $Template_Tiger = 0;
+our $TTFile;
+our $TTFilename;
+our $TTnumber = 0;
+
 # Total number of Errors
 our $Number_of_error_description = 0;
 
@@ -99,6 +105,7 @@ our @Namespace_templates;  # All namespaces for templates
 our @Template_regex;       # Template regex fron translation file
 our $Image_regex = q{};    # Regex used in get_images()
 our $Cat_regex   = q{};    # Regex used in get_categories()
+our $User_regex  = q{};    # Regex used in error_095_user_signature();
 
 our $Magicword_defaultsort;
 
@@ -430,6 +437,7 @@ sub getErrors {
     $sth->execute($project);
 
     $Number_of_error_description = $sth->fetchrow();
+    #$Number_of_error_description = 97;
 
     $sth =
       $dbh->prepare('SELECT prio FROM cw_overview_errors WHERE project = ?;');
@@ -500,7 +508,10 @@ sub readMetadata {
         push( @Namespace, [ $id, $name, $canonical ] );
 
         # Store special namespaces in convenient variables.
-        if ( $id == 6 ) {
+        if ( $id == 2 or $id == 3 ) {
+            $User_regex = $User_regex . '\[\[' . $name . ':|';
+        }
+        elsif ( $id == 6 ) {
             @Namespace_image = ( $name, $canonical );
             $Image_regex = $name;
         }
@@ -520,7 +531,10 @@ sub readMetadata {
 
     foreach my $entry ( @{ $res->{query}->{namespacealiases} } ) {
         my $name = $entry->{'*'};
-        if ( $entry->{id} == 6 ) {
+        if ( $entry->{id} == 2 or $entry->{id} == 3 ) {
+            $User_regex = $User_regex . '\[\[' . $name . ':|';
+        }
+        elsif ( $entry->{id} == 6 ) {
             push( @Namespace_image, $name );
             $Image_regex = $Image_regex . "|" . $name;
         }
@@ -542,6 +556,8 @@ sub readMetadata {
         $Magicword_defaultsort = $aliases if ( $name eq 'defaultsort' );
     }
 
+    chop($User_regex);    # Drop off final '|'
+
     return ();
 }
 
@@ -555,7 +571,8 @@ sub readTemplates {
 
     foreach my $i ( 1 .. $Number_of_error_description ) {
 
-        $Template_list[$i][0] = '-9999';
+        $Template_list[$i][0] = -9999;
+        $Template_regex[$i] = q{};
 
         my $sth = $dbh->prepare(
             'SELECT templates FROM cw_template WHERE error=? AND project=?');
@@ -564,13 +581,13 @@ sub readTemplates {
         $sth->bind_col( 1, \$template_sql );
         while ( $sth->fetchrow_arrayref ) {
             if ( defined($template_sql) ) {
-                if ( $Template_list[$i][0] eq '-9999' ) {
+                if ( $Template_list[$i] eq -9999 ) {
                     shift( @{ $Template_list[$i] } );
-                    $Template_regex[$i] = '\{\{' . lc($template_sql);
+                    $Template_regex[$i] = '\{\{' . lc($template_sql) . '|';
                 }
                 else {
                     $Template_regex[$i] =
-                      $Template_regex[$i] . '|\{\{' . lc($template_sql);
+                      $Template_regex[$i] . '\{\{' . lc($template_sql) . '|';
                 }
                 push( @{ $Template_list[$i] }, lc($template_sql) );
             }
@@ -1215,6 +1232,10 @@ sub get_templates_all {
     $test_text =~ s/\n//g;    # Delete all breaks     --> only one line
     $test_text =~ s/\t//g;    # Delete all tabulator  --> better for output
 
+    if ( $test_text =~ /\{\{/g ) {     # Article may not have a template.
+        $TTnumber++;
+    }
+
     while ( $test_text =~ /\{\{/g ) {
 
         $pos_start = pos($test_text) - 2;
@@ -1270,7 +1291,7 @@ sub get_template {
             $current_template =~ s/^$_://i;
         }
 
-        $number_of_templates = $number_of_templates++;
+        $number_of_templates++;
         my $template_name = q{};
 
         my @template_split = split( /\|/, $current_template );
@@ -1405,12 +1426,18 @@ sub get_template {
 
                 $Number_of_template_parts = $Number_of_template_parts + 1;
 
-                $output .= $title . "\t";
-                $output .= $Template[$template_part_counter][0] . "\t";
-                $output .= $Template[$template_part_counter][1] . "\t";
-                $output .= $Template[$template_part_counter][2] . "\t";
-                $output .= $Template[$template_part_counter][3] . "\t";
-                $output .= $Template[$template_part_counter][4] . "\n";
+                # Output for TemplateTiger
+                if ( $Template_Tiger == 1 ) {
+                    $output = q{};
+                    $output .= $TTnumber . "\t";
+                    $output .= $title . "\t";
+                    $output .= $Template[$template_part_counter][0] . "\t";
+                    $output .= $Template[$template_part_counter][1] . "\t";
+                    $output .= $Template[$template_part_counter][2] . "\t";
+                    $output .= $Template[$template_part_counter][3] . "\t";
+                    $output .= $Template[$template_part_counter][4] . "\n";
+                    $TTFile->print($output);
+                }
             }
         }
     }
@@ -1769,6 +1796,8 @@ sub error_check {
         error_095_user_signature();
         error_096_toc_after_first_headline();
         error_097_toc_has_material_after_it();
+        error_098_sub_no_correct_end();
+        error_099_sup_no_correct_end();
     }
 
     return ();
@@ -1872,16 +1901,11 @@ sub error_004_html_text_style_elements_a {
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
-            if (   $project eq 'enwiki'
-                or $project eq 'frwiki'
-                or $project eq 'cswiki' )
-            {
 
-                my $pos = index( $lc_text, '<a ' );
+            my $pos = index( $lc_text, '<a ' );
 
-                if ( $pos > -1 ) {
-                    error_register( $error_code, substr( $text, $pos, 40 ) );
-                }
+            if ( $pos > -1 ) {
+                error_register( $error_code, substr( $text, $pos, 40 ) );
             }
         }
     }
@@ -2928,16 +2952,11 @@ sub error_042_html_text_style_elements_strike {
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
-            if (   $project eq 'enwiki'
-                or $project eq 'frwiki'
-                or $project eq 'cswiki' )
-            {
 
-                my $pos = index( $lc_text, '<strike>' );
+            my $pos = index( $lc_text, '<strike>' );
 
-                if ( $pos > -1 ) {
-                    error_register( $error_code, substr( $text, $pos, 40 ) );
-                }
+            if ( $pos > -1 ) {
+                error_register( $error_code, substr( $text, $pos, 40 ) );
             }
         }
     }
@@ -3626,17 +3645,13 @@ sub error_061_reference_with_punctuation {
 sub error_062_url_without_http {
     my $error_code = 62;
 
-    if ( $project eq 'enwiki' or $project eq 'frwiki' or $project eq 'cswiki' )
-    {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
+        if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
-        if ( $ErrorPriorityValue[$error_code] > 0 ) {
-            if ( $page_namespace == 0 or $page_namespace == 104 ) {
-
-                if ( $lc_text =~
-                    /(<ref\b[^<>]*>\s*\[?www\w*\.)(?![^<>[\]{|}]*\[\w*:?\/\/)/ )
-                {
-                    error_register( $error_code, substr( $text, $-[0], 40 ) );
-                }
+            if ( $lc_text =~
+                /(<ref\b[^<>]*>\s*\[?www\w*\.)(?![^<>[\]{|}]*\[\w*:?\/\/)/ )
+            {
+                error_register( $error_code, substr( $text, $-[0], 40 ) );
             }
         }
     }
@@ -4265,8 +4280,9 @@ sub error_084_section_without_text {
                             my $length = length($test_headline);
                             if ( $length > 1 ) {
 
-                                if (    $test_section eq q{}
-                                    and $text =~ /$my_headlines[$i]/ )
+                                if ( $test_section eq q{} )
+
+         #                                    and $text =~ /$my_headlines[$i]/ )
                                 {
                                     error_register( $error_code,
                                         $my_headlines[$i] );
@@ -4292,13 +4308,13 @@ sub error_085_tag_without_content {
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
-            my $test_text = $lc_text;
-
-            $test_text =~ /<noinclude>\s*<\/noinclude>|
+            if (
+                $lc_text =~ /<noinclude>\s*<\/noinclude>|
                            <onlyinclude>\s*<\/onlyinclude|
                            <includeonly>\s*<\/includeonly>
-                          /xg;
-            if ( defined( $-[0] ) ) {
+                          /xg
+              )
+            {
                 my $found_text = substr( $text, $-[0], 40 );
                 $found_text =~ s/\n//g;
                 error_register( $error_code, $found_text );
@@ -4425,11 +4441,7 @@ sub error_089_defaultsort_with_no_space_after_comma {
     my $error_code = 89;
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
-        if ( ( $page_namespace == 0 or $page_namespace == 104 )
-            and $project eq 'enwiki'
-            or $project  eq 'frwiki'
-            or $project  eq 'cswiki' )
-        {
+        if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
             # Is DEFAULTSORT found in article?
             my $isDefaultsort     = -1;
@@ -4465,14 +4477,11 @@ sub error_089_defaultsort_with_no_space_after_comma {
 sub error_090_Internal_link_written_as_an_external_link {
     my $error_code = 90;
 
-    if ( $project eq 'enwiki' or $project eq 'frwiki' or $project eq 'cswiki' )
-    {
-        if ( $ErrorPriorityValue[$error_code] > 0 ) {
-            if ( $page_namespace == 0 or $page_namespace == 104 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
+        if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
-                if ( $lc_text =~ /(\[\s*https?:\/\/$ServerName\/wiki)/i ) {
-                    error_register( $error_code, substr( $1, 0, 40 ) );
-                }
+            if ( $lc_text =~ /(\[\s*https?:\/\/$ServerName\/wiki)/i ) {
+                error_register( $error_code, substr( $1, 0, 40 ) );
             }
         }
     }
@@ -4487,18 +4496,15 @@ sub error_090_Internal_link_written_as_an_external_link {
 sub error_091_Interwiki_link_written_as_an_external_link {
     my $error_code = 91;
 
-    if ( $project eq 'enwiki' or $project eq 'frwiki' or $project eq 'cswiki' )
-    {
-        if ( $ErrorPriorityValue[$error_code] > 0 ) {
-            if ( $page_namespace == 0 or $page_namespace == 104 ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
+        if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
-                my $test_text = $lc_text;
-                $test_text =~ s/(\[\s*https?:\/\/$ServerName)//ig;
-                if ( $test_text =~
-                    /(\[\s*https?:\/\/[a-z]{2}\.wikipedia\.org\/wiki)/i )
-                {
-                    error_register( $error_code, substr( $1, 0, 40 ) );
-                }
+            my $test_text = $lc_text;
+            $test_text =~ s/(\[\s*https?:\/\/$ServerName)//ig;
+            if ( $test_text =~
+                /(\[\s*https?:\/\/[a-z]{2}\.wikipedia\.org\/wiki)/i )
+            {
+                error_register( $error_code, substr( $1, 0, 40 ) );
             }
         }
     }
@@ -4542,15 +4548,11 @@ sub error_092_headline_double {
 sub error_093_double_http {
     my $error_code = 93;
 
-    if ( $project eq 'enwiki' or $project eq 'frwiki' or $project eq 'cswiki' )
-    {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
+        if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
-        if ( $ErrorPriorityValue[$error_code] > 0 ) {
-            if ( $page_namespace == 0 or $page_namespace == 104 ) {
-
-                if ( $lc_text =~ /(https?:[\/]{0,2}https?:)/ ) {
-                    error_register( $error_code, substr( $text, $-[0], 40 ) );
-                }
+            if ( $lc_text =~ /(https?:[\/]{0,2}https?:)/ ) {
+                error_register( $error_code, substr( $text, $-[0], 40 ) );
             }
         }
     }
@@ -4564,18 +4566,14 @@ sub error_093_double_http {
 sub error_094_ref_no_correct_match {
     my $error_code = 94;
 
-    if ( $project eq 'enwiki' or $project eq 'frwiki' or $project eq 'cswiki' )
-    {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
+        if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
-        if ( $ErrorPriorityValue[$error_code] > 0 ) {
-            if ( $page_namespace == 0 or $page_namespace == 104 ) {
+            my $ref_begin = () = $lc_text =~ /<ref\b[^<>]*(?<!\/)>/g;
+            my $ref_end   = () = $lc_text =~ /<\/ref>/g;
 
-                my $ref_begin = () = $lc_text =~ /<ref\b[^<>]*(?<!\/)>/g;
-                my $ref_end   = () = $lc_text =~ /<\/ref>/g;
-
-                if ( $ref_begin != $ref_end ) {
-                    error_register( $error_code, "" );
-                }
+            if ( $ref_begin != $ref_end ) {
+                error_register( $error_code, "" );
             }
         }
     }
@@ -4590,16 +4588,11 @@ sub error_094_ref_no_correct_match {
 sub error_095_user_signature {
     my $error_code = 95;
 
-    if ( $project eq 'enwiki' or $project eq 'frwiki' or $project eq 'cswiki' )
-    {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
+        if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
-        if ( $ErrorPriorityValue[$error_code] > 0 ) {
-            if ( $page_namespace == 0 or $page_namespace == 104 ) {
-
-                if ( $lc_text =~ /(\[\[user:|\[\[user talk:)/ ) {
-                    error_register( $error_code, substr( $text, $-[0], 40 ) );
-                }
-
+            if ( $lc_text =~ /($User_regex)/i ) {
+                error_register( $error_code, substr( $text, $-[0], 40 ) );
             }
         }
     }
@@ -4613,18 +4606,14 @@ sub error_095_user_signature {
 sub error_096_toc_after_first_headline {
     my $error_code = 96;
 
-    if ( $project eq 'enwiki' ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
+        if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
-        if ( $ErrorPriorityValue[$error_code] > 0 ) {
-            if ( $page_namespace == 0 or $page_namespace == 104 ) {
-
-                if ( $lc_text =~ /$Template_regex[96]|__toc__/ ) {
-                    my $toc_pos = $-[0];
-                    my $headline_pos = index( $text, $Headlines[0] );
-                    if ( $toc_pos > $headline_pos ) {
-                        error_register( $error_code,
-                            substr( $text, $-[0], 40 ) );
-                    }
+            if ( $lc_text =~ /$Template_regex[96]__toc__/ ) {
+                my $toc_pos = $-[0];
+                my $headline_pos = index( $text, $Headlines[0] );
+                if ( $toc_pos > $headline_pos ) {
+                    error_register( $error_code, substr( $text, $-[0], 40 ) );
                 }
             }
         }
@@ -4640,18 +4629,69 @@ sub error_096_toc_after_first_headline {
 sub error_097_toc_has_material_after_it {
     my $error_code = 97;
 
-    if ( $project eq 'enwiki' ) {
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
+        if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
-        if ( $ErrorPriorityValue[$error_code] > 0 ) {
-            if ( $page_namespace == 0 or $page_namespace == 104 ) {
+            if ( $lc_text =~ /$Template_regex[97]__toc__/ ) {
+                my $toc_pos = $-[0];
+                my $headline_pos = index( $text, $Headlines[0] );
+                if ( ( $headline_pos - $toc_pos ) > 40 and $-[0] > 0 ) {
+                    error_register( $error_code, substr( $text, $-[0], 40 ) );
+                }
+            }
+        }
+    }
 
-                if ( $lc_text =~ /$Template_regex[97]|__toc__/ ) {
-                    my $toc_pos = $-[0];
-                    my $headline_pos = index( $text, $Headlines[0] );
-                    if ( ( $headline_pos - $toc_pos ) > 40 ) {
-                        error_register( $error_code,
-                            substr( $text, $-[0], 40 ) );
-                    }
+    return ();
+}
+
+###########################################################################
+## ERROR 98
+###########################################################################
+
+sub error_098_sub_no_correct_end {
+    my $error_code = 98;
+
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
+        if ( $page_namespace == 0 or $page_namespace == 104 ) {
+
+            if ( $lc_text =~ /<sub>/ ) {
+                my $sub_begin = 0;
+                my $sub_end   = 0;
+
+                $sub_begin = () = $lc_text =~ /<sub>/g;
+                $sub_end   = () = $lc_text =~ /<\/sub>/g;
+
+                if ( $sub_begin > $sub_end ) {
+                    my $snippet = get_broken_tag( '<sub>', '</sub>' );
+                    error_register( $error_code, $snippet );
+                }
+            }        
+        }
+    }
+
+    return ();
+}
+###########################################################################
+## ERROR 99
+###########################################################################
+
+sub error_099_sup_no_correct_end {
+    my $error_code = 99;
+
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
+        if ( $page_namespace == 0 or $page_namespace == 104 ) {
+
+            if ( $lc_text =~ /<sup>/ ) {
+                my $sup_begin = 0;
+                my $sup_end   = 0;
+
+                $sup_begin = () = $lc_text =~ /<sup>/g;
+                $sup_end   = () = $lc_text =~ /<\/sup>/g;
+
+                if ( $sup_begin > $sup_end ) {
+                    my $snippet = get_broken_tag( '<sup>', '</sup>' );
+                    error_register( $error_code, $snippet );
                 }
             }
         }
@@ -4818,6 +4858,7 @@ my @Options = (
     'user|u=s'     => \$DbUsername,
     'dumpfile=s'   => \$DumpFilename,
     'listfile=s'   => \$ListFilename,
+    'tt'           => \$Template_Tiger,
     'check'        => \$CheckOnlyOne,
 );
 
@@ -4867,6 +4908,20 @@ else {
     die("No load name, for example: \"-l live\"\n");
 }
 
+# OPEN TEMPLATETIGER FILE
+if ( $Template_Tiger == 1 ) {
+    if ( !$dump_date_for_output ) {
+        $dump_date_for_output = 'list';
+    }
+    $TTFile = File::Temp->new(
+        DIR      => $ENV{'HOME'} . '/templ',
+        TEMPLATE => $project . '-' . $dump_date_for_output . '-XXXX',
+        SUFFIX   => '.txt',
+        UNLINK   => 0
+    );
+    binmode( $TTFile, ":encoding(UTF-8)" );
+}
+
 print_line();
 two_column_display( 'Start time:',
     ( strftime "%a %b %e %H:%M:%S %Y", localtime ) );
@@ -4886,6 +4941,12 @@ scan_pages();
 updateDumpDate($dump_date_for_output) if ( $Dump_or_Live eq 'dump' );
 update_table_cw_error_from_dump();
 delete_done_article_from_db();
+
+# CLOSE TEMPLATETIGER FILE
+if ( defined($TTFile) ) {
+    $TTFile->close() or die( $! . "\n" );
+    undef($TTFile);
+}
 
 close_db();
 

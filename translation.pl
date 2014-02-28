@@ -10,7 +10,7 @@
 ##
 ##       AUTHOR: Stefan Kühn, Bryan White
 ##      LICENCE: GPLv3
-##      VERSION: 11/26/2013
+##      VERSION: 02/03/2014
 ##
 ###########################################################################
 
@@ -35,7 +35,7 @@ our $LOWEST_PRIORITY_SCRIPT = 'Lowest priority';
 our @Projects;
 our $project;
 our @ErrorDescription;
-our $Number_of_error_description = 92;
+our $Number_of_error_description;
 
 our $TranslationFile;
 our @Whitelist;
@@ -75,7 +75,7 @@ our %TranslationLocation = (
     'frwiki'      => 'Projet:Correction syntaxique/Traduction',
     'fywiki'      =>
               'Meidogger:Stefan Kühn/WikiProject Check Wikipedia/Translation',
-    'hewiki'      => 'Wikipedia:WikiProject Check Wikipedia/Translation',
+    'hewiki'      => 'ויקיפדיה:Check_Wikipedia/Translation',
     'huwiki'      => 'Wikipédia:Ellenőrzőműhely/Fordítás',
     'idwiki'      => 'Wikipedia:ProyekWiki Cek Wikipedia/Terjemahan',
     'iswiki'      => 'Wikipedia:WikiProject Check Wikipedia/Translation',
@@ -93,6 +93,7 @@ our %TranslationLocation = (
     'rowiki'      => 'Wikipedia:WikiProject Check Wikipedia/Translation',
     'skwiki'      => 'Wikipédia:WikiProjekt Check Wikipedia/Translation',
     'svwiki'      => 'Wikipedia:Projekt wikifiering/Syntaxfel/Translation',
+    'svwiktionary'=> 'Wiktionary:Projekt/Syntaxfel/Translation',
     'trwiki'      => 'Vikipedi:Vikipedi proje kontrolü/Çeviri',
     'ukwiki'      => 'Вікіпедія:Проект:Check Wikipedia/Translation',
     'yiwiki'      => 'װיקיפּעדיע:קאנטראלירן_בלעטער/Translation',
@@ -128,7 +129,7 @@ open_db();
 get_projects();
 
 foreach (@Projects) {
-    $project = $_;
+$project = $_; 
 
     print "\n\n";
     two_column_display( 'Working on:', $project );
@@ -138,9 +139,8 @@ foreach (@Projects) {
 
     clearWhitelistTable();
     add_whitelist_to_db();
-#   clearTemplateTable();
-#   add_templates_to_db();
-
+#    clearTemplateTable();
+    add_templates_to_db();
     output_errors_desc_in_db();
     output_text_translation_wiki();
 
@@ -194,8 +194,8 @@ sub get_error_description {
       || die "Can not prepare statement: $DBI::errstr\n";
     $sth->execute or die "Cannot execute: " . $sth->errstr . "\n";
 
-    #$Number_of_error_description = $sth->fetchrow();
-    #$Number_of_error_description = 92;
+    $Number_of_error_description = $sth->fetchrow();
+#    $Number_of_error_description = 97;
 
     $sql_text =
       "SELECT prio, name, text FROM cw_overview_errors WHERE project = 'enwiki';";
@@ -352,11 +352,12 @@ sub load_text_translation {
         $Template[$i] =
           get_translation_text( $translation_input,
             $current_error_number . '_templates_' . $project . '=', 'END' );
-
+        
         # abbreviations 
-        $Template[$i] =
-          get_translation_text( $translation_input,
+        if ( !defined( $Template[$i] ) ) { 
+            $Template[$i] =  get_translation_text( $translation_input,
             $current_error_number . '_abbreviations_' . $project . '=', 'END' );
+        }
 
         # whitelist
         $Whitelist[$i] =
@@ -415,9 +416,10 @@ sub add_whitelist_to_db {
 
     my $error_input;
 
+    $dbh->{AutoCommit} = 0;
     foreach my $error ( 1 .. $Number_of_error_description ) {
         my $error_page = $Whitelist[$error];
-
+       
         if ( $error_page ne q{} ) {
             $error_input = raw_text($error_page);
             $error_input = replace_special_letters($error_input);
@@ -436,9 +438,11 @@ sub add_whitelist_to_db {
                       or die "Cannot execute: " . $sth->errstr . "\n";
                 }
             }
+            $dbh->commit or die "Cannot commit\n";
         }
     }
 
+    $dbh->{AutoCommit} = 1;
     return ();
 }
 
@@ -492,6 +496,7 @@ sub add_templates_to_db {
 
 sub output_errors_desc_in_db {
 
+    $dbh->{AutoCommit} = 0;
     foreach my $i ( 1 .. $Number_of_error_description ) {
         my $sql_headline = $ErrorDescription[$i][1];
         $sql_headline =~ s/'/\\'/g;
@@ -536,6 +541,8 @@ sub output_errors_desc_in_db {
         }
     }
 
+    $dbh->commit or die "Cannot commit\n";
+    $dbh->{AutoCommit} = 0;
     return ();
 }
 
