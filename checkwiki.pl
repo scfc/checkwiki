@@ -23,6 +23,7 @@ use lib '/data/project/checkwiki/share/perl';
 use MediaWiki::DumpFile;
 use DBI;
 use File::Temp;
+use File::Copy;
 use Getopt::Long
   qw(GetOptionsFromString :config bundling no_auto_abbrev no_ignore_case);
 use LWP::UserAgent;
@@ -81,7 +82,8 @@ our $DumpFilename;
 our $Template_Tiger = 0;
 our $TTFile;
 our $TTFilename;
-our $TTnumber = 0;
+our $TTDIRECTORY = '/data/project/templatetiger/public_html/dumps/';
+our $TTnumber    = 0;
 
 # Total number of Errors
 our $Number_of_error_description = 0;
@@ -437,6 +439,7 @@ sub getErrors {
     $sth->execute($project);
 
     $Number_of_error_description = $sth->fetchrow();
+
     #$Number_of_error_description = 97;
 
     $sth =
@@ -581,7 +584,7 @@ sub readTemplates {
         $sth->bind_col( 1, \$template_sql );
         while ( $sth->fetchrow_arrayref ) {
             if ( defined($template_sql) ) {
-                if ( $Template_list[$i] eq -9999 ) {
+                if ( $Template_list[$i][0] eq -9999 ) {
                     shift( @{ $Template_list[$i] } );
                     $Template_regex[$i] = '\{\{' . lc($template_sql) . '|';
                 }
@@ -790,10 +793,6 @@ sub check_article {
     # CALLS #24
     get_pre();
 
-    # REMOVES FROM $text ANY CONTENT BETWEEN <math> </math> TAGS.
-    # CALLS #013
-    get_math();
-
     # REMOVES FROM $text ANY CONTENT BETWEEN <source> </sources TAGS.
     # CALLS #014
     get_source();
@@ -804,6 +803,11 @@ sub check_article {
 
     # REMOVE FROM $text ANY CONTENT BETWEEN <syntaxhighlight> TAGS.
     get_syntaxhighlight();
+
+    # REMOVES FROM $text ANY CONTENT BETWEEN <math> </math> TAGS.
+    # Goes after code and syntaxhighlight so it doesn't catch <math.h>
+    # CALLS #013
+    get_math();
 
     # REMOVE FROM $text ANY CONTENT BETWEEN <hiero> TAGS.
     get_hiero();
@@ -1127,7 +1131,7 @@ sub get_isbn {
     {
         my $test_text = uc($text);
 
-        if ( $test_text =~ / ISBN([-]|[:])/g ) {
+        if ( $test_text =~ / ISBN\s*([-]|[:]|10|13)\s*/g ) {
             my $output = substr( $test_text, pos($test_text) - 5, 16 );
             error_069_isbn_wrong_syntax($output);
         }
@@ -1232,7 +1236,7 @@ sub get_templates_all {
     $test_text =~ s/\n//g;    # Delete all breaks     --> only one line
     $test_text =~ s/\t//g;    # Delete all tabulator  --> better for output
 
-    if ( $test_text =~ /\{\{/g ) {     # Article may not have a template.
+    if ( $test_text =~ /\{\{/g ) {    # Article may not have a template.
         $TTnumber++;
     }
 
@@ -1966,16 +1970,18 @@ sub error_006_defaultsort_with_special_letters {
                 $test_text =~ s/\+//g;
 
                 given ($project) {
-                    when ('svwiki') { $test_text =~ s/[ÅÄÖåäö]//g; }
-                    when ('fiwiki') { $test_text =~ s/[ÅÄÖåäö]//g; }
                     when ('cswiki') {
                         $test_text =~ s/[čďěňřšťžČĎŇŘŠŤŽ]//g;
                     }
                     when ('dawiki') { $test_text =~ s/[ÆØÅæøå]//g; }
+                    when ('dawiki') {
+                        $test_text =~ s/[ĈĜĤĴŜŬĉĝĥĵŝŭ]//g;
+                    }
                     when ('hewiki') {
                         $test_text =~
 s/[אבגדהוזחטיכךלמםנןסעפףצץקרשת]//g
                     }
+                    when ('fiwiki') { $test_text =~ s/[ÅÄÖåäö]//g; }
                     when ('nowiki') { $test_text =~ s/[ÆØÅæøå]//g; }
                     when ('nnwiki') { $test_text =~ s/[ÆØÅæøå]//g; }
                     when ('rowiki') { $test_text =~ s/[ăîâşţ]//g; }
@@ -1983,6 +1989,7 @@ s/[אבגדהוזחטיכךלמםנןסעפףצץקרשת]//g
                         $test_text =~
 s/[АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЬЫЪЭЮЯабвгдежзийклмнопрстуфхцчшщьыъэюя]//g;
                     }
+                    when ('svwiki') { $test_text =~ s/[ÅÄÖåäö]//g; }
                     when ('ukwiki') {
                         $test_text =~
 s/[АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЬЫЪЭЮЯабвгдежзийклмнопрстуфхцчшщьыъэюяiїґ]//g;
@@ -2811,16 +2818,18 @@ sub error_037_title_with_special_letters_and_no_defaultsort {
                 $test_title =~ s/\+//g;
 
                 given ($project) {
-                    when ('svwiki') { $test_title =~ s/[ÅÄÖåäö]//g; }
-                    when ('fiwiki') { $test_title =~ s/[ÅÄÖåäö]//g; }
                     when ('cswiki') {
                         $test_title =~ s/[čďěňřšťžČĎŇŘŠŤŽ]//g;
                     }
                     when ('dawiki') { $test_title =~ s/[ÆØÅæøå]//g; }
+                    when ('eowiki') {
+                        $test_title =~ s/[ĈĜĤĴŜŬĉĝĥĵŝŭ]//g;
+                    }
                     when ('hewiki') {
                         $test_title =~
 s/[אבגדהוזחטיכךלמםנןסעפףצץקרשת]//g
                     }
+                    when ('fiwiki') { $test_title =~ s/[ÅÄÖåäö]//g; }
                     when ('nowiki') { $test_title =~ s/[ÆØÅæøå]//g; }
                     when ('nnwiki') { $test_title =~ s/[ÆØÅæøå]//g; }
                     when ('rowiki') { $test_title =~ s/[ăîâşţ]//g; }
@@ -2828,6 +2837,7 @@ s/[אבגדהוזחטיכךלמםנןסעפףצץקרשת]//g
                         $test_title =~
 s/[АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЬЫЪЭЮЯабвгдежзийклмнопрстуфхцчшщьыъэюя]//g;
                     }
+                    when ('svwiki') { $test_title =~ s/[ÅÄÖåäö]//g; }
                     when ('ukwiki') {
                         $test_title =~
 s/[АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЬЫЪЭЮЯабвгдежзийклмнопрстуфхцчшщьыъэюяiїґ]//g;
@@ -4236,7 +4246,9 @@ sub error_084_section_without_text {
             foreach (@my_lines) {
                 my $current_line = $_;
 
-                if ( substr( $current_line, 0, 1 ) eq '=' ) {
+                if (    ( substr( $current_line, 0, 1 ) eq '=' )
+                    and ( $text =~ /\Q$current_line\E/ ) )
+                {
                     push( @my_section, $section_text );
                     $section_text = q{};
                     push( @my_headlines, $current_line );
@@ -4666,7 +4678,7 @@ sub error_098_sub_no_correct_end {
                     my $snippet = get_broken_tag( '<sub>', '</sub>' );
                     error_register( $error_code, $snippet );
                 }
-            }        
+            }
         }
     }
 
@@ -4914,11 +4926,13 @@ if ( $Template_Tiger == 1 ) {
         $dump_date_for_output = 'list';
     }
     $TTFile = File::Temp->new(
-        DIR      => $ENV{'HOME'} . '/templ',
+        DIR      => $TTDIRECTORY,
         TEMPLATE => $project . '-' . $dump_date_for_output . '-XXXX',
         SUFFIX   => '.txt',
         UNLINK   => 0
     );
+    $TTFilename =
+      $TTDIRECTORY . '/' . $project . '-' . $dump_date_for_output . '.txt';
     binmode( $TTFile, ":encoding(UTF-8)" );
 }
 
@@ -4944,7 +4958,18 @@ delete_done_article_from_db();
 
 # CLOSE TEMPLATETIGER FILE
 if ( defined($TTFile) ) {
+
+    # Move Templatetiger file to spool.
     $TTFile->close() or die( $! . "\n" );
+    if ( !rename( $TTFile->filename(), $TTFilename ) ) {
+        die(    "Couldn't rename temporary Templatetiger file from "
+              . $TTFile->filename() . ' to '
+              . $TTFilename
+              . "\n" );
+    }
+    if ( !chmod( 0664, $TTFilename ) ) {
+        die( "Couldn't chmod 664 Templatetiger file " . $TTFilename . "\n" );
+    }
     undef($TTFile);
 }
 
