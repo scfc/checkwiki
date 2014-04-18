@@ -11,7 +11,7 @@
 ##
 ##        AUTHOR: Stefan Kühn, Bryan White
 ##       LICENCE: GPLv3
-##       VERSION: 2014/02/28
+##       VERSION: 2014/04/18
 ##
 ###########################################################################
 
@@ -23,7 +23,6 @@ use lib '/data/project/checkwiki/share/perl';
 use MediaWiki::DumpFile;
 use DBI;
 use File::Temp;
-use File::Copy;
 use Getopt::Long
   qw(GetOptionsFromString :config bundling no_auto_abbrev no_ignore_case);
 use LWP::UserAgent;
@@ -131,10 +130,22 @@ our @FOUNDATION_PROJECTS = qw( b  n  s  v  m  q  w  meta  mw  nost  wikt  wmf
   wiktionary wikiversity wikivoyage );
 
 # See http://turner.faculty.swau.edu/webstuff/htmlsymbols.html
-our @HTML_NAMED_ENTITIES = qw( aacute acirc aeligi agrave aring  aumla bull
-  ccedil cent copy dagger euro hellip iexcl iquest lsquo  middot minus
-  ntilde oline ouml pound quot reg rswuo sect sup2 sup3 szling trade uuml
-  crarr darr harr larr rarr uarr );
+our @HTML_NAMED_ENTITIES = qw( aacute Aacute acirc Acirc aelig AElig
+  agrave Agrave alpha Alpha aring Aring asymp atilde Atilde auml Auml beta Beta
+  brvbar bull ccedil Ccedil cent chi Chi clubs copy crarr darr dArr deg
+  delta Delta diams divide eacute Eacute ecirc Ecirc egrave Egrave
+  epsilon Epsilon equiv eta Eta eth ETH euml Euml euro fnof frac12 frac14
+  frac34 frasl gamma Gamma ge harr hArr hearts hellip iacute Iacute icirc Icirc
+  iexcl igrave Igrave infin int iota Iota iquest iuml Iuml kappa Kappa
+  lambda Lambda laquo larr lArr ldquo le loz lsaquo lsquo micro middot
+  mu Mu ne not ntilde Ntilde nu Nu oacute Oacute ocirc Ocirc oelig OElig
+  ograve Ograve oline omega Omega omicron Omicron ordf ordm oslash Oslash
+  otilde Otilde ouml Ouml para part permil phi Phi pi Pi piv plusm pound prod
+  psi Psi quot radic raquo rarr rArr rdquo reg rho Rho raquo rsaquo rsquo
+  scaron Scaron sect sigma Sigma sigmaf spades sum sup1 sup2 sup3 szlig
+  tau Tau theta Theta thetasym thorn THORN tilde trade uacute Uacute uarr uArr
+  ucirc Ucirc ugrave Ugrave upsih upsilon Upsilon uuml Uuml xi Xi yacute Yacute
+  yen yuml Yuml zeta Zeta );
 
 ###############################
 ## Variables for one article
@@ -1236,13 +1247,13 @@ sub get_templates_all {
     $test_text =~ s/\n//g;    # Delete all breaks     --> only one line
     $test_text =~ s/\t//g;    # Delete all tabulator  --> better for output
 
-    if ( $test_text =~ /\{\{/g ) {    # Article may not have a template.
+    if ( $text =~ /\{\{/g ) { # Article may not have a template.
         $TTnumber++;
     }
 
     while ( $test_text =~ /\{\{/g ) {
 
-        $pos_start = pos($test_text) - 2;
+        $pos_start = $-[0];
         my $temp_text      = substr( $test_text, $pos_start );
         my $temp_text_2    = q{};
         my $brackets_begin = 1;
@@ -1690,7 +1701,7 @@ sub get_broken_tag {
 
 sub error_check {
     if ( $CheckOnlyOne > 0 ) {
-        error_095_user_signature();
+        error_098_sub_no_correct_end();
     }
     else {
         error_001_template_with_word_template();
@@ -1837,7 +1848,7 @@ sub error_002_have_br {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
             if ( $lc_text =~
-/(<\s*br\/[^ ]>|<\s*br[^ ]\/>|<\s*br[^ \/]>|<[^ ]br\s*>|<\s*br\s*\/[^ ]>)/i
+/(<\s*br\/[^ ]>|<\s*br[^ ]\/>|<\s*br[^ \/]>|<[^ w]br\s*>|<\s*br\s*\/[^ ]>)/i
               )
             {
                 my $test_line = substr( $text, $-[0], 40 );
@@ -1975,6 +1986,9 @@ sub error_006_defaultsort_with_special_letters {
                     }
                     when ('dawiki') { $test_text =~ s/[ÆØÅæøå]//g; }
                     when ('dawiki') {
+                        $test_text =~ s/[ĈĜĤĴŜŬĉĝĥĵŝŭ]//g;
+                    }
+                    when ('eowiki') {
                         $test_text =~ s/[ĈĜĤĴŜŬĉĝĥĵŝŭ]//g;
                     }
                     when ('hewiki') {
@@ -3216,8 +3230,9 @@ sub error_048_title_in_text {
 
             my $test_text = $text;
 
-            # OK (MUST) TO HAVE IN IMAGEMAPS
+            # OK (MUST) TO HAVE IN IMAGEMAPS AND INCLUDEONLY
             $test_text =~ s/<imagemap>(.*?)<\/imagemap>//sg;
+            $test_text =~ s/<includeonly>(.*?)<\/includeonly>//sg;
 
             my $pos = index( $test_text, '[[' . $title . ']]' );
 
@@ -3820,7 +3835,7 @@ sub error_067_reference_after_punctuation {
                     $test_text =~ s/($temp)<ref//sg;
                 }
 
-                if ( $test_text =~ /[ ]{0,2}(\.|,|\?|:|!|;)<ref/ ) {
+                if ( $test_text =~ /[ ]{0,2}(\.|,|\?|:|!|;)[ ]{0,2}<ref/ ) {
                     error_register( $error_code,
                         substr( $test_text, $-[0], 40 ) );
                 }
@@ -4647,7 +4662,7 @@ sub error_097_toc_has_material_after_it {
             if ( $lc_text =~ /$Template_regex[97]__toc__/ ) {
                 my $toc_pos = $-[0];
                 my $headline_pos = index( $text, $Headlines[0] );
-                if ( ( $headline_pos - $toc_pos ) > 40 and $-[0] > 0 ) {
+                if ( ( $headline_pos - $toc_pos ) > 40 and $-[0] > -1 ) {
                     error_register( $error_code, substr( $text, $-[0], 40 ) );
                 }
             }
