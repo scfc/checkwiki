@@ -978,7 +978,8 @@ sub get_math {
             error_013_Math_no_correct_end($snippet);
         }
 
-        $text =~ s/<math(.*?)<\/math>//sg;
+        # LEAVE MATH TAG IN.  CAUSES PROBLEMS WITH #61, #65 and #67
+        $text =~ s/<math(.*?)<\/math>/<math><\/math>/sg;
     }
 
     return ();
@@ -1143,8 +1144,15 @@ sub get_isbn {
         my $test_text = uc($text);
 
         if ( $test_text =~ / ISBN\s*([-]|[:]|10|13)\s*/g ) {
-            my $output = substr( $test_text, pos($test_text) - 5, 16 );
-            error_069_isbn_wrong_syntax($output);
+            my $output = substr( $test_text, pos($test_text) - 11, 40 );
+
+            # INFOBOX CAN HAVE "| ISBN10 = ".
+            # ALSO DON'T CHECK ISBN (10|13)XXXXXXXXXX
+            if (    ( $output !~ /\|\s*ISBN(10|13)\s*=/g )
+                and ( $output !~ /ISBN\s*([-]|[:]){0,1}\s*(10|13)\d/g ) )
+            {
+                error_069_isbn_wrong_syntax($output);
+            }
         }
 
         while ( $test_text =~ /ISBN([ ]|[-]|[=]|[:])/g ) {
@@ -1181,17 +1189,22 @@ sub get_isbn {
                     }
                 }
                 elsif ( $digits == 13 ) {
-                    my $sum;
-                    foreach my $index ( 0, 2, 4, 6, 8, 10 ) {
-                        $sum += substr( $isbn_strip, $index, 1 );
-                        $sum += 3 * substr( $isbn_strip, $index + 1, 1 );
+                    if ( $isbn_strip =~ /X/g ) {
+                        error_073_isbn_13_wrong_checksum($isbn_strip);
                     }
-                    my $checksum =
-                      ( 10 * ( int( $sum / 10 ) + 1 ) - $sum ) % 10;
+                    else {
+                        my $sum;
+                        foreach my $index ( 0, 2, 4, 6, 8, 10 ) {
+                            $sum += substr( $isbn_strip, $index, 1 );
+                            $sum += 3 * substr( $isbn_strip, $index + 1, 1 );
+                        }
+                        my $checksum =
+                          ( 10 * ( int( $sum / 10 ) + 1 ) - $sum ) % 10;
 
-                    if ( $checksum ne substr( $isbn_strip, 12, 1 ) ) {
-                        $isbn = $isbn . ' vs ' . $checksum;
-                        error_073_isbn_13_wrong_checksum($isbn);
+                        if ( $checksum ne substr( $isbn_strip, 12, 1 ) ) {
+                            $isbn = $isbn . ' vs ' . $checksum;
+                            error_073_isbn_13_wrong_checksum($isbn);
+                        }
                     }
                 }
                 else {
@@ -2147,9 +2160,12 @@ sub error_011_html_named_entities {
         {
             my $pos = -1;
 
-            foreach (@HTML_NAMED_ENTITIES) {
-                if ( $lc_text =~ /&$_;/g ) {
-                    $pos = $-[0];
+            # HTML NAMED ENTITIES ALLOWED IN MATH TAGS
+            if ( $lc_text !~ /<math|\{\{math\s*\|/ ) {
+                foreach (@HTML_NAMED_ENTITIES) {
+                    if ( $lc_text =~ /&$_;/g ) {
+                        $pos = $-[0];
+                    }
                 }
             }
 
