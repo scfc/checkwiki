@@ -147,6 +147,25 @@ our @HTML_NAMED_ENTITIES = qw( aacute Aacute acirc Acirc aelig AElig
   ucirc Ucirc ugrave Ugrave upsih upsilon Upsilon uuml Uuml xi Xi yacute Yacute
   yen yuml Yuml zeta Zeta );
 
+# FOR #011. DO NOT CONVERT GREEK LETTERS THAT LOOK LIKE LATIN LETTERS.
+# Alpha (A), Beta (B), Epsilon (E), Zeta (Z), Eta (E), Kappa (K), kappa (k), Mu (M), Nu (Nu), Omicron (O), omicron (o), Rho (P), Tau (T), Upsilon (Y), upsilon (o) and Chi (X).
+our @HTML_NAMED_ENTITIES_011 = qw( aacute Aacute acirc Acirc aelig AElig
+  agrave Agrave alpha aring Aring asymp atilde Atilde auml Auml beta
+  brvbar bull ccedil Ccedil cent chi clubs copy crarr darr dArr deg
+  delta Delta diams divide eacute Eacute ecirc Ecirc egrave Egrave
+  epsilon equiv eta eth ETH euml Euml euro fnof frac12 frac14
+  frac34 frasl gamma Gamma ge harr hArr hearts hellip iacute Iacute icirc Icirc
+  iexcl igrave Igrave infin int iota Iota iquest iuml Iuml
+  lambda Lambda laquo larr lArr ldquo le loz lsaquo lsquo micro middot
+  mu ne not ntilde Ntilde nu oacute Oacute ocirc Ocirc oelig OElig
+  ograve Ograve oline omega Omega ordf ordm oslash Oslash
+  otilde Otilde ouml Ouml para part permil phi Phi pi Pi piv plusm pound prod
+  psi Psi quot radic raquo rarr rArr rdquo reg rho raquo rsaquo rsquo
+  scaron Scaron sect sigma Sigma sigmaf spades sum sup1 sup2 sup3 szlig
+  tau theta Theta thetasym thorn THORN tilde trade uacute Uacute uarr uArr
+  ucirc Ucirc ugrave Ugrave upsih upsilon uuml Uuml xi Xi yacute Yacute
+  yen yuml Yuml zeta Zeta );
+
 ###############################
 ## Variables for one article
 ###############################
@@ -1826,6 +1845,8 @@ sub error_check {
         error_097_toc_has_material_after_it();
         error_098_sub_no_correct_end();
         error_099_sup_no_correct_end();
+        error_100_list_tag_no_correct_end();
+        error_101_ordinal_numbers_in_sup();
     }
 
     return ();
@@ -1841,8 +1862,12 @@ sub error_001_template_with_word_template {
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
-            if ( $lc_text =~ /(\{\{\s*template:)/ ) {
+            foreach (@Namespace_templates) {
+                my $template = lc($_);
+                print $template . "\n";
+                if ( $lc_text =~ /(\{\{\s*$template:)/ ) {
                 error_register( $error_code, substr( $text, $-[0], 40 ) );
+                }
             }
         }
     }
@@ -2162,7 +2187,7 @@ sub error_011_html_named_entities {
 
             # HTML NAMED ENTITIES ALLOWED IN MATH TAGS
             if ( $lc_text !~ /<math|\{\{math\s*\|/ ) {
-                foreach (@HTML_NAMED_ENTITIES) {
+                foreach (@HTML_NAMED_ENTITIES_011) {
                     if ( $lc_text =~ /&$_;/g ) {
                         $pos = $-[0];
                     }
@@ -4735,6 +4760,72 @@ sub error_099_sup_no_correct_end {
                 if ( $sup_begin > $sup_end ) {
                     my $snippet = get_broken_tag( '<sup>', '</sup>' );
                     error_register( $error_code, $snippet );
+                }
+            }
+        }
+    }
+
+    return ();
+}
+
+###########################################################################
+## ERROR 100
+###########################################################################
+
+sub error_100_list_tag_no_correct_end {
+    my $error_code = 100;
+
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
+        if ( $page_namespace == 0 or $page_namespace == 104 ) {
+
+            if ( $lc_text =~ /<ol|<ul/ ) {
+                my $list_begin = 0;
+                my $list_end   = 0;
+
+                $list_begin = () = $lc_text =~ /<ol/g;
+                $list_end   = () = $lc_text =~ /<\/ol>/g;
+
+                if ( $list_begin > $list_end ) {
+                    my $snippet = get_broken_tag( '<ol', '</ol>' );
+                    error_register( $error_code, $snippet );
+                }
+                elsif ( $list_begin < $list_end ) {
+                    error_register( $error_code, 'stray </ol>' );
+                }
+
+                $list_begin = 0;
+                $list_end   = 0;
+
+                $list_begin = () = $lc_text =~ /<ul/g;
+                $list_end   = () = $lc_text =~ /<\/ul>/g;
+
+                if ( $list_begin > $list_end ) {
+                    my $snippet = get_broken_tag( '<ul', '</ul>' );
+                    error_register( $error_code, $snippet );
+                }
+                elsif ( $list_begin < $list_end ) {
+                    error_register( $error_code, 'stray </ul>' );
+                }
+            }
+        }
+    }
+
+    return ();
+}
+
+###########################################################################
+## ERROR 101
+###########################################################################
+
+sub error_101_ordinal_numbers_in_sup {
+    my $error_code = 101;
+
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
+        if ( $page_namespace == 0 or $page_namespace == 104 ) {
+
+            if ( $lc_text =~ /\d<sup>/ ) {
+                if ( $lc_text =~ /\d<sup>(st|rd|th|nd)<\/sup>/ ) {
+                    error_register( $error_code, substr( $text, $-[0], 40 ) );
                 }
             }
         }
