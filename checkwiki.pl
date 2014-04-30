@@ -1071,7 +1071,7 @@ sub get_syntaxhighlight {
 
 sub get_hiero {
 
-    $text =~ s/<hiero>(.*?)<\/hiero>//sg;
+    $text =~ s/<hiero>(.*?)<\/hiero>/<hiero><\/hiero>/sg;
 
     return ();
 }
@@ -1161,7 +1161,6 @@ sub get_isbn {
       )
     {
         my $test_text = uc($text);
-
         if ( $test_text =~ / ISBN\s*([-]|[:]|10|13)\s*/g ) {
             my $output = substr( $test_text, pos($test_text) - 11, 40 );
 
@@ -1705,6 +1704,11 @@ sub get_broken_tag {
 
     my $test_text = lc($text);
 
+    if ( $tag_open eq '<ref' ) {
+        $test_text =~ s/<ref name=[^\/]*\/>//sg;
+        $test_text =~ s/<references\s*\/?\s*>//sg;
+    }
+
     my $pos_open  = index( $test_text, $tag_open );
     my $pos_open2 = index( $test_text, $tag_open, $pos_open + 3 );
     my $pos_close = index( $test_text, $tag_close );
@@ -1723,7 +1727,74 @@ sub get_broken_tag {
         }
     }
 
-    $text_snippet = substr( $text, $found, 40 );
+    if ( $tag_open eq '<ref' ) {
+        $test_text = $text;
+        $test_text =~ s/<ref name=[^\/]*\/>//sg;
+        $test_text =~ s/<references\s*\/?\s*>//sg;
+        $text_snippet = substr( $test_text, $found, 40 );
+    }
+    else {
+        $text_snippet = substr( $text, $found, 40 );
+    }
+
+    return ($text_snippet);
+}
+
+##########################################################################
+##
+##########################################################################
+
+sub get_broken_tag_closing {
+    my ( $tag_open, $tag_close ) = @_;
+    my $text_snippet = q{};
+    my $found        = -2;    # Open tag could be at position 0
+    my $ref_open     = 1;
+
+    my $test_text = lc($text);
+
+    if ( $tag_open eq '<ref' ) {
+        $test_text =~ s/<ref name=[^\/]*\/>//sg;
+        $test_text =~ s/<references\s*\/?\s*>//sg;
+    }
+
+    my $pos_close  = rindex( $test_text, $tag_close );
+    my $pos_close2 = rindex( $test_text, $tag_close, $pos_close - 3 );
+    my $pos_open   = rindex( $test_text, $tag_open );
+
+    while ( $found == -2 ) {
+        if ( $tag_open eq '<ref' ) {
+            my $temp = substr( $test_text, $pos_open, 5 );
+            if ( $temp ne '<ref>' and $temp ne '<ref ' ) {
+                $ref_open = 0;
+            }
+        }
+
+        my $ack = substr( $test_text, $pos_close, 12 );
+        my $aco = substr( $test_text, $pos_open,  12 );
+
+        # BEGINNING OF ARTICLE AND NO OPENING TAG FOUND
+        if ( $pos_open == -1 ) {
+            $found = $pos_close2;
+
+            # ONLY ONE BROKEN TAG IN ARTICLE AND NO OPENING TAGS
+            if ( $pos_close2 == -1 ) {
+                $found = $pos_close;
+            }
+        }
+        elsif ( $pos_close2 == -1 ) {
+            $found = $pos_close;
+        }
+        elsif ( $pos_close2 > $pos_open ) {
+            $found = $pos_close;
+        }
+        else {
+            $pos_close  = $pos_close2;
+            $pos_close2 = rindex( $test_text, $tag_close, $pos_close - 3 );
+            $pos_open   = rindex( $test_text, $tag_open, $pos_open - 3 );
+        }
+    }
+    $text_snippet = substr( $test_text, $found, 40 );
+
     return ($text_snippet);
 }
 
@@ -1864,9 +1935,8 @@ sub error_001_template_with_word_template {
 
             foreach (@Namespace_templates) {
                 my $template = lc($_);
-                print $template . "\n";
                 if ( $lc_text =~ /(\{\{\s*$template:)/ ) {
-                error_register( $error_code, substr( $text, $-[0], 40 ) );
+                    error_register( $error_code, substr( $text, $-[0], 40 ) );
                 }
             }
         }
@@ -3673,11 +3743,11 @@ sub error_061_reference_with_punctuation {
 
             # Not sure about elipse (...).  "{1,2}[^\.]" to not check for them
             # Space after !, otherwise will catch false-poistive from tables
-            if ( $text =~ /<\/ref>[ ]{0,2}(\.{1,2}[^\.]|,|\?|:|! )/ ) {
+            if ( $text =~ /<\/ref>[ ]{0,2}(\.{1,2}[^\.]|,|\?|:|;|! )/ ) {
                 error_register( $error_code, substr( $text, $-[0], 40 ) );
             }
             elsif ( $text =~
-                /(<ref name[^\/]*\/>[ ]{0,2}(\.{1,2}[^\.]|,|\?|:|! ))/ )
+                /(<ref name[^\/]*\/>[ ]{0,2}(\.{1,2}[^\.]|,|\?|:|;|! ))/ )
             {
                 error_register( $error_code, substr( $text, $-[0], 40 ) );
             }
@@ -3688,7 +3758,7 @@ sub error_061_reference_with_punctuation {
 
                 for my $temp (@ack) {
                     if ( $text =~
-                        /\{\{[ ]?+$temp[^\}]*\}{2,4}[ ]{0,2}([\.,\?:]|! )/
+                        /\{\{[ ]?+$temp[^\}]*\}{2,4}[ ]{0,2}([\.,\?:;]|! )/
                         and $pos == -1 )
                     {
                         $pos = $-[0];
@@ -4641,7 +4711,14 @@ sub error_094_ref_no_correct_match {
             my $ref_end   = () = $lc_text =~ /<\/ref>/g;
 
             if ( $ref_begin != $ref_end ) {
-                error_register( $error_code, "" );
+                if ( $ref_begin > $ref_end ) {
+                    my $snippet = get_broken_tag( '<ref', '</ref>' );
+                    error_register( $error_code, $snippet );
+                }
+                else {
+                    my $snippet = get_broken_tag_closing( '<ref', '</ref>' );
+                    error_register( $error_code, $snippet );
+                }
             }
         }
     }
