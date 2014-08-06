@@ -33,7 +33,12 @@ use URI::Escape;
 use MediaWiki::API;
 use MediaWiki::Bot;
 
-use v5.14.2;    # Different versions of Perl at home vs labs.  Use labs version
+# Different versions of Perl at home vs labs.  Use labs version
+#use v5.14.2;
+
+# When using the most current version available
+use v5.18.2;
+no if $] >= 5.018, warnings => "experimental::smartmatch";
 
 binmode( STDOUT, ":encoding(UTF-8)" );
 
@@ -148,7 +153,7 @@ our @HTML_NAMED_ENTITIES = qw( aacute Aacute acirc Acirc aelig AElig
   yen yuml Yuml zeta Zeta );
 
 # FOR #011. DO NOT CONVERT GREEK LETTERS THAT LOOK LIKE LATIN LETTERS.
-# Alpha (A), Beta (B), Epsilon (E), Zeta (Z), Eta (E), Kappa (K), kappa (k), Mu (M), Nu (Nu), Omicron (O), omicron (o), Rho (P), Tau (T), Upsilon (Y), upsilon (o) and Chi (X).
+# Alpha (A), Beta (B), Epsilon (E), Zeta (Z), Eta (E), Kappa (K), kappa (k), Mu (M), Nu (N), nu (v), Omicron (O), omicron (o), Rho (P), Tau (T), Upsilon (Y), upsilon (o) and Chi (X).
 our @HTML_NAMED_ENTITIES_011 = qw( aacute Aacute acirc Acirc aelig AElig
   agrave Agrave alpha aring Aring asymp atilde Atilde auml Auml beta
   brvbar bull ccedil Ccedil cent chi clubs copy crarr darr dArr deg
@@ -157,7 +162,7 @@ our @HTML_NAMED_ENTITIES_011 = qw( aacute Aacute acirc Acirc aelig AElig
   frac34 frasl gamma Gamma ge harr hArr hearts hellip iacute Iacute icirc Icirc
   iexcl igrave Igrave infin int iota Iota iquest iuml Iuml
   lambda Lambda laquo larr lArr ldquo le loz lsaquo lsquo micro middot
-  mu ne not ntilde Ntilde nu oacute Oacute ocirc Ocirc oelig OElig
+  mu ne not ntilde Ntilde oacute Oacute ocirc Ocirc oelig OElig
   ograve Ograve oline omega Omega ordf ordm oslash Oslash
   otilde Otilde ouml Ouml para part permil phi Phi pi Pi piv plusm pound prod
   psi Psi quot radic raquo rarr rArr rdquo reg rho raquo rsaquo rsquo
@@ -641,7 +646,6 @@ sub scan_pages {
     $end_of_dump = 'no';
     my $page = q{};
 
-    use feature "switch";
     given ($Dump_or_Live) {
 
         when ('dump') {
@@ -678,7 +682,6 @@ sub scan_pages {
         when ('list')  { list_scan(); }
         default        { die("Wrong Load_mode entered \n"); }
     }
-
     return ();
 }
 
@@ -704,10 +707,10 @@ sub list_scan {
     open( my $list_of_titles, '<:encoding(UTF-8)', $ListFilename )
       or die 'Could not open file ' . $ListFilename . "\n";
 
-    while (<$list_of_titles>) {
+    while ( my $line = <$list_of_titles> ) {
         set_variables_for_article();
-        chomp($_);
-        $title = $_;
+        chomp($line);
+        $title = $line;
         $text  = $bot->get_text($title);
         if ( defined($text) ) {
             check_article();
@@ -1464,8 +1467,8 @@ sub get_template {
 
                 $attribut =~ s/^[ ]+//g;
                 $attribut =~ s/[ ]+$//g;
-                $value    =~ s/^[ ]+//g;
-                $value    =~ s/[ ]+$//g;
+                $value =~ s/^[ ]+//g;
+                $value =~ s/[ ]+$//g;
 
                 $Template[$template_part_counter][3] = $attribut;
                 $Template[$template_part_counter][4] = $value;
@@ -1590,10 +1593,10 @@ sub get_categories {
                 $Category[$counter][2] =~ s/^([ ]+)?//g;    # Delete blank
                 $Category[$counter][2] =~ s/\]\]//g;        # Delete ]]
                 $Category[$counter][2] =~ s/^$namespace_cat_word//i;
-                $Category[$counter][2] =~ s/^://;                   # Delete :
-                $Category[$counter][2] =~ s/\|(.)*//g;              # Delete |xy
-                $Category[$counter][2] =~ s/^ //g;    # Delete blank
-                $Category[$counter][2] =~ s/ $//g;    # Delete blank
+                $Category[$counter][2] =~ s/^://;           # Delete :
+                $Category[$counter][2] =~ s/\|(.)*//g;      # Delete |xy
+                $Category[$counter][2] =~ s/^ //g;          # Delete blank
+                $Category[$counter][2] =~ s/ $//g;          # Delete blank
 
                 # Filter linkname
                 $Category[$counter][3] = q{}
@@ -2396,7 +2399,7 @@ sub error_016_unicode_control_characters {
             my $search = "\x{200E}|\x{FEFF}";
             if ( $project eq 'enwiki' ) {
                 $search = $search
-                  . "|\x{200B}|\x{2028}|\x{202A}|\x{202C}|\x{202D}|\x{202E}";
+                  . "|\x{200B}|\x{2028}|\x{202A}|\x{202C}|\x{202D}|\x{202E}|\x{00A0}";
             }
 
             if ( $text =~ /($search)/ or $text =~ /(\p{Co})/ ) {
@@ -3691,7 +3694,10 @@ sub error_059_template_value_end_with_br {
                 if (
                     $Template[$i][4] =~ /<br([ ]+)?(\/)?([ ]+)?>([ ])?([ ])?$/ )
                 {
-                    if ( $found_text eq q{} ) {
+                    if (    $found_text eq q{}
+                        and $Template[$i][1] !~ /marriage/i
+                        and $Template[$i][1] !~ /nihongo/i )
+                    {
                         $found_text =
                           $Template[$i][3] . '=...'
                           . text_reduce_to_end( $Template[$i][4], 20 );
@@ -3943,10 +3949,10 @@ sub error_067_reference_after_punctuation {
                 my @ack = @{ $Template_list[$error_code] };
 
                 for my $temp (@ack) {
-                    $test_text =~ s/($temp)<ref//sg;
+                    $test_text =~ s/($temp)<ref[ >]//sg;
                 }
 
-                if ( $test_text =~ /[ ]{0,2}(\.|,|\?|:|!|;)[ ]{0,2}<ref/ ) {
+                if ( $test_text =~ /[ ]{0,2}(\.|,|\?|:|!|;)[ ]{0,2}<ref[ >]/ ) {
                     error_register( $error_code,
                         substr( $test_text, $-[0], 40 ) );
                 }
@@ -4411,7 +4417,7 @@ sub error_084_section_without_text {
                           if ($test_section);
 
                         if ($test_section) {
-                            $test_section  =~ s/\s//g;
+                            $test_section =~ s/\s//g;
                             $test_headline =~ s/=//g;
                             $test_headline =~ s/\s//g;
 
@@ -4511,7 +4517,7 @@ sub error_087_html_named_entities_without_semicolon {
             $test_text =~ s/https?:(.*?)\n//g;
 
             foreach (@HTML_NAMED_ENTITIES) {
-                if ( $test_text =~ /&$_[^;]/g ) {
+                if ( $test_text =~ /&$_[^;] /g ) {
                     $pos = $-[0];
                 }
             }
@@ -4954,8 +4960,8 @@ sub insert_into_db {
     # Problem: sql-command insert, apostrophe ' or backslash \ in text
     $article_title =~ s/\\/\\\\/g;
     $article_title =~ s/'/\\'/g;
-    $notice        =~ s/\\/\\\\/g;
-    $notice        =~ s/'/\\'/g;
+    $notice =~ s/\\/\\\\/g;
+    $notice =~ s/'/\\'/g;
 
     $notice =~ s/\&/&amp;/g;
     $notice =~ s/</&lt;/g;
