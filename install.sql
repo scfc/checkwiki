@@ -4,14 +4,14 @@
 
 -- Check if utf8 with 'SHOW SESSION VARIABLES LIKE 'character_set%'';
 
--- To use it in other environments, s51080__checkwiki_p needs to
+-- To use it in other environments, p50380g50450__checkwiki_p needs to
 -- be replaced with the name of the user database.
 
 -- Create Checkwiki database --
-CREATE DATABASE IF NOT EXISTS s51080__checkwiki_p;
+CREATE DATABASE IF NOT EXISTS p50380g50450__checkwiki_p;
 
 -- Connect to database --
-USE s51080__checkwiki_p;
+USE p50380g50450__checkwiki_p;
 
 
 -- Table cw_dumpscan --
@@ -36,6 +36,7 @@ CREATE TABLE IF NOT EXISTS cw_error
  Found DATETIME,
  PRIMARY KEY (Project, Title, Error) )
  CHARACTER SET utf8 COLLATE utf8_bin;
+ CREATE INDEX Error_index ON cw_error (Error, Project, Ok);
 
 
 -- Table cw_new --
@@ -56,8 +57,8 @@ CREATE TABLE IF NOT EXISTS cw_overview
  Last_Dump VARCHAR(100),
  Last_Update VARCHAR(100),
  Project_Page VARCHAR(400),
- Translation_Page VARCHAR(400),
- PRIMARY KEY ( Project ) )
+ Translation_Page VARCHAR(400)
+ PRIMARY KEY (Project) )
  CHARACTER SET utf8 COLLATE utf8_unicode_ci;
 
 
@@ -71,7 +72,7 @@ CREATE TABLE IF NOT EXISTS cw_overview_errors
  Name_Trans VARCHAR(400),
  Prio SMALLINT,
  Text VARCHAR(4000),
- Text_Trans VARCHAR(4000),
+ Text_Trans VARCHAR(4000)
  PRIMARY KEY (Project, ID) )
  CHARACTER SET utf8 COLLATE utf8_unicode_ci;
 
