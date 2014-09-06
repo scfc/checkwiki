@@ -11,7 +11,7 @@
 ##
 ##        AUTHOR: Stefan Kühn, Bryan White
 ##       LICENCE: GPLv3
-##       VERSION: 2014/04/18
+##       VERSION: 2014/09/05
 ##
 ###########################################################################
 
@@ -34,11 +34,11 @@ use MediaWiki::API;
 use MediaWiki::Bot;
 
 # Different versions of Perl at home vs labs.  Use labs version
-#use v5.14.2;
+use v5.14.2;
 
 # When using the most current version available
-use v5.18.2;
-no if $] >= 5.018, warnings => "experimental::smartmatch";
+#use v5.18.2;
+#no if $] >= 5.018, warnings => "experimental::smartmatch";
 
 binmode( STDOUT, ":encoding(UTF-8)" );
 
@@ -75,6 +75,9 @@ our $time_found = time();    # For column "Found" in cw_error
 
 # Template list retrieved from Translation file
 our @Template_list;
+
+# Article name for article mode
+our $ArticleName;
 
 # Filename that contains a list of articles titles for list mode
 our $ListFilename;
@@ -488,9 +491,11 @@ sub getErrors {
         }
     }
 
-    two_column_display( 'Total # of errors possible:',
-        $Number_of_error_description );
-    two_column_display( 'Number of errors to process:', $error_count );
+    if ( $Dump_or_Live ne 'article' ) {
+        two_column_display( 'Total # of errors possible:',
+            $Number_of_error_description );
+        two_column_display( 'Number of errors to process:', $error_count );
+    }
 
     return ();
 }
@@ -532,13 +537,16 @@ sub readMetadata {
         }
     ) || die $mw->{error}->{code} . ': ' . $mw->{error}->{details} . "\n";
 
-    print_line();
-    two_column_display( 'Load metadata from:', $url );
-    two_column_display( 'Sitename:',     $res->{query}->{general}->{sitename} );
-    two_column_display( 'Base:',         $res->{query}->{general}->{base} );
-    two_column_display( 'Pages online:', $res->{query}->{statistics}->{pages} );
-    two_column_display( 'Images online:',
-        $res->{query}->{statistics}->{images} );
+    if ( $Dump_or_Live eq 'dump' ) {
+        print_line();
+        two_column_display( 'Load metadata from:', $url );
+        two_column_display( 'Sitename:', $res->{query}->{general}->{sitename} );
+        two_column_display( 'Base:',     $res->{query}->{general}->{base} );
+        two_column_display( 'Pages online:',
+            $res->{query}->{statistics}->{pages} );
+        two_column_display( 'Images online:',
+            $res->{query}->{statistics}->{images} );
+    }
 
     foreach my $id ( keys %{ $res->{query}->{namespaces} } ) {
         my $name      = $res->{query}->{namespaces}->{$id}->{'*'};
@@ -641,8 +649,6 @@ sub readTemplates {
 
 sub scan_pages {
 
-    print_line();
-
     $end_of_dump = 'no';
     my $page = q{};
 
@@ -677,12 +683,36 @@ sub scan_pages {
             }
         }
 
-        when ('live')  { live_scan(); }
-        when ('delay') { delay_scan(); }
-        when ('list')  { list_scan(); }
-        default        { die("Wrong Load_mode entered \n"); }
+        when ('live')    { live_scan(); }
+        when ('delay')   { delay_scan(); }
+        when ('list')    { list_scan(); }
+        when ('article') { article_scan(); }
+        default          { die("Wrong Load_mode entered \n"); }
     }
     return ();
+}
+
+###########################################################################
+## CHECK ONE ARTICLE VIA A ARTICLE SCAN
+###########################################################################
+
+sub article_scan {
+
+    $page_namespace = 0;
+    my $bot = MediaWiki::Bot->new(
+        {
+            assert   => 'bot',
+            protocol => 'http',
+            host     => $ServerName,
+        }
+    );
+
+    set_variables_for_article();
+    $text = $bot->get_text($ArticleName);
+    if ( defined($text) ) {
+        check_article();
+    }
+
 }
 
 ###########################################################################
@@ -2415,6 +2445,7 @@ sub error_016_unicode_control_characters {
                 $test_text =~ s/\x{202D}/\{202D\}/;
                 $test_text =~ s/\x{202E}/\{202E\}/;
                 $test_text =~ s/\x{FEFF}/\{FEFF\}/;
+                $test_text =~ s/\x{00A0}/\{00A0\}/;
 
                 error_register( $error_code, $test_text );
             }
@@ -3573,8 +3604,9 @@ sub error_055_html_text_style_elements_small_double {
             my $test_text = $lc_text;
             if ( index( $test_text, '<small>' ) > -1 ) {
 
-                $test_text =~ /<small>\s*<small>|<\/small>\s*<\/small>/g;
-                if ( defined( $-[0] ) ) {
+                if ( $test_text =~
+                    /\<small\>\s*\<small\>|\<\/small\>\s*\<\/small\>/g )
+                {
                     error_register( $error_code, substr( $text, $-[0], 40 ) );
                 }
             }
@@ -5075,6 +5107,7 @@ my @Options = (
     'user|u=s'     => \$DbUsername,
     'dumpfile=s'   => \$DumpFilename,
     'listfile=s'   => \$ListFilename,
+    'article=s'    => \$ArticleName,
     'tt'           => \$Template_Tiger,
     'check'        => \$CheckOnlyOne,
 );
@@ -5121,6 +5154,9 @@ elsif ( $load_mode eq 'delay' ) {
 elsif ( $load_mode eq 'list' ) {
     $Dump_or_Live = 'list';
 }
+elsif ( $load_mode eq 'article' ) {
+    $Dump_or_Live = 'article';
+}
 else {
     die("No load name, for example: \"-l live\"\n");
 }
@@ -5141,12 +5177,14 @@ if ( $Template_Tiger == 1 ) {
     binmode( $TTFile, ":encoding(UTF-8)" );
 }
 
-print_line();
-two_column_display( 'Start time:',
-    ( strftime "%a %b %e %H:%M:%S %Y", localtime ) );
-$time_found = strftime( '%F %T', gmtime() );
-two_column_display( 'Project:',   $project );
-two_column_display( 'Scan type:', $Dump_or_Live . " scan" );
+if ( $Dump_or_Live ne 'article' ) {
+    print_line();
+    two_column_display( 'Start time:',
+        ( strftime "%a %b %e %H:%M:%S %Y", localtime ) );
+    $time_found = strftime( '%F %T', gmtime() );
+    two_column_display( 'Project:',   $project );
+    two_column_display( 'Scan type:', $Dump_or_Live . " scan" );
+}
 
 open_db();
 clearDumpscanTable() if ( $Dump_or_Live eq 'dump' );
@@ -5158,8 +5196,8 @@ readTemplates();
 scan_pages();
 
 updateDumpDate($dump_date_for_output) if ( $Dump_or_Live eq 'dump' );
-update_table_cw_error_from_dump();
-delete_done_article_from_db();
+update_table_cw_error_from_dump()     if ( $Dump_or_Live ne 'article' );
+delete_done_article_from_db()         if ( $Dump_or_Live ne 'article' );
 
 # CLOSE TEMPLATETIGER FILE
 if ( defined($TTFile) ) {
@@ -5180,13 +5218,15 @@ if ( defined($TTFile) ) {
 
 close_db();
 
-print_line();
-two_column_display( 'Articles checked:', $artcount );
-two_column_display( 'Errors found:',     ++$Error_counter );
+if ( $Dump_or_Live ne 'article' ) {
+    print_line();
+    two_column_display( 'Articles checked:', $artcount );
+    two_column_display( 'Errors found:',     ++$Error_counter );
 
-$time_end = time() - $time_start;
-$time_end = sprintf "%d hours, %d minutes and %d seconds",
-  ( gmtime $time_end )[ 2, 1, 0 ];
-two_column_display( 'Program run time:', $time_end );
-two_column_display( 'PROGRAM FINISHED',  '' );
-print_line();
+    $time_end = time() - $time_start;
+    $time_end = sprintf "%d hours, %d minutes and %d seconds",
+      ( gmtime $time_end )[ 2, 1, 0 ];
+    two_column_display( 'Program run time:', $time_end );
+    two_column_display( 'PROGRAM FINISHED',  '' );
+    print_line();
+}
