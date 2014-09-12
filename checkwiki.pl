@@ -11,7 +11,7 @@
 ##
 ##        AUTHOR: Stefan Kühn, Bryan White
 ##       LICENCE: GPLv3
-##       VERSION: 2014/09/05
+##       VERSION: 2014/09/12
 ##
 ###########################################################################
 
@@ -37,8 +37,8 @@ use MediaWiki::Bot;
 use v5.14.2;
 
 # When using the most current version available
-#use v5.18.2;
-#no if $] >= 5.018, warnings => "experimental::smartmatch";
+#use v5.20.0;
+no if $] >= 5.018, warnings => "experimental::smartmatch";
 
 binmode( STDOUT, ":encoding(UTF-8)" );
 
@@ -617,7 +617,7 @@ sub readTemplates {
 
     foreach my $i ( 1 .. $Number_of_error_description ) {
 
-        $Template_list[$i][0] = -9999;
+        $Template_list[$i][0] = '-9999';
         $Template_regex[$i] = q{};
 
         my $sth = $dbh->prepare(
@@ -627,7 +627,7 @@ sub readTemplates {
         $sth->bind_col( 1, \$template_sql );
         while ( $sth->fetchrow_arrayref ) {
             if ( defined($template_sql) ) {
-                if ( $Template_list[$i][0] eq -9999 ) {
+                if ( $Template_list[$i][0] eq '-9999' ) {
                     shift( @{ $Template_list[$i] } );
                     $Template_regex[$i] = '\{\{' . lc($template_sql) . '|';
                 }
@@ -678,7 +678,8 @@ sub scan_pages {
                 $text           = ${ $page->text };
                 check_article();
 
-                #$end_of_dump = 'yes' if ( $artcount > 10000 );
+                $end_of_dump = 'yes' if ( $artcount > 10000 );
+
                 #$end_of_dump = 'yes' if ( $Error_counter > 40000 )
             }
         }
@@ -713,6 +714,7 @@ sub article_scan {
         check_article();
     }
 
+    return ();
 }
 
 ###########################################################################
@@ -1304,9 +1306,12 @@ sub get_ref {
 
 sub get_templates_all {
 
-    my $pos_start = 0;
-    my $pos_end   = 0;
-    my $test_text = $text;
+    my $temp_text_2    = q{};
+    my $brackets_begin = 1;
+    my $brackets_end   = 0;
+    my $pos_start      = 0;
+    my $pos_end        = 0;
+    my $test_text      = $text;
 
     $test_text =~ s/\n//g;    # Delete all breaks     --> only one line
     $test_text =~ s/\t//g;    # Delete all tabulator  --> better for output
@@ -1317,16 +1322,17 @@ sub get_templates_all {
 
     while ( $test_text =~ /\{\{/g ) {
 
-        $pos_start = $-[0];
-        my $temp_text      = substr( $test_text, $pos_start );
-        my $temp_text_2    = q{};
-        my $brackets_begin = 1;
-        my $brackets_end   = 0;
+        # DUE TO PERFORMANCE REASONS, USE FOLLOWING WITH PERL < 5.20
+        $pos_start = pos($test_text) - 2;
+
+        # COMMENT OUT ABOVE AND UNCOMMENT FOLLOWING LINE WITH PERL => 5.20
+        # $pos_start = $-[0];
+        my $temp_text = substr( $test_text, $pos_start );
         while ( $temp_text =~ /\}\}/g ) {
 
             # Find currect end - number of {{ == }}
-            $pos_end = pos($temp_text);
-            $temp_text_2 = q{ } . substr( $temp_text, 0, $pos_end ) . q{ };
+            $temp_text_2 =
+              q{ } . substr( $temp_text, 0, pos($temp_text) ) . q{ };
 
             # Test the number of {{ and  }}
             $brackets_begin = ( $temp_text_2 =~ tr/{{/{{/ );
@@ -1337,7 +1343,7 @@ sub get_templates_all {
 
         if ( $brackets_begin == $brackets_end ) {
 
-            # Demplate is correct
+            # Template is correct
             $temp_text_2 = substr( $temp_text_2, 1, length($temp_text_2) - 2 );
             push( @Templates_all, $temp_text_2 );
         }
@@ -1362,9 +1368,7 @@ sub get_template {
     foreach (@Templates_all) {
         my $current_template = $_;
 
-        $current_template =~ s/^\{\{//;
-        $current_template =~ s/\}\}$//;
-        $current_template =~ s/^ //g;
+        $current_template =~ s/^\{\{|\}\}$|^ //;
 
         foreach (@Namespace_templates) {
             $current_template =~ s/^$_://i;
@@ -1439,8 +1443,8 @@ sub get_template {
                 $template_part_number++;
                 $template_part_counter++;
 
-                $template_name =~ s/^[ ]+//g;
-                $template_name =~ s/[ ]+$//g;
+                $template_name =~ s/^[ ]+|[ ]+$//g;
+
                 $Template[$template_part_counter][0] = $number_of_templates;
                 $Template[$template_part_counter][1] = $template_name;
                 $Template[$template_part_counter][2] = $template_part_number;
@@ -1495,15 +1499,13 @@ sub get_template {
                     $value    = $template_part;
                 }
 
-                $attribut =~ s/^[ ]+//g;
-                $attribut =~ s/[ ]+$//g;
-                $value =~ s/^[ ]+//g;
-                $value =~ s/[ ]+$//g;
+                $attribut =~ s/^[ ]+|[ ]+$//g;
+                $value =~ s/^[ ]+|[ ]+$//g;
 
                 $Template[$template_part_counter][3] = $attribut;
                 $Template[$template_part_counter][4] = $value;
 
-                $Number_of_template_parts = $Number_of_template_parts + 1;
+                $Number_of_template_parts++;
 
                 # Output for TemplateTiger
                 if ( $Template_Tiger == 1 ) {
@@ -1530,27 +1532,20 @@ sub get_template {
 
 sub get_links {
 
-    my $pos_start = 0;
-    my $pos_end   = 0;
-
-    my $test_text = $text;
+    my $test_text   = $text;
+    my $link_text_2 = q{};
+    my $brackets_begin;
+    my $brackets_end;
 
     $test_text =~ s/\n//g;
 
     while ( $test_text =~ /\[\[/g ) {
 
-        $pos_start = pos($test_text) - 2;
-        my $link_text      = substr( $test_text, $pos_start );
-        my $link_text_2    = q{};
-        my $brackets_begin = 1;
-        my $brackets_end   = 0;
+        my $link_text = substr( $test_text, pos($test_text) - 2 );
         while ( $link_text =~ /\]\]/g ) {
 
-            # Find currect end - number of [[==]]
-            $pos_end = pos($link_text);
-            $link_text_2 = q{ } . substr( $link_text, 0, $pos_end ) . q{ };
-
-            # Test the number of [[ and ]]
+            $link_text_2 =
+              q{ } . substr( $link_text, 0, pos($link_text) ) . q{ };
             $brackets_begin = ( $link_text_2 =~ tr/[[/[[/ );
             $brackets_end   = ( $link_text_2 =~ tr/]]/]]/ );
 
@@ -1716,10 +1711,9 @@ sub create_line_array {
 sub get_headlines {
 
     foreach (@Lines) {
-        my $current_line = $_;
 
-        if ( substr( $current_line, 0, 1 ) eq '=' ) {
-            push( @Headlines, $current_line );
+        if ( substr( $_, 0, 1 ) eq '=' ) {
+            push( @Headlines, $_ );
         }
     }
 
