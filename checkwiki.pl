@@ -11,7 +11,7 @@
 ##
 ##        AUTHOR: Stefan Kühn, Bryan White
 ##       LICENCE: GPLv3
-##       VERSION: 2014/09/12
+##       VERSION: 2014/09/13
 ##
 ###########################################################################
 
@@ -678,8 +678,7 @@ sub scan_pages {
                 $text           = ${ $page->text };
                 check_article();
 
-                $end_of_dump = 'yes' if ( $artcount > 10000 );
-
+                #$end_of_dump = 'yes' if ( $artcount > 10000 );
                 #$end_of_dump = 'yes' if ( $Error_counter > 40000 )
             }
         }
@@ -1307,14 +1306,13 @@ sub get_ref {
 sub get_templates_all {
 
     my $temp_text_2    = q{};
-    my $brackets_begin = 1;
-    my $brackets_end   = 0;
     my $pos_start      = 0;
     my $pos_end        = 0;
     my $test_text      = $text;
 
-    $test_text =~ s/\n//g;    # Delete all breaks     --> only one line
-    $test_text =~ s/\t//g;    # Delete all tabulator  --> better for output
+    # Delete all breaks --> only one line
+    # Delete all tabs --> better for output
+    $test_text =~ s/\n|\t//g;
 
     if ( $text =~ /\{\{/g ) { # Article may not have a template.
         $TTnumber++;
@@ -1323,11 +1321,14 @@ sub get_templates_all {
     while ( $test_text =~ /\{\{/g ) {
 
         # DUE TO PERFORMANCE REASONS, USE FOLLOWING WITH PERL < 5.20
-        $pos_start = pos($test_text) - 2;
+        my $temp_text = substr( $test_text, pos($test_text) - 2 );
 
         # COMMENT OUT ABOVE AND UNCOMMENT FOLLOWING LINE WITH PERL => 5.20
         # $pos_start = $-[0];
-        my $temp_text = substr( $test_text, $pos_start );
+
+        my $brackets_begin = 1;
+        my $brackets_end   = 0;
+
         while ( $temp_text =~ /\}\}/g ) {
 
             # Find currect end - number of {{ == }}
@@ -1367,8 +1368,8 @@ sub get_template {
     my $output                = q{};
     foreach (@Templates_all) {
         my $current_template = $_;
-
-        $current_template =~ s/^\{\{|\}\}$|^ //;
+        $current_template    =~ s/^\{\{|\}\}$//;
+        $current_template    =~ s/^ //g;
 
         foreach (@Namespace_templates) {
             $current_template =~ s/^$_://i;
@@ -1500,7 +1501,7 @@ sub get_template {
                 }
 
                 $attribut =~ s/^[ ]+|[ ]+$//g;
-                $value =~ s/^[ ]+|[ ]+$//g;
+                $value    =~ s/^[ ]+|[ ]+$//g;
 
                 $Template[$template_part_counter][3] = $attribut;
                 $Template[$template_part_counter][4] = $value;
@@ -3041,21 +3042,14 @@ sub error_039_html_text_style_elements_paragraph {
             my $test_text = $lc_text;
             if ( $test_text =~ /<p>|<p / ) {
 
-                # https://bugzilla.wikimedia.org/show_bug.cgi?id=6200
-                if ( $test_text !~
-                    /<blockquote|\{\{quote\s*|\{\{cquote|\{\{quotation/ )
-                {
-                    $test_text =~ s/<ref(.*?)<\/ref>//sg;
-                    my $pos = index( $test_text, '<p>' );
-                    if ( $pos > -1 ) {
-                        error_register( $error_code,
-                            substr( $text, $pos, 40 ) );
-                    }
-                    $pos = index( $test_text, '<p ' );
-                    if ( $pos > -1 ) {
-                        error_register( $error_code,
-                            substr( $text, $pos, 40 ) );
-                    }
+                $test_text =~ s/<ref(.*?)<\/ref>//sg;
+                my $pos = index( $test_text, '<p>' );
+                if ( $pos > -1 ) {
+                    error_register( $error_code, substr( $text, $pos, 40 ) );
+                }
+                $pos = index( $test_text, '<p ' );
+                if ( $pos > -1 ) {
+                    error_register( $error_code, substr( $text, $pos, 40 ) );
                 }
             }
         }
