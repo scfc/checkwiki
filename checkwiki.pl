@@ -708,6 +708,7 @@ sub article_scan {
     );
 
     set_variables_for_article();
+    utf8::decode($ArticleName);
     $text = $bot->get_text($ArticleName);
     if ( defined($text) ) {
         check_article();
@@ -2832,6 +2833,22 @@ sub error_031_html_table_elements {
                     error_register( $error_code, $test_text );
                 }
             }
+            elsif ( index( $lc_text, '<tr' ) > -1 ) {
+
+                # <tr> in templates can be the only way to do a table.
+                my $test_text = $text;
+                foreach (@Templates_all) {
+                    $test_text =~ s/\Q$_\E//s;
+                }
+
+                my $test_text_lc = lc($test_text);
+                my $pos = index( $test_text_lc, '<tr' );
+
+                if ( $pos > -1 ) {
+                    $test_text = substr( $test_text_lc, $pos, 40 );
+                    error_register( $error_code, $test_text );
+                }
+            }
         }
     }
 
@@ -3042,14 +3059,16 @@ sub error_039_html_text_style_elements_paragraph {
             my $test_text = $lc_text;
             if ( $test_text =~ /<p>|<p / ) {
 
+                # <P> ARE STILL NEEDED IN <REF>
                 $test_text =~ s/<ref(.*?)<\/ref>//sg;
+
                 my $pos = index( $test_text, '<p>' );
                 if ( $pos > -1 ) {
-                    error_register( $error_code, substr( $text, $pos, 40 ) );
+                    error_register( $error_code, substr($test_text, $pos, 40) );
                 }
                 $pos = index( $test_text, '<p ' );
                 if ( $pos > -1 ) {
-                    error_register( $error_code, substr( $text, $pos, 40 ) );
+                    error_register( $error_code, substr($test_text, $pos, 40) );
                 }
             }
         }
@@ -3363,9 +3382,10 @@ sub error_048_title_in_text {
 
             my $test_text = $text;
 
-            # OK (MUST) TO HAVE IN IMAGEMAPS AND INCLUDEONLY
+            # OK (MUST) TO HAVE IN IMAGEMAPS, INCLUDEONLY AND TIMELINE
             $test_text =~ s/<imagemap>(.*?)<\/imagemap>//sg;
             $test_text =~ s/<includeonly>(.*?)<\/includeonly>//sg;
+            $test_text =~ s/<timeline>(.*?)<\/timeline>//sg;
 
             my $pos = index( $test_text, '[[' . $title . ']]' );
 
@@ -4927,6 +4947,9 @@ sub error_101_ordinal_numbers_in_sup {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
             if ( $lc_text =~ /\d<sup>/ ) {
+
+                # REMOVE {{not a typo}} TEMPLATE
+                $lc_text =~ s/\{\{not a typo\|[a-zA-Z0-9\<\>\/]*\}\}//g;
                 if ( $lc_text =~ /\d<sup>(st|rd|th|nd)<\/sup>/ ) {
                     error_register( $error_code, substr( $text, $-[0], 40 ) );
                 }
