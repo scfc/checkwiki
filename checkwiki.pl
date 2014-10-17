@@ -1137,34 +1137,37 @@ sub get_tables {
 
     if ( $diff > 0 ) {
 
-        my $look_ahead_open  = 0;
-        my $look_ahead_close = 0;
-        my $look_ahead       = 0;
+        #BUG IN MEDIAWIKI AND [[WP:TFD]] TAGGING GENERATES SAFESUBST CODE
+        if ( $test_text !~ /\{\{\{\|safesubst:\}\}\}/g ) {
+            my $look_ahead_open  = 0;
+            my $look_ahead_close = 0;
+            my $look_ahead       = 0;
 
-        my $pos_open  = index( $test_text, '{|' );
-        my $pos_open2 = index( $test_text, '{|', $pos_open + 2 );
-        my $pos_close = index( $test_text, '|}' );
-        while ( $diff > 0 ) {
-            if ( $pos_open2 == -1 ) {
-                error_028_table_no_correct_end(
-                    substr( $text, $pos_open, 40 ) );
-                $diff = -1;
-            }
-            elsif ( $pos_open2 < $pos_close and $look_ahead > 0 ) {
-                error_028_table_no_correct_end(
-                    substr( $text, $pos_open, 40 ) );
-                $diff--;
-            }
-            else {
-                $pos_open  = $pos_open2;
-                $pos_open2 = index( $test_text, '{|', $pos_open + 2 );
-                $pos_close = index( $test_text, '|}', $pos_close + 2 );
-                if ( $pos_open2 > 0 ) {
-                    $look_ahead_open =
-                      index( $test_text, '{|', $pos_open2 + 2 );
-                    $look_ahead_close =
-                      index( $test_text, '|}', $pos_close + 2 );
-                    $look_ahead = $look_ahead_close - $look_ahead_open;
+            my $pos_open  = index( $test_text, '{|' );
+            my $pos_open2 = index( $test_text, '{|', $pos_open + 2 );
+            my $pos_close = index( $test_text, '|}' );
+            while ( $diff > 0 ) {
+                if ( $pos_open2 == -1 ) {
+                    error_028_table_no_correct_end(
+                        substr( $text, $pos_open, 40 ) );
+                    $diff = -1;
+                }
+                elsif ( $pos_open2 < $pos_close and $look_ahead > 0 ) {
+                    error_028_table_no_correct_end(
+                        substr( $text, $pos_open, 40 ) );
+                    $diff--;
+                }
+                else {
+                    $pos_open  = $pos_open2;
+                    $pos_open2 = index( $test_text, '{|', $pos_open + 2 );
+                    $pos_close = index( $test_text, '|}', $pos_close + 2 );
+                    if ( $pos_open2 > 0 ) {
+                        $look_ahead_open =
+                          index( $test_text, '{|', $pos_open2 + 2 );
+                        $look_ahead_close =
+                          index( $test_text, '|}', $pos_close + 2 );
+                        $look_ahead = $look_ahead_close - $look_ahead_open;
+                    }
                 }
             }
         }
@@ -1306,16 +1309,16 @@ sub get_ref {
 
 sub get_templates_all {
 
-    my $temp_text_2    = q{};
-    my $pos_start      = 0;
-    my $pos_end        = 0;
-    my $test_text      = $text;
+    my $temp_text_2 = q{};
+    my $pos_start   = 0;
+    my $pos_end     = 0;
+    my $test_text   = $text;
 
     # Delete all breaks --> only one line
     # Delete all tabs --> better for output
     $test_text =~ s/\n|\t//g;
 
-    if ( $text =~ /\{\{/g ) { # Article may not have a template.
+    if ( $text =~ /\{\{/g ) {    # Article may not have a template.
         $TTnumber++;
     }
 
@@ -1349,7 +1352,9 @@ sub get_templates_all {
             $temp_text_2 = substr( $temp_text_2, 1, length($temp_text_2) - 2 );
             push( @Templates_all, $temp_text_2 );
         }
-        else {
+
+        #BUG IN MEDIAWIKI AND [[WP:TFD]] TAGGING GENERATES SAFESUBST CODE
+        elsif ( $temp_text !~ /\{\{\{\|safesubst:\}\}\}/g ) {
             error_043_template_no_correct_end( substr( $temp_text, 0, 40 ) );
         }
     }
@@ -1369,8 +1374,8 @@ sub get_template {
     my $output                = q{};
     foreach (@Templates_all) {
         my $current_template = $_;
-        $current_template    =~ s/^\{\{|\}\}$//;
-        $current_template    =~ s/^ //g;
+        $current_template =~ s/^\{\{|\}\}$//;
+        $current_template =~ s/^ //g;
 
         foreach (@Namespace_templates) {
             $current_template =~ s/^$_://i;
@@ -1502,7 +1507,7 @@ sub get_template {
                 }
 
                 $attribut =~ s/^[ ]+|[ ]+$//g;
-                $value    =~ s/^[ ]+|[ ]+$//g;
+                $value =~ s/^[ ]+|[ ]+$//g;
 
                 $Template[$template_part_counter][3] = $attribut;
                 $Template[$template_part_counter][4] = $value;
@@ -2846,7 +2851,9 @@ sub error_031_html_table_elements {
 
                 if ( $pos > -1 ) {
                     $test_text = substr( $test_text_lc, $pos, 40 );
-                    error_register( $error_code, $test_text );
+                    if ( $test_text_lc =~ /\<tr[^a-z]/g ) {
+                        error_register( $error_code, $test_text );
+                    }
                 }
             }
         }
@@ -2922,9 +2929,12 @@ sub error_034_template_programming_elements {
 /({{{|#if:|#ifeq:|#switch:|#ifexist:|{{fullpagename}}|{{sitename}}|{{namespace}})/i
               )
             {
-                my $test_line = substr( $text, $-[0], 40 );
-                $test_line =~ s/[\n\r]//mg;
-                error_register( $error_code, $test_line );
+                #BUG IN MEDIAWIKI AND [[WP:TFD]] TAGGING GENERATE SAFESUBST CODE
+                if ( $text !~ /\{\{\{\|safesubst:\}\}\}/g ) {
+                    my $test_line = substr( $text, $-[0], 40 );
+                    $test_line =~ s/[\n\r]//mg;
+                    error_register( $error_code, $test_line );
+                }
             }
         }
     }
@@ -3062,13 +3072,17 @@ sub error_039_html_text_style_elements_paragraph {
                 # <P> ARE STILL NEEDED IN <REF>
                 $test_text =~ s/<ref(.*?)<\/ref>//sg;
 
+                #$test_text =~ s/<blockquote(.*?)<\/blockquote>//sg;
+
                 my $pos = index( $test_text, '<p>' );
                 if ( $pos > -1 ) {
-                    error_register( $error_code, substr($test_text, $pos, 40) );
+                    error_register( $error_code,
+                        substr( $test_text, $pos, 40 ) );
                 }
                 $pos = index( $test_text, '<p ' );
                 if ( $pos > -1 ) {
-                    error_register( $error_code, substr($test_text, $pos, 40) );
+                    error_register( $error_code,
+                        substr( $test_text, $pos, 40 ) );
                 }
             }
         }
@@ -3866,8 +3880,9 @@ sub error_063_html_text_style_elements_small_ref_sub_sup {
                 $pos = index( $test_text, '<small> <ref' )  if ( $pos == -1 );
                 $pos = index( $test_text, '<small><sub>' )  if ( $pos == -1 );
                 $pos = index( $test_text, '<small> <sub>' ) if ( $pos == -1 );
-                $pos = index( $test_text, '<small><sup>' )  if ( $pos == -1 );
-                $pos = index( $test_text, '<small> <sup>' ) if ( $pos == -1 );
+
+                #$pos = index( $test_text, '<small><sup>' )  if ( $pos == -1 );
+                #$pos = index( $test_text, '<small> <sup>' ) if ( $pos == -1 );
 
                 if ( $pos > -1 ) {
                     error_register( $error_code, substr( $text, $pos, 40 ) );
