@@ -11,7 +11,7 @@
 ##
 ##        AUTHOR: Stefan Kühn, Bryan White
 ##       LICENCE: GPLv3
-##       VERSION: 2014/09/13
+##       VERSION: 2015/01/02
 ##
 ###########################################################################
 
@@ -19,17 +19,16 @@ use strict;
 use warnings;
 use utf8;
 
-use lib '/data/project/checkwiki/share/perl';
-use MediaWiki::DumpFile;
+use lib '/data/project/checkwiki/perl/lib/perl5';
 use DBI;
 use File::Temp;
 use Getopt::Long
   qw(GetOptionsFromString :config bundling no_auto_abbrev no_ignore_case);
 use LWP::UserAgent;
-use MediaWiki::DumpFile::Compat;
 use POSIX qw(strftime);
 use URI::Escape;
 
+use MediaWiki::DumpFile::Pages;
 use MediaWiki::API;
 use MediaWiki::Bot;
 
@@ -65,7 +64,6 @@ our $DbPassword;
 our $dbh;
 
 # MediaWiki::DumpFile variables
-our $pmwd  = Parse::MediaWikiDump->new;
 our $pages = q{};
 
 # Time program starts
@@ -651,35 +649,35 @@ sub scan_pages {
 
     $end_of_dump = 'no';
     my $page = q{};
+    my $revision;
 
     given ($Dump_or_Live) {
 
         when ('dump') {
 
-            # OPEN DUMPFILE BASED IF COMPRESSED OR NOT
-            if ( $DumpFilename =~ /(.*?)\.xml\.bz2$/ ) {
-                my $dump;
-                open( $dump, '-|', 'bzcat', '-q', $DumpFilename )
-                  or die 'Could not open dump file' . $DumpFilename . "\n";
-                $pages = $pmwd->pages($dump);
-            }
-            else {
-                $pages     = $pmwd->pages($DumpFilename);
+            $pages = MediaWiki::DumpFile::Pages->new($DumpFilename);
+
+            # CHECK FILE_SIZE IF ONLY UNCOMPRESSED
+            if ( $DumpFilename !~ /(.*?)\.xml\.bz2$/ ) {
                 $file_size = ( stat($DumpFilename) )[7];
             }
 
             while ( defined( $page = $pages->next ) && $end_of_dump eq 'no' ) {
-                next unless $page->namespace eq '';
-                update_ui() if ++$artcount % 500 == 0;
+                next if ( $page->namespace ne 0 );    #NS=0 IS ARTICLE NAMESPACE
                 set_variables_for_article();
-                $page_namespace = 0;
-                $title          = $page->title;
-                $title          = case_fixer($title);
-                $text           = ${ $page->text };
-                check_article();
+                $title = $page->title;
+                if ( $title ne "" ) {
+                    update_ui() if ++$artcount % 500 == 0;
+                    $page_namespace = 0;
+                    $title          = case_fixer($title);
+                    $revision       = $page->revision;
+                    $text           = $revision->text;
 
-                #$end_of_dump = 'yes' if ( $artcount > 10000 );
-                #$end_of_dump = 'yes' if ( $Error_counter > 40000 )
+                    check_article();
+
+                    #$end_of_dump = 'yes' if ( $artcount > 10000 );
+                    #$end_of_dump = 'yes' if ( $Error_counter > 40000 )
+                }
             }
         }
 
@@ -823,10 +821,15 @@ sub delay_scan {
     foreach (@title_array) {
         set_variables_for_article();
         $title = $_;
-        $text  = $bot->get_text($title);
-        printf( "  %7d articles done\n", $artcount ) if ++$artcount % 500 == 0;
-        if ( defined($text) ) {    # Article may have been deleted
-            check_article();
+        if ( $title ne "" ) {
+            $text = $bot->get_text($title);
+            printf( "  %7d articles done\n", $artcount )
+              if ++$artcount % 500 == 0;
+
+            # Article may have been deleted or an empty title
+            if ( defined($text) ) {
+                check_article();
+            }
         }
     }
 
@@ -1137,37 +1140,34 @@ sub get_tables {
 
     if ( $diff > 0 ) {
 
-        #BUG IN MEDIAWIKI AND [[WP:TFD]] TAGGING GENERATES SAFESUBST CODE
-        if ( $test_text !~ /\{\{\{\|safesubst:\}\}\}/g ) {
-            my $look_ahead_open  = 0;
-            my $look_ahead_close = 0;
-            my $look_ahead       = 0;
+        my $look_ahead_open  = 0;
+        my $look_ahead_close = 0;
+        my $look_ahead       = 0;
 
-            my $pos_open  = index( $test_text, '{|' );
-            my $pos_open2 = index( $test_text, '{|', $pos_open + 2 );
-            my $pos_close = index( $test_text, '|}' );
-            while ( $diff > 0 ) {
-                if ( $pos_open2 == -1 ) {
-                    error_028_table_no_correct_end(
-                        substr( $text, $pos_open, 40 ) );
-                    $diff = -1;
-                }
-                elsif ( $pos_open2 < $pos_close and $look_ahead > 0 ) {
-                    error_028_table_no_correct_end(
-                        substr( $text, $pos_open, 40 ) );
-                    $diff--;
-                }
-                else {
-                    $pos_open  = $pos_open2;
-                    $pos_open2 = index( $test_text, '{|', $pos_open + 2 );
-                    $pos_close = index( $test_text, '|}', $pos_close + 2 );
-                    if ( $pos_open2 > 0 ) {
-                        $look_ahead_open =
-                          index( $test_text, '{|', $pos_open2 + 2 );
-                        $look_ahead_close =
-                          index( $test_text, '|}', $pos_close + 2 );
-                        $look_ahead = $look_ahead_close - $look_ahead_open;
-                    }
+        my $pos_open  = index( $test_text, '{|' );
+        my $pos_open2 = index( $test_text, '{|', $pos_open + 2 );
+        my $pos_close = index( $test_text, '|}' );
+        while ( $diff > 0 ) {
+            if ( $pos_open2 == -1 ) {
+                error_028_table_no_correct_end(
+                    substr( $text, $pos_open, 40 ) );
+                $diff = -1;
+            }
+            elsif ( $pos_open2 < $pos_close and $look_ahead > 0 ) {
+                error_028_table_no_correct_end(
+                    substr( $text, $pos_open, 40 ) );
+                $diff--;
+            }
+            else {
+                $pos_open  = $pos_open2;
+                $pos_open2 = index( $test_text, '{|', $pos_open + 2 );
+                $pos_close = index( $test_text, '|}', $pos_close + 2 );
+                if ( $pos_open2 > 0 ) {
+                    $look_ahead_open =
+                      index( $test_text, '{|', $pos_open2 + 2 );
+                    $look_ahead_close =
+                      index( $test_text, '|}', $pos_close + 2 );
+                    $look_ahead = $look_ahead_close - $look_ahead_open;
                 }
             }
         }
@@ -1352,9 +1352,7 @@ sub get_templates_all {
             $temp_text_2 = substr( $temp_text_2, 1, length($temp_text_2) - 2 );
             push( @Templates_all, $temp_text_2 );
         }
-
-        #BUG IN MEDIAWIKI AND [[WP:TFD]] TAGGING GENERATES SAFESUBST CODE
-        elsif ( $temp_text !~ /\{\{\{\|safesubst:\}\}\}/g ) {
+        else {
             error_043_template_no_correct_end( substr( $temp_text, 0, 40 ) );
         }
     }
@@ -2851,9 +2849,7 @@ sub error_031_html_table_elements {
 
                 if ( $pos > -1 ) {
                     $test_text = substr( $test_text_lc, $pos, 40 );
-                    if ( $test_text_lc =~ /\<tr[^a-z]/g ) {
-                        error_register( $error_code, $test_text );
-                    }
+                    error_register( $error_code, $test_text );
                 }
             }
         }
@@ -2926,15 +2922,12 @@ sub error_034_template_programming_elements {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
             if ( $text =~
-/({{{|#if:|#ifeq:|#switch:|#ifexist:|{{fullpagename}}|{{sitename}}|{{namespace}})/i
+/({{{|#if:|#ifeq:|#switch:|#ifexist:|{{fullpagename}}|{{sitename}}|{{namespace}}|{{basepagename}}|{{numberofarticles}}|{{pagename}}|{{pagesize}}|{{protectionlevel}}|{{subpagename}})/i
               )
             {
-                #BUG IN MEDIAWIKI AND [[WP:TFD]] TAGGING GENERATE SAFESUBST CODE
-                if ( $text !~ /\{\{\{\|safesubst:\}\}\}/g ) {
-                    my $test_line = substr( $text, $-[0], 40 );
-                    $test_line =~ s/[\n\r]//mg;
-                    error_register( $error_code, $test_line );
-                }
+                my $test_line = substr( $text, $-[0], 40 );
+                $test_line =~ s/[\n\r]//mg;
+                error_register( $error_code, $test_line );
             }
         }
     }
@@ -3071,8 +3064,6 @@ sub error_039_html_text_style_elements_paragraph {
 
                 # <P> ARE STILL NEEDED IN <REF>
                 $test_text =~ s/<ref(.*?)<\/ref>//sg;
-
-                #$test_text =~ s/<blockquote(.*?)<\/blockquote>//sg;
 
                 my $pos = index( $test_text, '<p>' );
                 if ( $pos > -1 ) {
