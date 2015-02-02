@@ -886,16 +886,6 @@ sub check_article {
     $lc_text = lc($text);
 
     #------------------------------------------------------
-    # Following calls do not interact with other get_* or error #'s
-    #------------------------------------------------------
-
-    # CALLS #28
-    get_tables();
-
-    # CALLS #69, #70, #71, #72 ISBN CHECKS
-    get_isbn();
-
-    #------------------------------------------------------
     # Following interacts with other get_* or error #'s
     #------------------------------------------------------
 
@@ -1199,13 +1189,13 @@ sub get_isbn {
       )
     {
         my $test_text = uc($text);
-        if ( $test_text =~ / ISBN\s*([-]|[:]|10|13)\s*/g ) {
+        if ( $test_text =~ / ISBN\s*([-]|[:]|[#]|10|13)\s*/g ) {
             my $output = substr( $test_text, pos($test_text) - 11, 40 );
 
             # INFOBOX CAN HAVE "| ISBN10 = ".
             # ALSO DON'T CHECK ISBN (10|13)XXXXXXXXXX
             if (    ( $output !~ /\|\s*ISBN(10|13)\s*=/g )
-                and ( $output !~ /ISBN\s*([-]|[:]){0,1}\s*(10|13)\d/g ) )
+                and ( $output !~ /ISBN\s*([-]|[:]|[#]){0,1}\s*(10|13)\d/g ) )
             {
                 error_069_isbn_wrong_syntax($output);
             }
@@ -1839,6 +1829,9 @@ sub error_check {
         error_098_sub_no_correct_end();
     }
     else {
+        get_tables();        # CALLS #28
+        get_isbn();          # CALLS #69, #70, #71, #72 ISBN CHECKS
+
         error_001_template_with_word_template();
         error_002_have_br();
         error_003_have_ref();
@@ -1950,6 +1943,7 @@ sub error_check {
         error_099_sup_no_correct_end();
         error_100_list_tag_no_correct_end();
         error_101_ordinal_numbers_in_sup();
+        error_102_pmid_wrong_syntax();
     }
 
     return ();
@@ -1988,7 +1982,7 @@ sub error_002_have_br {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
             if ( $lc_text =~
-/(<\s*br\/[^ ]>|<\s*br[^ ]\/>|<\s*br[^ \/]>|<[^ w]br\s*>|<\s*br\s*\/[^ ]>)/i
+/(<\s*br\/[^ ]>|<\s*br[^ ]\/>|<\s*br[^ \/]>|<[^ w]br\s*>|<\s*br\s*\/[^ ]>|<\s*br\s*clear|<\s*small\/[^ ]>|<\s*small[^ ]\/>|<\s*center\/[^ ]>|<\s*center[^ ]\/>)/i
               )
             {
                 my $test_line = substr( $text, $-[0], 40 );
@@ -2428,7 +2422,7 @@ sub error_016_unicode_control_characters {
             my $search = "\x{200E}|\x{FEFF}";
             if ( $project eq 'enwiki' ) {
                 $search = $search
-                  . "|\x{200B}|\x{2028}|\x{202A}|\x{202C}|\x{202D}|\x{202E}|\x{00A0}";
+                  . "|\x{200B}|\x{2028}|\x{202A}|\x{202C}|\x{202D}|\x{202E}|\x{00A0}|\x{00AD}";
             }
 
             if ( $text =~ /($search)/ or $text =~ /(\p{Co})/ ) {
@@ -2922,7 +2916,7 @@ sub error_034_template_programming_elements {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
             if ( $text =~
-/({{{|#if:|#ifeq:|#switch:|#ifexist:|{{fullpagename}}|{{sitename}}|{{namespace}}|{{basepagename}}|{{numberofarticles}}|{{pagename}}|{{pagesize}}|{{protectionlevel}}|{{subpagename}})/i
+/({{{|#if:|#ifeq:|#switch:|#ifexist:|{{fullpagename}}|{{sitename}}|{{namespace}}|{{basepagename}}|{{pagename}}|{{subpagename}}|{{subst:)/i
               )
             {
                 my $test_line = substr( $text, $-[0], 40 );
@@ -4501,7 +4495,9 @@ sub error_085_tag_without_content {
             if (
                 $lc_text =~ /<noinclude>\s*<\/noinclude>|
                            <onlyinclude>\s*<\/onlyinclude|
-                           <includeonly>\s*<\/includeonly>
+                           <includeonly>\s*<\/includeonly>|
+                           <center>\s*<\/center>|
+                           <gallery>\s*<\/gallery>
                           /xg
               )
             {
@@ -4964,6 +4960,27 @@ sub error_101_ordinal_numbers_in_sup {
     }
 
     return ();
+}
+
+###########################################################################
+## ERROR 102
+###########################################################################
+
+sub error_102_pmid_wrong_syntax {
+    my $error_code = 102;
+
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
+        if ( $page_namespace == 0 or $page_namespace == 104 ) {
+
+            # CHECK FOR SPACE BEFORE PMID AS URLS CAN CONTAIN PMID
+            if ( $lc_text =~ / pmid\s*([-]|[:]|[#])\s*/g ) {
+                error_register( $error_code, substr( $text, $-[0], 40 ) );
+            }
+        }
+    }
+
+    return ();
+
 }
 
 ######################################################################
