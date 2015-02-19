@@ -11,7 +11,7 @@
 ##
 ##        AUTHOR: Stefan Kühn, Bryan White
 ##       LICENCE: GPLv3
-##       VERSION: 2015/01/02
+##       VERSION: 2015/02/19
 ##
 ###########################################################################
 
@@ -1200,6 +1200,10 @@ sub get_isbn {
                 error_069_isbn_wrong_syntax($output);
             }
         }
+        elsif ( $test_text =~ / \[\[ISBN\]\]\s*([:]|[-]|[#])+\s*\d/g ) {
+            my $output = substr( $text, $-[0], 40 );
+            error_069_isbn_wrong_syntax($output);
+        }
 
         while ( $test_text =~ /ISBN([ ]|[-]|[=]|[:])/g ) {
             my $pos_start = pos($test_text) - 5;
@@ -1705,9 +1709,13 @@ sub create_line_array {
 
 sub get_headlines {
 
+    my $first = 0;
     foreach (@Lines) {
 
         if ( substr( $_, 0, 1 ) eq '=' ) {
+            print 'HEADLINE:' . $title . "\n"
+              if ( $first == 0 and $title eq $_ );
+            $first = 2;
             push( @Headlines, $_ );
         }
     }
@@ -1829,8 +1837,8 @@ sub error_check {
         error_098_sub_no_correct_end();
     }
     else {
-        get_tables();        # CALLS #28
-        get_isbn();          # CALLS #69, #70, #71, #72 ISBN CHECKS
+        get_tables();    # CALLS #28
+        get_isbn();      # CALLS #69, #70, #71, #72 ISBN CHECKS
 
         error_001_template_with_word_template();
         error_002_have_br();
@@ -1944,6 +1952,7 @@ sub error_check {
         error_100_list_tag_no_correct_end();
         error_101_ordinal_numbers_in_sup();
         error_102_pmid_wrong_syntax();
+        error_103_pipe_template_in_wikilink();
     }
 
     return ();
@@ -4498,7 +4507,7 @@ sub error_085_tag_without_content {
                            <includeonly>\s*<\/includeonly>|
                            <center>\s*<\/center>|
                            <gallery>\s*<\/gallery>
-                          /xg
+                           /x
               )
             {
                 my $found_text = substr( $text, $-[0], 40 );
@@ -4983,6 +4992,25 @@ sub error_102_pmid_wrong_syntax {
 
 }
 
+###########################################################################
+## ERROR 103
+###########################################################################
+
+sub error_103_pipe_template_in_wikilink {
+    my $error_code = 103;
+
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
+        if ( $page_namespace == 0 or $page_namespace == 104 ) {
+
+            if ( $lc_text =~ /\[\[([^\[\]]*)\{\{!\}\}([^\[\]]*)\]\]/g ) {
+                error_register( $error_code, substr( $text, $-[0], 40 ) );
+            }
+        }
+    }
+
+    return ();
+
+}
 ######################################################################
 ######################################################################
 ######################################################################
