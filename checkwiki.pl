@@ -11,7 +11,7 @@
 ##
 ##        AUTHOR: Stefan Kühn, Bryan White
 ##       LICENCE: GPLv3
-##       VERSION: 2015/02/19
+##       VERSION: 2015/04/06
 ##
 ###########################################################################
 
@@ -1013,7 +1013,7 @@ sub get_pre {
 sub get_math {
     my $test_text = lc($text);
 
-    if ( $test_text =~ /<math>|<math style|<math title|<math alt/ ) {
+    if ( $test_text =~ /<math>|<math / ) {
         my $math_begin = 0;
         my $math_end   = 0;
 
@@ -1952,7 +1952,7 @@ sub error_check {
         error_100_list_tag_no_correct_end();
         error_101_ordinal_numbers_in_sup();
         error_102_pmid_wrong_syntax();
-        error_103_pipe_template_in_wikilink();
+        error_103_pipe_magicword_in_wikilink();
     }
 
     return ();
@@ -4506,7 +4506,10 @@ sub error_085_tag_without_content {
                            <onlyinclude>\s*<\/onlyinclude|
                            <includeonly>\s*<\/includeonly>|
                            <center>\s*<\/center>|
-                           <gallery>\s*<\/gallery>
+                           <gallery>\s*<\/gallery>|
+                           <ref>\s*<\/ref>|
+                           <span>\s*<\/span>|
+                           <div>\s*<\/div>
                            /x
               )
             {
@@ -4996,7 +4999,7 @@ sub error_102_pmid_wrong_syntax {
 ## ERROR 103
 ###########################################################################
 
-sub error_103_pipe_template_in_wikilink {
+sub error_103_pipe_magicword_in_wikilink {
     my $error_code = 103;
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
