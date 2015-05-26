@@ -121,19 +121,21 @@ our @ErrorPriorityValue;    # Priority value each error has
 
 our @Error_number_counter = (0) x 150;    # Error counter for individual errors
 
-our @INTER_LIST = qw( af  als an  ar  bg  bs  ca  cs  cy  da  de
-  el  en  eo  es  et  eu  fa  fi  fr  fy  fl  gv
+our @INTER_LIST = qw( af  als an  ar  bg  bn  bs  ca  cs  cy  da  de
+  el  en  eo  es  et  eu  fa  fi  fr  fy
   he  hi  hr  hu  id  is  it  ja  jv  ka  ko
   la  lb  lt  ms  nds nl  nn  no  pl  pt  ro  ru
   sh  sk  sl  sr  sv  sw  ta  th  tr  uk  ur  vi
-  simple  nds_nl );
+  simple  nds_nl  zh );
 
-our @FOUNDATION_PROJECTS = qw( b  n  s  v  m  q  w  meta  mw  nost  wikt  wmf
-  bugzilla   commons     foundation incubator
-  meta-wiki  quality     speciesi   testwiki
-  wikibooks  wikidata    wikimedia  wikinews
-  wikiquote  wikipedia   wikisource wikispecies
-  wiktionary wikiversity wikivoyage );
+our @FOUNDATION_PROJECTS = qw( b  c  d  n  q  s  species  v  voy  wikt  m  mw
+  meta        metawiki     metawikipedia  mediawikiwiki
+  commons     wikibooks    wikidata       wikinews    
+  wikiquote   wikisource   wikispecies    wiktionary
+  wikivoyage  wikiversity  phabricator    wikitech
+  toollabs    testwiki     test2wiki      testwikidata
+  wmf         foundation   wikimedia      wmania
+  incubator   outreach );
 
 # See http://turner.faculty.swau.edu/webstuff/htmlsymbols.html
 our @HTML_NAMED_ENTITIES = qw( aacute Aacute acirc Acirc aelig AElig
