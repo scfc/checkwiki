@@ -11,7 +11,7 @@
 ##
 ##        AUTHOR: Stefan Kühn, Bryan White
 ##       LICENCE: GPLv3
-##       VERSION: 2015/04/06
+##       VERSION: 2015/05/27
 ##
 ###########################################################################
 
@@ -121,19 +121,20 @@ our @ErrorPriorityValue;    # Priority value each error has
 
 our @Error_number_counter = (0) x 150;    # Error counter for individual errors
 
-our @INTER_LIST = qw( af  als an  ar  bg  bs  ca  cs  cy  da  de
-  el  en  eo  es  et  eu  fa  fi  fr  fy  fl  gv
-  he  hi  hr  hu  id  is  it  ja  jv  ka  ko
-  la  lb  lt  ms  nds nl  nn  no  pl  pt  ro  ru
-  sh  sk  sl  sr  sv  sw  ta  th  tr  uk  ur  vi
-  simple  nds_nl );
+our @INTER_LIST = qw( af  als an  ar  az  bg  bs  bn
+  ca  cs  cy  da  de  el  en  eo  es  et  eu  fa  fi
+  fr  fy  fl  gv  he  hi  hr  hu  hy  id  is  it  ja
+  jv  ka  kk  ko  la  lb  lt  ms  nds nl  nn  no  pl
+  pt  ro  ru  sh  sk  sl  sr  sv  sw  ta  th  tr  uk
+  ur  uz  vi  zh  simple  nds_nl );
 
-our @FOUNDATION_PROJECTS = qw( b  n  s  v  m  q  w  meta  mw  nost  wikt  wmf
-  bugzilla   commons     foundation incubator
-  meta-wiki  quality     speciesi   testwiki
-  wikibooks  wikidata    wikimedia  wikinews
-  wikiquote  wikipedia   wikisource wikispecies
-  wiktionary wikiversity wikivoyage );
+our @FOUNDATION_PROJECTS = qw( b  n  s  v  m  q  w
+  meta  mw  nost  wikt  wmf  voy
+  commons     foundation   incubator   meta-wiki
+  labs        phabricator  quality     species
+  testwiki    wikibooks    wikidata    wikimedia
+  wikinews    wikiquote    wikipedia   wikisource
+  wikispecies wiktionary   wikiversity wikivoyage );
 
 # See http://turner.faculty.swau.edu/webstuff/htmlsymbols.html
 our @HTML_NAMED_ENTITIES = qw( aacute Aacute acirc Acirc aelig AElig
