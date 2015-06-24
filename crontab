@@ -1,0 +1,9 @@
+PATH=/data/project/checkwiki/bin:/usr/local/bin:/usr/bin:/bin
+
+00,10,20,25,30,35,40,50 * * * *  /usr/bin/jsub -N live-scan   -once -j y -o /dev/null /data/project/checkwiki/bin/live_scan.pl            -c /data/project/checkwiki/checkwiki.cfg > /dev/null 2>&1
+00 0 * * *                       /usr/bin/jsub -N delete-done -once -j y -o /dev/null /data/project/checkwiki/bin/delete-done-articles.pl -c /data/project/checkwiki/checkwiki.cfg > /dev/null 2>&1
+00 0 * * *                       /usr/bin/jsub -N translation -once -j y -o /dev/null /data/project/checkwiki/bin/translation.pl          -c /data/project/checkwiki/checkwiki.cfg > /dev/null 2>&1
+00,15,30,45 * * * *              /usr/bin/jsub -N update_dump -once -j y -o /dev/null /data/project/checkwiki/bin/update_db.pl            -c /data/project/checkwiki/checkwiki.cfg > /dev/null 2>&1
+03,33 * * * *                    /usr/bin/jsub -N update_html -once -j y -o /dev/null /data/project/checkwiki/bin/update_html.pl          -c /data/project/checkwiki/checkwiki.cfg > /dev/null 2>&1
+05 00 * * *                      jlocal /data/project/checkwiki/bin/checkwiki-delay_dispatch -c /data/project/checkwiki/checkwiki.cfg > /dev/null 2>&1
+00 05 * * *                      jlocal perl /data/project/checkwiki/bin/dump_dispatcher.pl -c /data/project/checkwiki/checkwiki.cfg > /dev/null 2>&1

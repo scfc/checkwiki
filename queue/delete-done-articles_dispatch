@@ -1,9 +1,0 @@
-#! /usr/bin/env perl
-
-system ('jsub',
-	'-j', 'y',
-	'-N', 'delete-done-articles',
-	'-o', '/data/project/checkwiki/var/log',
-	'-once',
-	'/data/project/checkwiki/bin/delete-done-articles.pl',
-    '-c', '/data/project/checkwiki/checkwiki.cfg');
