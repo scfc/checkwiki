@@ -1,9 +1,12 @@
 Abstract:
 ---------
 
-The WikiProject Check Wikipedia will help to
-clean the syntax of Wikipedia and help to find
-some other errors.
+Checkwiki helps clean up syntax and other errors in the source code of Wikipedia by finding and fixing problems such as:
+
+* Eliminating errors in the wiki syntax, such as missing close tags or brackets;
+* Checking for accessibility issues, such as small print or heading problems;
+* Correcting, deleting or moving code that does not follow conventions, such as the position of references with respect to punctuation;
+* Finding articles that have invalid ISBNs
 
 License
 -------
@@ -17,4 +20,4 @@ Check Wikipedia runs at:
 https://tools.wmflabs.org/checkwiki/
 
 The full documentation can be found at:
-https://en.wikipedia.org/wiki/Wikipedia:WikiProject Check Wikipedia
+https://en.wikipedia.org/wiki/Wikipedia:WikiProject_Check_Wikipedia
