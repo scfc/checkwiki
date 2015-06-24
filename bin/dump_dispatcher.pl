@@ -1,18 +1,20 @@
 #! /usr/bin/env perl
-#
-############################################################################
-###
-### FILE:   live_scan.pl
-### USAGE:  live_scan.pl -c database.cfg
-###
-### DESCRIPTION: Retrieves new revised articles from Wikipedia and stores
-###              the articles in a database.  Checkwiki.pl can retrieve
-###              the articles for processing.
-###
-### AUTHOR:  Bryan White
-### Licence: GPL3
-###
-############################################################################
+
+###########################################################################
+##
+##          FILE: dump_dispatcher.pl 
+##
+##         USAGE: ./checkwiki.pl -c checkwiki.cfg
+##
+##   DESCRIPTION: Checks for new dump files from all languages.
+##                If new dump file is found, send checkwiki.pl proccess
+##                to the queue.
+##
+##        AUTHOR: Bryan White
+##       LICENCE: GPLv3
+##       VERSION: 2015/06/24
+##
+###########################################################################
 
 use strict;
 use warnings;
@@ -69,10 +71,11 @@ my $queued_count = 0;
 foreach (@Projects) {
 
     # Due to WMFlabs incompetence, below projects are very late showing up
-    if ( $_ ne 'enwiki' and $_ ne 'frwiki' and $_ ne 'commonswiki' and $_ ne 'dewiki' ) {
+    if ( $_ ne 'enwiki' and $_ ne 'frwiki' and $_ ne 'commonswiki' and $_ ne 'ruwiktionary') {
         my $lastDump = $Last_Dump[$count];
         my ( $latestDumpDate, $latestDumpFilename ) = FindLatestDump($_);
 
+        print "PROJECT:" . $_ . "  LASTDUMP" . $lastDump . "  LATEST:" . $latestDumpDate . "\n";
         if ( $queued_count < 10 ) {    # Queue max is 16 jobs at one time.
             if ( !defined($lastDump) || $lastDump ne $latestDumpDate ) {
                 queueUp( $_, $latestDumpDate, $latestDumpFilename );
@@ -148,13 +151,13 @@ sub FindLatestDump {
     my ($project) = @_;
 
     my @Filenames =
-      </public/datasets/public/$project/*/$project-*-pages-articles.xml.bz2>;
+      </public/dumps/public/$project/*/$project-*-pages-articles.xml.bz2>;
     if ( !@Filenames ) {
         return undef;
     }
 
     if ( $Filenames[ -1 ] !~
-m!/public/datasets/public/\Q$project\E/((\d{4})(\d{2})(\d{2}))*/\Q$project\E-\1-pages-articles.xml.bz2!
+m!/public/dumps/public/\Q$project\E/((\d{4})(\d{2})(\d{2}))*/\Q$project\E-\1-pages-articles.xml.bz2!
       )
     {
         die( "Couldn't parse filename '" . $Filenames[ -1 ] . "'\n" );
@@ -171,26 +174,28 @@ sub queueUp {
     my ( $lang, $date, $file ) = @_;
 
     system(
-        'jsub',
-        '-j', 'y',
+        '/usr/bin/jsub',
         '-mem', '512m',
-        '-N', 'dumpmuncher-' . $lang,
-        '-o', '/data/project/checkwiki/var/log',
+        '-N', $lang . '-munch',
         '-once',
+        '-j', 'y',
+        '-o', '/data/project/checkwiki/var/log',
         '/data/project/checkwiki/bin/checkwiki.pl',
         '-c', '/data/project/checkwiki/checkwiki.cfg',
-        '-p', $lang,
+        '--project', $lang,
+        '--tt',
         '--dumpfile', $file,
     );
 
-    print "jsub\n";
-    print "-j, y\n";
+    print "/usr/bin/jsub\n";
     print "-mem, 512m\n";
-    print '-N, dumpmuncher-' . $lang . "\n";
-    print "-o, /data/project/checkwiki/var/log\n";
+    print '-N, ' . $lang . "-munch\n";
     print "-once\n";
+    print "-j, y\n";
+    print "-o, /data/project/checkwiki/var/log\n";
     print "/data/project/checkwiki/bin/checkwiki.pl\n";
     print "-c, /data/project/checkwiki/checkwiki.cfg\n";
-    print '-p,' . $lang . "\n";
-    print '--dumpfile,' . $file . "\n";
+    print '--project,' . $lang . "\n";
+    print "--tt,\n";
+    print '--dumpfile,' . $file . "\n\n\n";
 }
