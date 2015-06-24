@@ -1369,8 +1369,8 @@ sub get_number_error_and_desc_by_prio {
             given ($prio_sql) {
                 when (0) { $prio_sql = "off"; }
                 when (1) { $prio_sql = "high"; }
-                when (2) { $prio_sql = "low"; }
-                when (3) { $prio_sql = "middle"; }
+                when (2) { $prio_sql = "middle"; }
+                when (3) { $prio_sql = "low"; }
             }
 
             $result .= '<tr>';
