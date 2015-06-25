@@ -869,21 +869,21 @@ sub check_article {
 
     # REMOVES FROM $text ANY CONTENT BETWEEN <code> </code> TAGS.
     # CALLS #15
-    #get_code();
+    get_code();
 
     # REMOVE FROM $text ANY CONTENT BETWEEN <syntaxhighlight> TAGS.
-    #get_syntaxhighlight();
+    get_syntaxhighlight();
 
     # REMOVES FROM $text ANY CONTENT BETWEEN <math> </math> TAGS.
     # Goes after code and syntaxhighlight so it doesn't catch <math.h>
     # CALLS #013
-    #get_math();
+    get_math();
 
     # REMOVE FROM $text ANY CONTENT BETWEEN <hiero> TAGS.
-    #get_hiero();
+    get_hiero();
 
     # REMOVE FROM $text ANY CONTENT BETWEEN <score> TAGS.
-    #get_score();
+    get_score();
 
     $lc_text = lc($text);
 
@@ -894,43 +894,43 @@ sub check_article {
     get_isbn();
 
     # CREATES @Ref - USED IN #81
-    #get_ref();
+    get_ref();
 
     # CREATES @Templates_all - USED IN #12, #31
     # CALLS #43
-    #get_templates_all();
+    get_templates_all();
 
     # DOES TEMPLATETIGER
     # USES @Templates_all
     # CREATES @template - USED IN #59, #60
-    #get_template();
+    get_template();
 
-  # CREATES @Links_all & @Images_all - USED IN #65, #66, #67, #68, #74, #76, #82
-  # CALLS #10
-  #get_links();
+    # CREATES @Links_all & @Images_all-USED IN #65, #66, #67, #68, #74, #76, #82
+    # CALLS #10
+    get_links();
 
     # SETS $page_is_redirect
-    #check_for_redirect();
+    check_for_redirect();
 
     # CREATES @Category - USED IN #17, #18, #21, #22, #37, #53, #91
-    #get_categories();
+    get_categories();
 
     # CREATES @Interwiki - USED IN #45, #51, #53
-    #get_interwikis();
+    get_interwikis();
 
     # CREATES @Lines
     # USED IN #02, #09, #26, #32, #34, #38, #39, #40-#42, #54,  #75
-    #create_line_array();
+    create_line_array();
 
     # CREATES @Headlines
     # USES @Lines
     # USED IN #07, #08, #25, #44, #51, #52, #57, #58, #62, #83, #84, #92
-    #get_headlines();
+    get_headlines();
 
     # EXCEPT FOR get_* THAT REMOVES TAGS FROM $text, FOLLOWING DON'T NEED
     # TO BE PROCESSED BY ANY get_* ROUTINES: 3-6, 11, 13-16, 19, 20, 23, 24,
     # 27, 35, 36, 43, 46-50, 54-56, 59-61, 63-74, 76-80, 82, 84-90
-    #error_check();
+    error_check();
 
     return ();
 }
@@ -946,13 +946,13 @@ sub get_comments {
         my $comments_begin = 0;
         my $comments_end   = 0;
 
-        #    $comments_begin = () = $test_text =~ /<!--/g;
-        #    $comments_end   = () = $test_text =~ /-->/g;
+        $comments_begin = () = $test_text =~ /<!--/g;
+        $comments_end   = () = $test_text =~ /-->/g;
 
-        #    if ( $comments_begin > $comments_end ) {
-        #        my $snippet = get_broken_tag( '<!--', '-->' );
-        #        error_005_Comment_no_correct_end($snippet);
-        #    }
+        if ( $comments_begin > $comments_end ) {
+            my $snippet = get_broken_tag( '<!--', '-->' );
+            error_005_Comment_no_correct_end($snippet);
+        }
 
         $text =~ s/<!--(.*?)-->//sg;
     }
@@ -971,13 +971,13 @@ sub get_nowiki {
         my $nowiki_begin = 0;
         my $nowiki_end   = 0;
 
-        #    $nowiki_begin = () = $test_text =~ /<nowiki>/g;
-        #    $nowiki_end   = () = $test_text =~ /<\/nowiki>/g;
+        $nowiki_begin = () = $test_text =~ /<nowiki>/g;
+        $nowiki_end   = () = $test_text =~ /<\/nowiki>/g;
 
-        #    if ( $nowiki_begin > $nowiki_end ) {
-        #        my $snippet = get_broken_tag( '<nowiki>', '</nowiki>' );
-        #        error_023_nowiki_no_correct_end($snippet);
-        #    }
+        if ( $nowiki_begin > $nowiki_end ) {
+            my $snippet = get_broken_tag( '<nowiki>', '</nowiki>' );
+            error_023_nowiki_no_correct_end($snippet);
+        }
 
         $text =~ s/<nowiki>(.*?)<\/nowiki>//sg;
     }
@@ -996,13 +996,13 @@ sub get_pre {
         my $pre_begin = 0;
         my $pre_end   = 0;
 
-        #    $pre_begin = () = $test_text =~ /<pre>/g;
-        #    $pre_end   = () = $test_text =~ /<\/pre>/g;
+        $pre_begin = () = $test_text =~ /<pre>/g;
+        $pre_end   = () = $test_text =~ /<\/pre>/g;
 
-        #    if ( $pre_begin > $pre_end ) {
-        #        my $snippet = get_broken_tag( '<pre>', '</pre>' );
-        #        error_024_pre_no_correct_end($snippet);
-        #    }
+        if ( $pre_begin > $pre_end ) {
+            my $snippet = get_broken_tag( '<pre>', '</pre>' );
+            error_024_pre_no_correct_end($snippet);
+        }
 
         $text =~ s/<pre>(.*?)<\/pre>//sg;
     }
