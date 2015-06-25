@@ -9,14 +9,13 @@
 ##               and then uploads and updated lists
 ##
 ##       AUTHOR: Bgwhite
+##      LICENSE: GPLv3
 ##      VERSION: 2014/05/24
 ##
 ###########################################################################
 
 use strict;
 use warnings;
-use IPC::Open3;
-use Encode;
 
 use Getopt::Long
   qw(GetOptionsFromString :config bundling no_auto_abbrev no_ignore_case);
@@ -78,7 +77,7 @@ sub get_login_info {
     if ( $Username eq q{} or $Password eq q{} ) {
 
         print "Enter username: ";
-        $Username = <STDIN>;
+        $Username = <> ;
         chomp $Username;
 
         print "Password for user " . $Username . " on Wikipedia:";
@@ -89,6 +88,8 @@ sub get_login_info {
         chomp $Password;
     }
 
+    print "USER:" , $Username, "  PASS:", $Password , "\n";
+    die;
     return ();
 }
 
@@ -135,7 +136,7 @@ sub get_errors {
 
         print 'Retrieving information from ' . $page_title . "\n";
 
-        open( my $OUTFILE, ">:encoding(UTF-8)", $filename )
+        open( my $outfile, ">:encoding(UTF-8)", $filename )
           or die 'Cannot open temp file ' . $filename . "\n";
 
         my $wikitext = $bot->get_text($page_title);
@@ -143,9 +144,9 @@ sub get_errors {
         my @lines = split( /\n/, $wikitext );
         foreach (@lines) {
             $_ =~ /# \[\[(.*?)\]\]/;
-            print $OUTFILE $1 . "\n";
+            print $outfile $1 . "\n";
         }
-        close($OUTFILE);
+        close($outfile);
 
     }
     return ();
@@ -169,17 +170,17 @@ sub parse_errors {
 
         print "Processing error " . $error . "\n";
 
-        open( my $OUTFILE, ">:encoding(UTF-8)", $filename )
+        open( my $outfile, ">:encoding(UTF-8)", $filename )
           or die 'Cannot open temp file ' . $filename . "\n";
 
         foreach (@myarray) {
             $_ = decode_utf8($_);
             $_ =~ /\t([^\t]*)\t([^\t]*)\t/;
             if ( $error eq $1 ) {
-                print $OUTFILE '# [[' . $2 . "]]\n";
+                print $outfile '# [[' . $2 . "]]\n";
             }
         }
-        close($OUTFILE);
+        close($outfile);
     }
     return ();
 
@@ -208,11 +209,11 @@ sub upload_text {
             $page = 'Wikipedia:CHECKWIKI/' . $error . '_dump';
         }
 
-        open( my $INFILE, "<:encoding(UTF-8)", $file )
+        open( my $infile, "<:encoding(UTF-8)", $file )
           or die 'Cannot open temp file ' . $file . "\n";
 
-        my $text = do { local $/; <$INFILE> };
-        close($INFILE);
+        my $text = do { local $/; <$infile> };
+        close($infile);
 
         $bot->edit(
             {
