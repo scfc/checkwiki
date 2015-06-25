@@ -88,8 +88,6 @@ sub get_login_info {
         chomp $Password;
     }
 
-    print "USER:" , $Username, "  PASS:", $Password , "\n";
-    die;
     return ();
 }
 
