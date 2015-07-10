@@ -11,7 +11,7 @@
 ##
 ##        AUTHOR: Stefan Kühn, Bryan White
 ##       LICENCE: GPLv3
-##       VERSION: 2015/06/24
+##       VERSION: 2015/07/10
 ##
 ###########################################################################
 
@@ -114,6 +114,7 @@ our @Template_regex;       # Template regex fron translation file
 our $Image_regex = q{};    # Regex used in get_images()
 our $Cat_regex   = q{};    # Regex used in get_categories()
 our $User_regex  = q{};    # Regex used in error_095_user_signature();
+our $Draft_regex = q{};    # Regex used in error_095_user_signature();
 
 our $Magicword_defaultsort;
 
@@ -557,6 +558,9 @@ sub readMetadata {
         if ( $id == 2 or $id == 3 ) {
             $User_regex = $User_regex . '\[\[' . $name . ':|';
         }
+        elsif ( $id == 118 or $id == 119 ) {
+            $Draft_regex = $Draft_regex . '\[\[' . $name . ':|';
+        }
         elsif ( $id == 6 ) {
             @Namespace_image = ( $name, $canonical );
             $Image_regex = $name;
@@ -602,7 +606,8 @@ sub readMetadata {
         $Magicword_defaultsort = $aliases if ( $name eq 'defaultsort' );
     }
 
-    chop($User_regex);    # Drop off final '|'
+    chop($User_regex);     # Drop off final '|'
+    chop($Draft_regex);    # Drop off final '|'
 
     return ();
 }
@@ -940,14 +945,13 @@ sub check_article {
 ###########################################################################
 
 sub get_comments {
-    my $test_text = lc($text);
 
-    if ( $test_text =~ /<!--/ ) {
+    if ( $text =~ /<!--/ ) {
         my $comments_begin = 0;
         my $comments_end   = 0;
 
-        $comments_begin = () = $test_text =~ /<!--/g;
-        $comments_end   = () = $test_text =~ /-->/g;
+        $comments_begin = () = $text =~ /<!--/g;
+        $comments_end   = () = $text =~ /-->/g;
 
         if ( $comments_begin > $comments_end ) {
             my $snippet = get_broken_tag( '<!--', '-->' );
@@ -3897,7 +3901,7 @@ sub error_064_link_equal_linktext {
             # non-wiktionary projects
             if ( $project !~ /wiktionary/ ) {
                 $temp_text =~ s/\[\[\s*([\w])/\[\[\u$1/;
-                $temp_text =~ s/\[\[\s*([^|:]*)\s*\|\s*(.)/\[\[$1\|\u$2/;
+                $temp_text =~ s/\[\[\s*([^|:\]]*)\s*\|\s*(.)/\[\[$1\|\u$2/;
             }
 
             if ( $temp_text =~ /(\[\[\s*([^|:]*)\s*\|\s*\2\s*\]\])/ ) {
@@ -4782,7 +4786,7 @@ sub error_095_user_signature {
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
-            if ( $lc_text =~ /($User_regex)/i ) {
+            if ( $lc_text =~ /($User_regex|$Draft_regex)/i ) {
                 error_register( $error_code, substr( $text, $-[0], 40 ) );
             }
         }
