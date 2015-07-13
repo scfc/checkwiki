@@ -11,7 +11,7 @@
 ##
 ##        AUTHOR: Stefan Kühn, Bryan White
 ##       LICENCE: GPLv3
-##       VERSION: 2015/07/10
+##       VERSION: 2015/07/13
 ##
 ###########################################################################
 
@@ -528,7 +528,7 @@ sub readMetadata {
     my $mw = MediaWiki::API->new();
     $mw->{config}->{api_url} = $url;
 
-    # See https://www.mediawiki.org/wiki/API:Meta#siteinfo_/_si
+    # See https://www.mediawiki.org/wiki/API:Siteinfo
     my $res = $mw->api(
         {
             action => 'query',
@@ -895,8 +895,6 @@ sub check_article {
     #------------------------------------------------------
     # Following interacts with other get_* or error #'s
     #------------------------------------------------------
-
-    get_isbn();
 
     # CREATES @Ref - USED IN #81
     get_ref();
@@ -4783,11 +4781,19 @@ sub error_094_ref_no_correct_match {
 sub error_095_user_signature {
     my $error_code = 95;
 
+    print ":" . $Draft_regex . ":\n";
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
-            if ( $lc_text =~ /($User_regex|$Draft_regex)/i ) {
-                error_register( $error_code, substr( $text, $-[0], 40 ) );
+            if ( $Draft_regex ne q{} ) {
+                if ( $lc_text =~ /($User_regex|$Draft_regex)/i ) {
+                    error_register( $error_code, substr( $text, $-[0], 40 ) );
+                }
+            }
+            else {
+                if ( $lc_text =~ /($User_regex)/i ) {
+                    error_register( $error_code, substr( $text, $-[0], 40 ) );
+                }
             }
         }
     }
