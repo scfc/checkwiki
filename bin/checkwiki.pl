@@ -11,7 +11,7 @@
 ##
 ##        AUTHOR: Stefan Kühn, Bryan White
 ##       LICENCE: GPLv3
-##       VERSION: 2015/07/13
+##       VERSION: 2015/08/12
 ##
 ###########################################################################
 
@@ -34,10 +34,10 @@ use MediaWiki::API;
 use MediaWiki::Bot;
 
 # Different versions of Perl at home vs labs.  Use labs version
-use v5.14.2;
+#use v5.14.2;
 
 # When using the most current version available
-#use v5.20.0;
+use v5.20.0;
 no if $] >= 5.018, warnings => "experimental::smartmatch";
 
 binmode( STDOUT, ":encoding(UTF-8)" );
@@ -3898,11 +3898,21 @@ sub error_064_link_equal_linktext {
             # the first character after the [ and |.  But, do only on
             # non-wiktionary projects
             if ( $project !~ /wiktionary/ ) {
-                $temp_text =~ s/\[\[\s*([\w])/\[\[\u$1/;
-                $temp_text =~ s/\[\[\s*([^|:\]]*)\s*\|\s*(.)/\[\[$1\|\u$2/;
+                $temp_text =~ s/\[\[\s*([\w])/\[\[\u$1/g;
+                $temp_text =~ s/\[\[\s*([^|:\]]*)\s*\|\s*(.)/\[\[$1\|\u$2/g;
+                # Account for [[Foo|''Foo'']] and [[Foo|'''Foo''']]
+                $temp_text =~
+                  s/\[\[\s*([^|:\]]*)\s*\|\s*('{2,})\s*(.)/\[\[$1\|$2\u$3/g;
             }
 
-            if ( $temp_text =~ /(\[\[\s*([^|:]*)\s*\|\s*\2\s*\]\])/ ) {
+            if ( $temp_text =~ /(\[\[\s*([^|:]*)\s*\|\2\s*[.,]?\s*\]\])/ ) {
+                my $found_text = $1;
+                error_register( $error_code, $found_text );
+            }
+            # Account for [[Foo|''Foo'']] and [[Foo|'''Foo''']]
+            elsif (
+                $temp_text =~ /(\[\[\s*([^|:]*)\s*\|'{2,}\2\s*'{2,}\s*\]\])/ )
+            {
                 my $found_text = $1;
                 error_register( $error_code, $found_text );
             }
@@ -4781,7 +4791,6 @@ sub error_094_ref_no_correct_match {
 sub error_095_user_signature {
     my $error_code = 95;
 
-    print ":" . $Draft_regex . ":\n";
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
