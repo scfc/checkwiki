@@ -11,7 +11,7 @@
 ##
 ##        AUTHOR: Stefan Kühn, Bryan White
 ##       LICENCE: GPLv3
-##       VERSION: 2015/08/12
+##       VERSION: 2015/11/01
 ##
 ###########################################################################
 
@@ -890,6 +890,9 @@ sub check_article {
     # REMOVE FROM $text ANY CONTENT BETWEEN <score> TAGS.
     get_score();
 
+    # REMOVE FROM $text ANY CONTENT BETWEEN <score> TAGS.
+    get_graph();
+
     $lc_text = lc($text);
 
     #------------------------------------------------------
@@ -1122,6 +1125,17 @@ sub get_score {
 }
 
 ###########################################################################
+## REMOVE EVERYTHING BETWEEN THE GRAPH TAGS
+###########################################################################
+
+sub get_graph {
+
+    $text =~ s/<graph(.*?)<\/graph>//sg;
+
+    return ();
+}
+
+###########################################################################
 ## GET TABLES
 ###########################################################################
 
@@ -1195,18 +1209,30 @@ sub get_isbn {
       )
     {
         my $test_text = uc($text);
-        if ( $test_text =~ / ISBN\s*([-]|[:]|[#]|10|13)\s*/g ) {
+        if ( $test_text =~ / ISBN\s*([-]|[:]|[#]|[;]|10|13)\s*/g ) {
             my $output = substr( $test_text, pos($test_text) - 11, 40 );
 
             # INFOBOX CAN HAVE "| ISBN10 = ".
             # ALSO DON'T CHECK ISBN (10|13)XXXXXXXXXX
             if (    ( $output !~ /\|\s*ISBN(10|13)\s*=/g )
-                and ( $output !~ /ISBN\s*([-]|[:]|[#]){0,1}\s*(10|13)\d/g ) )
+                and ( $output !~ /ISBN\s*([-]|[:]|[#]|[;]){0,1}\s*(10|13)\d/g )
+              )
             {
                 error_069_isbn_wrong_syntax($output);
             }
         }
-        elsif ( $test_text =~ / \[\[ISBN\]\]\s*([:]|[-]|[#])+\s*\d/g ) {
+        elsif ( $test_text =~ / \[\[ISBN\]\]\s*([:]|[-]|[#]|[;])+\s*\d/g ) {
+            my $output = substr( $text, $-[0], 40 );
+            error_069_isbn_wrong_syntax($output);
+        }
+
+        # CHECK FOR CASES OF ISBNXXXXXXXXX.  INFOBOXES CAN HAVE ISBN10
+        # SO NEED TO WORK AROUND THAT.
+        elsif ( $test_text =~ / ISBN\d[-\d ][-\d]/g ) {
+            my $output = substr( $text, $-[0], 40 );
+            error_069_isbn_wrong_syntax($output);
+        }
+        elsif ( $test_text =~ / (10|13)-ISBN/g ) {
             my $output = substr( $text, $-[0], 40 );
             error_069_isbn_wrong_syntax($output);
         }
@@ -1979,7 +2005,7 @@ sub error_002_have_br {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
             if ( $lc_text =~
-/(<\s*br\/[^ ]>|<\s*br[^ ]\/>|<\s*br[^ \/]>|<[^ w]br\s*>|<\s*br\s*\/[^ ]>|<\s*br\s*clear|<\s*small\/[^ ]>|<\s*small[^ ]\/>|<\s*center\/[^ ]>|<\s*center[^ ]\/>)/i
+/(<\s*br\/[^ ]>|<\s*br[^ ]\/>|<\s*br[^ \/]>|<[^ w]br\s*>|<\s*br\s*\/[^ ]>|<\s*br\s*clear|<small\s*\/\s*>|<\s*center\s*\/\s*>)/i
               )
             {
                 my $test_line = substr( $text, $-[0], 40 );
@@ -3682,7 +3708,7 @@ sub error_058_headline_with_capitalization {
                 my $current_line_normal = $_;
 
                 $current_line_normal =~
-                  s/[^A-Za-z,\/&]//g;    # Only english characters and comma
+                  s/[^\p{Uppercase}\p{Lowercase},&]//g;    # Only english characters and comma
 
                 my $current_line_uc = uc($current_line_normal);
                 if ( length($current_line_normal) > 10 ) {
@@ -3785,11 +3811,11 @@ sub error_061_reference_with_punctuation {
 
             # Not sure about elipse (...).  "{1,2}[^\.]" to not check for them
             # Space after !, otherwise will catch false-poistive from tables
-            if ( $text =~ /<\/ref>[ ]{0,2}(\.{1,2}[^\.]|,|\?|:|;|! )/ ) {
+            if ( $text =~ /<\/ref>[ ]{0,2}(\.{1,2}[^\.]|,|\?|:|;|! )/i ) {
                 error_register( $error_code, substr( $text, $-[0], 40 ) );
             }
             elsif ( $text =~
-                /(<ref name[^\/]*\/>[ ]{0,2}(\.{1,2}[^\.]|,|\?|:|;|! ))/ )
+                /(<ref name[^\/]*\/>[ ]{0,2}(\.{1,2}[^\.]|,|\?|:|;|! ))/i )
             {
                 error_register( $error_code, substr( $text, $-[0], 40 ) );
             }
@@ -3900,6 +3926,7 @@ sub error_064_link_equal_linktext {
             if ( $project !~ /wiktionary/ ) {
                 $temp_text =~ s/\[\[\s*([\w])/\[\[\u$1/g;
                 $temp_text =~ s/\[\[\s*([^|:\]]*)\s*\|\s*(.)/\[\[$1\|\u$2/g;
+
                 # Account for [[Foo|''Foo'']] and [[Foo|'''Foo''']]
                 $temp_text =~
                   s/\[\[\s*([^|:\]]*)\s*\|\s*('{2,})\s*(.)/\[\[$1\|$2\u$3/g;
@@ -3909,6 +3936,7 @@ sub error_064_link_equal_linktext {
                 my $found_text = $1;
                 error_register( $error_code, $found_text );
             }
+
             # Account for [[Foo|''Foo'']] and [[Foo|'''Foo''']]
             elsif (
                 $temp_text =~ /(\[\[\s*([^|:]*)\s*\|'{2,}\2\s*'{2,}\s*\]\])/ )
@@ -4504,7 +4532,7 @@ sub error_085_tag_without_content {
                            <onlyinclude>\s*<\/onlyinclude|
                            <includeonly>\s*<\/includeonly>|
                            <center>\s*<\/center>|
-                           <gallery>\s*<\/gallery>|
+                           (<gallery[^>]*(?:\/>|>(?:\s|&nbsp;)*<\/gallery>))|
                            <ref>\s*<\/ref>|
                            <span>\s*<\/span>|
                            <div>\s*<\/div>
@@ -4676,7 +4704,7 @@ sub error_090_Internal_link_written_as_an_external_link {
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
-            if ( $lc_text =~ /(\[\s*https?:\/\/$ServerName\/wiki)/i ) {
+            if ( $lc_text =~ /($ServerName\/wiki)/i ) {
                 error_register( $error_code, substr( $1, 0, 40 ) );
             }
         }
@@ -4696,10 +4724,8 @@ sub error_091_Interwiki_link_written_as_an_external_link {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
             my $test_text = $lc_text;
-            $test_text =~ s/(\[\s*https?:\/\/$ServerName)//ig;
-            if ( $test_text =~
-                /(\[\s*https?:\/\/[a-z]{2}\.wikipedia\.org\/wiki)/i )
-            {
+            $test_text =~ s/($ServerName)//ig;
+            if ( $test_text =~ /([a-z]{2,3}\.wikipedia\.org\/wiki)/i ) {
                 error_register( $error_code, substr( $1, 0, 40 ) );
             }
         }
