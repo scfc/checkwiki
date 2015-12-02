@@ -11,7 +11,7 @@
 ##
 ##        AUTHOR: Stefan Kühn, Bryan White
 ##       LICENCE: GPLv3
-##       VERSION: 2015/11/01
+##       VERSION: 2015/12/02
 ##
 ###########################################################################
 
@@ -1967,6 +1967,8 @@ sub error_check {
         error_101_ordinal_numbers_in_sup();
         error_102_pmid_wrong_syntax();
         error_103_pipe_magicword_in_wikilink();
+        error_104_quote_marks_in_refs();
+        error_105_headline_start_begin();
     }
 
     return ();
@@ -3707,8 +3709,8 @@ sub error_058_headline_with_capitalization {
             foreach (@Headlines) {
                 my $current_line_normal = $_;
 
-                $current_line_normal =~
-                  s/[^\p{Uppercase}\p{Lowercase},&]//g;    # Only english characters and comma
+                $current_line_normal =~ s/[^\p{Uppercase}\p{Lowercase},&]//g
+                  ;    # Only english characters and comma
 
                 my $current_line_uc = uc($current_line_normal);
                 if ( length($current_line_normal) > 10 ) {
@@ -5045,6 +5047,57 @@ sub error_103_pipe_magicword_in_wikilink {
     return ();
 
 }
+
+###########################################################################
+## ERROR 104
+###########################################################################
+
+sub error_104_quote_marks_in_refs {
+    my $error_code = 104;
+
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
+        if ( $page_namespace == 0 or $page_namespace == 104 ) {
+
+            if ( $text =~ /\<ref\sname\=\"\w+\>/gi ) {
+                error_register( $error_code, substr( $text, $-[0], 40 ) );
+            }
+        }
+    }
+
+    return ();
+
+}
+
+###########################################################################
+## ERROR 105
+###########################################################################
+
+sub error_105_headline_start_begin {
+    my $error_code = 105;
+
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
+        foreach (@Lines) {
+            my $current_line  = $_;
+            my $current_line1 = $current_line;
+            my $current_line2 = $current_line;
+
+            $current_line2 =~ s/\t//gi;
+            $current_line2 =~ s/[ ]+/ /gi;
+            $current_line2 =~ s/ $//gi;
+
+            if (    $current_line1 =~ /==$/
+                and not( $current_line2 =~ /^==/ )
+                and index( $current_line, '<ref' ) == -1
+                and ( $page_namespace == 0 or $page_namespace == 104 ) )
+            {
+                error_register( $error_code, substr( $current_line, 0, 40 ) );
+            }
+        }
+    }
+
+    return ();
+}
+
 ######################################################################
 ######################################################################
 ######################################################################
