@@ -11,7 +11,7 @@
 ##
 ##        AUTHOR: Stefan Kühn, Bryan White
 ##       LICENCE: GPLv3
-##       VERSION: 2015/12/02
+##       VERSION: 2015/12/15
 ##
 ###########################################################################
 
@@ -34,10 +34,10 @@ use MediaWiki::API;
 use MediaWiki::Bot;
 
 # Different versions of Perl at home vs labs.  Use labs version
-#use v5.14.2;
+use v5.18.2;
 
 # When using the most current version available
-use v5.20.0;
+#use v5.20.0;
 no if $] >= 5.018, warnings => "experimental::smartmatch";
 
 binmode( STDOUT, ":encoding(UTF-8)" );
@@ -140,8 +140,8 @@ our @FOUNDATION_PROJECTS = qw( b  c  d  n  m  q  s  v  w
 
 # See http://turner.faculty.swau.edu/webstuff/htmlsymbols.html
 our @HTML_NAMED_ENTITIES = qw( aacute Aacute acirc Acirc aelig AElig
-  agrave Agrave alpha Alpha aring Aring asymp atilde Atilde auml Auml beta Beta
-  brvbar bull ccedil Ccedil cent chi Chi clubs copy crarr darr dArr deg
+  agrave Agrave alpha Alpha aring Aring asymp atilde Atilde auml Auml beta Beta 
+  bdquo brvbar bull ccedil Ccedil cent chi Chi clubs copy crarr darr dArr deg
   delta Delta diams divide eacute Eacute ecirc Ecirc egrave Egrave
   epsilon Epsilon equiv eta Eta eth ETH euml Euml euro fnof frac12 frac14
   frac34 frasl gamma Gamma ge harr hArr hearts hellip iacute Iacute icirc Icirc
@@ -159,7 +159,7 @@ our @HTML_NAMED_ENTITIES = qw( aacute Aacute acirc Acirc aelig AElig
 # FOR #011. DO NOT CONVERT GREEK LETTERS THAT LOOK LIKE LATIN LETTERS.
 # Alpha (A), Beta (B), Epsilon (E), Zeta (Z), Eta (E), Kappa (K), kappa (k), Mu (M), Nu (N), nu (v), Omicron (O), omicron (o), Rho (P), Tau (T), Upsilon (Y), upsilon (o) and Chi (X).
 our @HTML_NAMED_ENTITIES_011 = qw( aacute Aacute acirc Acirc aelig AElig
-  agrave Agrave alpha aring Aring asymp atilde Atilde auml Auml beta
+  agrave Agrave alpha aring Aring asymp atilde Atilde auml Auml beta bdquo
   brvbar bull ccedil Ccedil cent chi clubs copy crarr darr dArr deg
   delta Delta diams divide eacute Eacute ecirc Ecirc egrave Egrave
   epsilon equiv eta eth ETH euml Euml euro fnof frac12 frac14
@@ -1380,7 +1380,9 @@ sub get_template {
     my $output                = q{};
     foreach (@Templates_all) {
         my $current_template = $_;
-        $current_template =~ s/^\{\{|\}\}$//;
+
+        $current_template =~ s/^\{\{//;
+        $current_template =~ s/\}\}$//;
         $current_template =~ s/^ //g;
 
         foreach (@Namespace_templates) {
@@ -1467,7 +1469,6 @@ sub get_template {
                 if ( index( $template_part, '=' ) > -1 ) {
 
                     #template part with "="   {{test|attribut=value}}
-
                     my $pos_equal     = index( $template_part, '=' );
                     my $pos_lower     = index( $template_part, '<' );
                     my $pos_next_temp = index( $template_part, '{{' );
@@ -5079,15 +5080,14 @@ sub error_105_headline_start_begin {
         foreach (@Lines) {
             my $current_line  = $_;
             my $current_line1 = $current_line;
-            my $current_line2 = $current_line;
 
-            $current_line2 =~ s/\t//gi;
-            $current_line2 =~ s/[ ]+/ /gi;
-            $current_line2 =~ s/ $//gi;
+            $current_line1 =~ s/\t//gi;
+            $current_line1 =~ s/[ ]+/ /gi;
+            $current_line1 =~ s/ $//gi;
 
-            if (    $current_line1 =~ /==$/
-                and not( $current_line2 =~ /^==/ )
-                and index( $current_line, '<ref' ) == -1
+            if ( $current_line =~ /==$/
+                and not( $current_line1 =~ /^==/ )
+                and index( $current_line, '</ref' ) == -1
                 and ( $page_namespace == 0 or $page_namespace == 104 ) )
             {
                 error_register( $error_code, substr( $current_line, 0, 40 ) );
