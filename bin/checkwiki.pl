@@ -140,7 +140,7 @@ our @FOUNDATION_PROJECTS = qw( b  c  d  n  m  q  s  v  w
 
 # See http://turner.faculty.swau.edu/webstuff/htmlsymbols.html
 our @HTML_NAMED_ENTITIES = qw( aacute Aacute acirc Acirc aelig AElig
-  agrave Agrave alpha Alpha aring Aring asymp atilde Atilde auml Auml beta Beta 
+  agrave Agrave alpha Alpha aring Aring asymp atilde Atilde auml Auml beta Beta
   bdquo brvbar bull ccedil Ccedil cent chi Chi clubs copy crarr darr dArr deg
   delta Delta diams divide eacute Eacute ecirc Ecirc egrave Egrave
   epsilon Epsilon equiv eta Eta eth ETH euml Euml euro fnof frac12 frac14
@@ -1282,6 +1282,70 @@ sub get_isbn {
 }
 
 ###########################################################################
+## GET ISSN
+###########################################################################
+
+sub get_issn {
+
+    if ( $text =~ / ISSN\s*([-]|[:]|[#]|[;])\s*[0-9]/ ) {
+        error_106_issn_wrong_syntax( substr( $text, $-[0] + 1, 16 ) );
+    }
+    if ( $text =~ / \[\[ISSN\]\]\s*([-]|[:]|[#]|[;]|[0-9])\s*[0-9]/ ) {
+
+        # [[ISSN]] 1234-5678
+        error_106_issn_wrong_syntax( substr( $text, $-[0] + 1, 19 ) );
+    }
+    if ( $text =~ / ISSN\d/ ) {
+
+        # ISSN12345678
+        error_106_issn_wrong_syntax( substr( $text, $-[0] + 1, 13 ) );
+    }
+    if ( $text =~ / ISSN\s+\d{8}/ ) {
+
+        # ISSN 12345678
+        error_106_issn_wrong_syntax( substr( $text, $-[0] + 1, 14 ) );
+    }
+    if ( $text =~ / ISSN\s+\d{4}\s+\d{3}[0-9X]/ ) {
+
+        # ISSN 1234 5678
+        error_106_issn_wrong_syntax( substr( $text, $-[0] + 1, 15 ) );
+    }
+    foreach (@Lines) {
+        while ( $_ =~ m/ (ISSN\s+[\dXx]+-[\dXx]+)/g ) {
+            my $output = $1;
+            my $issn   = uc($1);
+            $issn =~ s/[^0-9X]//g;
+            my $length = length($issn);
+            if ( $output !~ /ISSN\s+(\d{4}-\d{3}[0-9X])/ ) {
+                error_106_issn_wrong_syntax($output);
+            }
+            elsif ( $length < 8 or $length > 8 ) {
+                error_107_issn_wrong_length($output);
+            }
+            elsif ( $issn !~ /\d{7}[0-9X]/ ) {
+
+                # X is in wrong spot
+                error_108_issn_wrong_checksum($output);
+            }
+            else {
+                my @digits = split //, $issn;
+                my $sum = 0;
+                foreach ( reverse 2 .. 8 ) {
+                    $sum += $_ * ( shift @digits );
+                }
+                my $checksum = ( 11 - ( $sum % 11 ) ) % 11;
+                $checksum = 'X' if $checksum == 10;
+                if ( substr( $issn, -1, 1 ) ne $checksum ) {
+                    error_108_issn_wrong_checksum($output);
+                }
+            }
+        }
+    }
+
+    return ();
+}
+
+###########################################################################
 ##  GET_REF
 ###########################################################################
 
@@ -1854,6 +1918,7 @@ sub error_check {
     else {
         get_tables();    # CALLS #28
         get_isbn();      # CALLS #69, #70, #71, #72 ISBN CHECKS
+        get_issn();      # CALLS #106, #107, #108 ISSN CHECKS
 
         error_001_template_with_word_template();
         error_002_have_br();
@@ -2448,7 +2513,7 @@ sub error_016_unicode_control_characters {
             my $search = "\x{200E}|\x{FEFF}";
             if ( $project eq 'enwiki' ) {
                 $search = $search
-                  . "|\x{200B}|\x{2028}|\x{202A}|\x{202C}|\x{202D}|\x{202E}|\x{00A0}|\x{00AD}";
+                  . "|\x{200B}|\x{2028}|\x{202A}|\x{202C}|\x{202D}|\x{202E}|\x{00A0}|\x{00AD}|\x{202B}|\x{200F}";
             }
 
             if ( $text =~ /($search)/ or $text =~ /(\p{Co})/ ) {
@@ -5085,13 +5150,76 @@ sub error_105_headline_start_begin {
             $current_line1 =~ s/[ ]+/ /gi;
             $current_line1 =~ s/ $//gi;
 
-            if ( $current_line =~ /==$/
+            if (    $current_line =~ /==$/
                 and not( $current_line1 =~ /^==/ )
                 and index( $current_line, '</ref' ) == -1
                 and ( $page_namespace == 0 or $page_namespace == 104 ) )
             {
                 error_register( $error_code, substr( $current_line, 0, 40 ) );
             }
+        }
+    }
+
+    return ();
+}
+
+###########################################################################
+## ERROR 106
+###########################################################################
+
+sub error_106_issn_wrong_syntax {
+    my ($found_text) = @_;
+    my $error_code = 106;
+
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
+        if ( ( $page_namespace == 0 or $page_namespace == 104 )
+            and $found_text ne q{} )
+        {
+            # chop off anything not part of ISSN
+            my $x = substr( $found_text, -1, 1 );
+            while ( $x !~ /[0-9Xx]/ ) {
+                chop $found_text;
+                $x = substr( $found_text, -1, 1 );
+            }
+            error_register( $error_code, $found_text );
+        }
+    }
+
+    return ();
+}
+
+###########################################################################
+## ERROR 107
+###########################################################################
+
+sub error_107_issn_wrong_length {
+    my ($found_text) = @_;
+    my $error_code = 107;
+
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
+        if ( ( $page_namespace == 0 or $page_namespace == 104 )
+            and $found_text ne q{} )
+        {
+            error_register( $error_code, $found_text );
+        }
+    }
+
+    return ();
+}
+
+###########################################################################
+## ERROR 108
+###########################################################################
+
+sub error_108_issn_wrong_checksum {
+    my ($found_text) = @_;
+    my $error_code = 108;
+
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
+        if ( ( $page_namespace == 0 or $page_namespace == 104 )
+            and $found_text ne q{} )
+        {
+            error_register( $error_code, $found_text );
         }
     }
 
