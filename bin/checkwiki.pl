@@ -11,7 +11,7 @@
 ##
 ##        AUTHOR: Stefan Kühn, Bryan White
 ##       LICENCE: GPLv3
-##       VERSION: 2015/12/15
+##       VERSION: 2015/1/5
 ##
 ###########################################################################
 
@@ -1316,16 +1316,16 @@ sub get_issn {
             my $issn   = uc($1);
             $issn =~ s/[^0-9X]//g;
             my $length = length($issn);
-            if ( $output !~ /ISSN\s+(\d{4}-\d{3}[0-9X])/ ) {
-                error_106_issn_wrong_syntax($output);
-            }
-            elsif ( $length < 8 or $length > 8 ) {
+            if ( $length < 8 or $length > 8 ) {
                 error_107_issn_wrong_length($output);
             }
             elsif ( $issn !~ /\d{7}[0-9X]/ ) {
 
                 # X is in wrong spot
                 error_108_issn_wrong_checksum($output);
+            }
+            elsif ( $output !~ /ISSN\s+(\d{4}-\d{3}[0-9X])/ ) {
+                error_106_issn_wrong_syntax($output);
             }
             else {
                 my @digits = split //, $issn;
@@ -1425,7 +1425,16 @@ sub get_templates_all {
             push( @Templates_all, $temp_text_2 );
         }
         else {
-            error_043_template_no_correct_end( substr( $temp_text, 0, 40 ) );
+            if ( $project ne "ruwiki" or $project ne "ukwiki" ) {
+                error_043_template_no_correct_end(
+                    substr( $temp_text, 0, 40 ) );
+            }
+
+            # ruwiki and ukwiki use "{{{!" in infoboxes.
+            elsif ( $temp_text !~ /\{\{\{\!/ ) {
+                error_043_template_no_correct_end(
+                    substr( $temp_text, 0, 40 ) );
+            }
         }
     }
 
@@ -2111,6 +2120,11 @@ sub error_003_have_ref {
                 $test = "true" if ( $test_text =~ /\{\{[ ]?+refbegin/ );
                 $test = "true" if ( $test_text =~ /\{\{[ ]?+refend/ );
                 $test = "true" if ( $test_text =~ /\{\{[ ]?+reflist/ );
+
+                # hrwiki doesn't have a translation file
+                $test = "true"
+                  if (  $test_text =~ /\{\{[ ]?+izvori/
+                    and $project eq "hrwiki" );
 
                 if ( $Template_list[$error_code][0] ne '-9999' ) {
 
