@@ -11,7 +11,7 @@
 ##
 ##        AUTHOR: Stefan Kühn, Bryan White
 ##       LICENCE: GPLv3
-##       VERSION: 2015/1/5
+##       VERSION: 2015/3/1
 ##
 ###########################################################################
 
@@ -1210,11 +1210,11 @@ sub get_isbn {
     {
         my $test_text = uc($text);
         if ( $test_text =~ / ISBN\s*([-]|[:]|[#]|[;]|10|13)\s*/g ) {
-            my $output = substr( $test_text, pos($test_text) - 11, 40 );
+            my $output = substr( $text, $-[0] - 1, 40 );
 
             # INFOBOX CAN HAVE "| ISBN10 = ".
             # ALSO DON'T CHECK ISBN (10|13)XXXXXXXXXX
-            if (    ( $output !~ /\|\s*ISBN(10|13)\s*=/g )
+            if (    ( $output !~ /\|\s*ISBN(10|13)\s*=/ig )
                 and ( $output !~ /ISBN\s*([-]|[:]|[#]|[;]){0,1}\s*(10|13)\d/g )
               )
             {
@@ -1222,18 +1222,18 @@ sub get_isbn {
             }
         }
         elsif ( $test_text =~ / \[\[ISBN\]\]\s*([:]|[-]|[#]|[;])+\s*\d/g ) {
-            my $output = substr( $text, $-[0], 40 );
+            my $output = substr( $text, $-[0] - 1, 40 );
             error_069_isbn_wrong_syntax($output);
         }
 
         # CHECK FOR CASES OF ISBNXXXXXXXXX.  INFOBOXES CAN HAVE ISBN10
         # SO NEED TO WORK AROUND THAT.
         elsif ( $test_text =~ / ISBN\d[-\d ][-\d]/g ) {
-            my $output = substr( $text, $-[0], 40 );
+            my $output = substr( $text, $-[0] - 1, 40 );
             error_069_isbn_wrong_syntax($output);
         }
         elsif ( $test_text =~ / (10|13)-ISBN/g ) {
-            my $output = substr( $text, $-[0], 40 );
+            my $output = substr( $text, $-[0] - 1, 40 );
             error_069_isbn_wrong_syntax($output);
         }
 
@@ -1295,12 +1295,12 @@ sub get_issn {
         # [[ISSN]] 1234-5678
         error_106_issn_wrong_syntax( substr( $text, $-[0] + 1, 19 ) );
     }
-    if ( $text =~ / ISSN\d/ ) {
+    if ( $text =~ / ISSN\d{3}/ ) {
 
-        # ISSN12345678
-        error_106_issn_wrong_syntax( substr( $text, $-[0] + 1, 13 ) );
+        # ISSN12345678 Check for 3 digits in case issn10= shows up in infobox
+        error_106_issn_wrong_syntax( substr( $text, $-[0] + 1, 19 ) );
     }
-    if ( $text =~ / ISSN\s+\d{8}/ ) {
+    if ( $text =~ / ISSN\s+\d{8}[^0-9]/ ) {
 
         # ISSN 12345678
         error_106_issn_wrong_syntax( substr( $text, $-[0] + 1, 14 ) );
@@ -1425,15 +1425,16 @@ sub get_templates_all {
             push( @Templates_all, $temp_text_2 );
         }
         else {
-            if ( $project ne "ruwiki" or $project ne "ukwiki" ) {
-                error_043_template_no_correct_end(
-                    substr( $temp_text, 0, 40 ) );
+            my $begin_string = substr( $temp_text, 0, 40 );
+            if ( $project ne "ruwiki" and $project ne "ukwiki" ) {
+                error_043_template_no_correct_end($begin_string);
             }
 
             # ruwiki and ukwiki use "{{{!" in infoboxes.
-            elsif ( $temp_text !~ /\{\{\{\!/ ) {
-                error_043_template_no_correct_end(
-                    substr( $temp_text, 0, 40 ) );
+            # Only look at beginning of string, where error is at. Bypass {{{!
+            # but can continue on and check for error in rest of article.
+            elsif ( $begin_string !~ /\{\{\{\!/ ) {
+                error_043_template_no_correct_end($begin_string);
             }
         }
     }
@@ -1801,9 +1802,6 @@ sub get_headlines {
     foreach (@Lines) {
 
         if ( substr( $_, 0, 1 ) eq '=' ) {
-            print 'HEADLINE:' . $title . "\n"
-              if ( $first == 0 and $title eq $_ );
-            $first = 2;
             push( @Headlines, $_ );
         }
     }
@@ -2309,10 +2307,22 @@ sub error_008_headline_start_end {
 
             if (    $current_line1 =~ /^==/
                 and not( $current_line2 =~ /==$/ )
-                and index( $current_line, '<ref' ) == -1
                 and ( $page_namespace == 0 or $page_namespace == 104 ) )
             {
-                error_register( $error_code, substr( $current_line, 0, 40 ) );
+                # Check for cases where a ref is after ==.  Many times a
+                # ref is in the heading with a new line in the ref... This
+                # is two entries in @Headlines and causes a false positive.
+                # Make sure the refs is after the last ==.
+                if ( index( $current_line, '<ref' ) > 0 ) {
+                    if ( $current_line =~ /=\s*<ref/ ) {
+                        error_register( $error_code,
+                            substr( $current_line, 0, 40 ) );
+                    }
+                }
+                else {
+                    error_register( $error_code,
+                        substr( $current_line, 0, 40 ) );
+                }
             }
         }
     }
@@ -4356,29 +4366,18 @@ sub error_078_reference_double {
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
-            my $test_text      = $lc_text;
             my $number_of_refs = 0;
-            my $pos_first      = -1;
-            my $pos_second     = -1;
-            while ( $test_text =~ /<references[ ]?\/>/g ) {
-                my $pos = pos($test_text);
+            $number_of_refs = () = $text =~ /<references[ ]?\/?>/gi;
 
-                $number_of_refs++;
-                $pos_first = $pos
-                  if ( $pos_first == -1 and $number_of_refs == 1 );
-                $pos_second = $pos
-                  if ( $pos_second == -1 and $number_of_refs == 2 );
+            if ( $Template_list[$error_code][0] ne '-9999' ) {
+                my @ack = @{ $Template_list[$error_code] };
+                for my $temp (@ack) {
+                    $number_of_refs += () = $text =~ /\{\{$temp/gi;
+                }
+
             }
-
             if ( $number_of_refs > 1 ) {
-                $test_text = $text;
-                $test_text =~ s/\n/ /g;
-                my $found_text = substr( $test_text, 0, $pos_first );
-                $found_text = text_reduce_to_end( $found_text, 40 );
-                my $found_text2 = substr( $test_text, 0, $pos_second );
-                $found_text2 = text_reduce_to_end( $found_text2, 40 );
-                $found_text = $found_text . '<br>' . $found_text2;
-                error_register( $error_code, $found_text );
+                error_register( $error_code, q{} );
             }
         }
     }
@@ -4786,8 +4785,11 @@ sub error_090_Internal_link_written_as_an_external_link {
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
-            if ( $lc_text =~ /($ServerName\/wiki)/i ) {
-                error_register( $error_code, substr( $1, 0, 40 ) );
+            if ( $text =~ /($ServerName\/wiki)/i ) {
+
+                # Use split to include only the url.
+                ( my $ack ) = split( /\s/, substr( $text, $-[0], 40 ), 2 );
+                error_register( $error_code, $ack );
             }
         }
     }
@@ -4805,10 +4807,20 @@ sub error_091_Interwiki_link_written_as_an_external_link {
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
-            my $test_text = $lc_text;
+            my $test_text = $text;
+
+            # Remove current $projects as that is for #90
             $test_text =~ s/($ServerName)//ig;
             if ( $test_text =~ /([a-z]{2,3}\.wikipedia\.org\/wiki)/i ) {
-                error_register( $error_code, substr( $1, 0, 40 ) );
+
+                # Use split to include only the url.
+                ( my $string ) =
+                  split( /\s/, substr( $test_text, $-[0], 40 ), 2 );
+
+                # Links to images on other wikis are ok.  plwiki has alot.
+                if ( $string !~ /\.wikipedia\.org\/wiki\/(Image|File):/i ) {
+                    error_register( $error_code, $string );
+                }
             }
         }
     }
