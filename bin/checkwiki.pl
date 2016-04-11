@@ -11,7 +11,7 @@
 ##
 ##        AUTHOR: Stefan Kühn, Bryan White
 ##       LICENCE: GPLv3
-##       VERSION: 2015/3/1
+##       VERSION: 2016/4/11
 ##
 ###########################################################################
 
@@ -884,6 +884,9 @@ sub check_article {
     # CALLS #013
     get_math();
 
+    # REMOVES FROM $text ANY CONTENT BETWEEN <ce> </ce> TAGS.
+    get_ce();
+
     # REMOVE FROM $text ANY CONTENT BETWEEN <hiero> TAGS.
     get_hiero();
 
@@ -1038,6 +1041,21 @@ sub get_math {
         $text =~ s/<math(.*?)<\/math>/<math><\/math>/sg;
     }
 
+    return ();
+}
+
+###########################################################################
+## FIND MISSING CE TAGS AND REMOVE EVERYTHING BETWEEN THE TAGS
+###########################################################################
+
+sub get_ce {
+    my $test_text = $text;
+
+    if ( $text =~ /<ce>/i ) {
+
+        # LEAVE MATH TAG IN.  CAUSES PROBLEMS WITH #61, #65 and #67
+        $text =~ s/<ce(.*?)<\/ce>/<ce><\/ce>/sgi;
+    }
     return ();
 }
 
@@ -2537,7 +2555,7 @@ sub error_016_unicode_control_characters {
             my $search = "\x{200E}|\x{FEFF}";
             if ( $project eq 'enwiki' ) {
                 $search = $search
-                  . "|\x{200B}|\x{2028}|\x{202A}|\x{202C}|\x{202D}|\x{202E}|\x{00A0}|\x{00AD}|\x{202B}|\x{200F}";
+                  . "|\x{007F}|\x{200B}|\x{2028}|\x{202A}|\x{202C}|\x{202D}|\x{202E}|\x{00A0}|\x{00AD}|\x{202B}|\x{200F}|\x{2004}|\x{2005}|\x{2006}|\x{2007}|\x{2008}";
             }
 
             if ( $text =~ /($search)/ or $text =~ /(\p{Co})/ ) {
@@ -2545,6 +2563,12 @@ sub error_016_unicode_control_characters {
                 my $pos = index( $test_text, $1 );
                 $test_text = substr( $test_text, $pos, 40 );
                 $test_text =~ s/\p{Co}/\{PUA\}/;
+                $test_text =~ s/\x{007F}/\{007F\}/;
+                $test_text =~ s/\x{2004}/\{2004\}/;
+                $test_text =~ s/\x{2005}/\{2005\}/;
+                $test_text =~ s/\x{2006}/\{2006\}/;
+                $test_text =~ s/\x{2007}/\{2007\}/;
+                $test_text =~ s/\x{2008}/\{2008\}/;
                 $test_text =~ s/\x{200B}/\{200B\}/;
                 $test_text =~ s/\x{200E}/\{200E\}/;
                 $test_text =~ s/\x{202A}/\{202A\}/;
@@ -4811,7 +4835,7 @@ sub error_091_Interwiki_link_written_as_an_external_link {
 
             # Remove current $projects as that is for #90
             $test_text =~ s/($ServerName)//ig;
-            if ( $test_text =~ /([a-z]{2,3}\.wikipedia\.org\/wiki)/i ) {
+            if ( $test_text =~ /([a-z]{2,3}(\.m)?\.wikipedia\.org\/wiki)/i ) {
 
                 # Use split to include only the url.
                 ( my $string ) =
@@ -5150,7 +5174,8 @@ sub error_104_quote_marks_in_refs {
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
-            if ( $text =~ /\<ref\sname\=\"\w+\>/gi ) {
+            #if ( $text =~ /\<ref\sname\=\"\w+\>/gi ) {
+            if ( $text =~ /<ref\s+name="[\w\s]+\/?>/gi ) {
                 error_register( $error_code, substr( $text, $-[0], 40 ) );
             }
         }
