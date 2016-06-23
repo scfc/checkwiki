@@ -11,7 +11,7 @@
 ##
 ##        AUTHOR: Stefan Kühn, Bryan White
 ##       LICENCE: GPLv3
-##       VERSION: 2016/4/11
+##       VERSION: 2016/6/21
 ##
 ###########################################################################
 
@@ -522,7 +522,7 @@ sub readMetadata {
         die( "Couldn't calculate server name for project" . $project . "\n" );
     }
 
-    my $url = 'http://' . $ServerName . '/w/api.php';
+    my $url = 'https://' . $ServerName . '/w/api.php';
 
     # Setup MediaWiki::API
     my $mw = MediaWiki::API->new();
@@ -707,7 +707,7 @@ sub article_scan {
     my $bot = MediaWiki::Bot->new(
         {
             assert   => 'bot',
-            protocol => 'http',
+            protocol => 'https',
             host     => $ServerName,
         }
     );
@@ -732,7 +732,7 @@ sub list_scan {
     my $bot = MediaWiki::Bot->new(
         {
             assert   => 'bot',
-            protocol => 'http',
+            protocol => 'https',
             host     => $ServerName,
         }
     );
@@ -771,7 +771,7 @@ sub live_scan {
     my $bot = MediaWiki::Bot->new(
         {
             assert   => 'bot',
-            protocol => 'http',
+            protocol => 'https',
             host     => $ServerName,
         }
     );
@@ -806,7 +806,7 @@ sub delay_scan {
     my $bot = MediaWiki::Bot->new(
         {
             assert   => 'bot',
-            protocol => 'http',
+            protocol => 'https',
             host     => $ServerName,
         }
     );
@@ -868,16 +868,16 @@ sub check_article {
     # CALLS #24
     get_pre();
 
-    # REMOVES FROM $text ANY CONTENT BETWEEN <source> </sources TAGS.
-    # CALLS #014
-    get_source();
-
     # REMOVES FROM $text ANY CONTENT BETWEEN <code> </code> TAGS.
     # CALLS #15
     get_code();
 
     # REMOVE FROM $text ANY CONTENT BETWEEN <syntaxhighlight> TAGS.
     get_syntaxhighlight();
+
+    # REMOVES FROM $text ANY CONTENT BETWEEN <source> </sources TAGS.
+    # CALLS #014
+    get_source();
 
     # REMOVES FROM $text ANY CONTENT BETWEEN <math> </math> TAGS.
     # Goes after code and syntaxhighlight so it doesn't catch <math.h>
@@ -1051,7 +1051,7 @@ sub get_math {
 sub get_ce {
     my $test_text = $text;
 
-    if ( $text =~ /<ce>/i ) {
+    if ( $text =~ /<ce/i ) {
 
         # LEAVE MATH TAG IN.  CAUSES PROBLEMS WITH #61, #65 and #67
         $text =~ s/<ce(.*?)<\/ce>/<ce><\/ce>/sgi;
@@ -2060,6 +2060,8 @@ sub error_check {
         error_103_pipe_magicword_in_wikilink();
         error_104_quote_marks_in_refs();
         error_105_headline_start_begin();
+        error_109_include_tag_error();
+        error_110_found_include_tag();
     }
 
     return ();
@@ -2098,7 +2100,7 @@ sub error_002_have_br {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
             if ( $lc_text =~
-/(<\s*br\/[^ ]>|<\s*br[^ ]\/>|<\s*br[^ \/]>|<[^ w]br\s*>|<\s*br\s*\/[^ ]>|<\s*br\s*clear|<small\s*\/\s*>|<\s*center\s*\/\s*>)/i
+/(<\s*br\/[^ ]>|<\s*br[^ ]\/>|<\s*br[^ \/]>|<[^ w]br\s*>|<\s*br\s*\/[^ ]>|<\s*br\s*[^\/ ]>|<\s*br\s*clear|<small\s*\/\s*>|<\s*center\s*\/\s*>|<\s*div\s*\/\s*>|<\s*span\s*\/\s*>)/i
               )
             {
                 my $test_line = substr( $text, $-[0], 40 );
@@ -3053,14 +3055,25 @@ sub error_034_template_programming_elements {
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
-
-            if ( $text =~
-/({{{|#if:|#ifeq:|#switch:|#ifexist:|{{fullpagename}}|{{sitename}}|{{namespace}}|{{basepagename}}|{{pagename}}|{{subpagename}}|{{subst:)/i
-              )
-            {
-                my $test_line = substr( $text, $-[0], 40 );
-                $test_line =~ s/[\n\r]//mg;
-                error_register( $error_code, $test_line );
+           
+            # RUWIKIS AND UKWIKI USE VALID {{{! in INFOBOX, ALOT
+            if ($project eq "ukwiki" or $project eq "ruwiki" ) {
+                if ( $text =~
+/(#if:|#ifeq:|#switch:|#ifexist:|{{fullpagename}}|{{sitename}}|{{namespace}}|{{basepagename}}|{{pagename}}|{{subpagename}}|{{subst:)/i )
+                    {
+                    my $test_line = substr( $text, $-[0], 40 );
+                    $test_line =~ s/[\n\r]//mg;
+                    error_register( $error_code, $test_line );
+                    }
+                }
+            else {
+                if ( $text =~
+/({{{|#if:|#ifeq:|#switch:|#ifexist:|{{fullpagename}}|{{sitename}}|{{namespace}}|{{basepagename}}|{{pagename}}|{{subpagename}}|{{subst:)/i )
+                {
+                    my $test_line = substr( $text, $-[0], 40 );
+                    $test_line =~ s/[\n\r]//mg;
+                    error_register( $error_code, $test_line );
+                }
             }
         }
     }
@@ -4809,7 +4822,7 @@ sub error_090_Internal_link_written_as_an_external_link {
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
-            if ( $text =~ /($ServerName\/wiki)/i ) {
+            if ( $text =~ /($ServerName\/(w|wiki))/i ) {
 
                 # Use split to include only the url.
                 ( my $ack ) = split( /\s/, substr( $text, $-[0], 40 ), 2 );
@@ -5013,7 +5026,7 @@ sub error_098_sub_no_correct_end {
                 my $sub_begin = 0;
                 my $sub_end   = 0;
 
-                $sub_begin = () = $lc_text =~ /<sub>/g;
+                $sub_begin = () = $lc_text =~ /<sub/g;
                 $sub_end   = () = $lc_text =~ /<\/sub>/g;
 
                 if ( $sub_begin > $sub_end ) {
@@ -5040,7 +5053,7 @@ sub error_099_sup_no_correct_end {
                 my $sup_begin = 0;
                 my $sup_end   = 0;
 
-                $sup_begin = () = $lc_text =~ /<sup>/g;
+                $sup_begin = () = $lc_text =~ /<sup[> ]/g;
                 $sup_end   = () = $lc_text =~ /<\/sup>/g;
 
                 if ( $sup_begin > $sup_end ) {
@@ -5113,7 +5126,7 @@ sub error_101_ordinal_numbers_in_sup {
 
                 # REMOVE {{not a typo}} TEMPLATE
                 $lc_text =~ s/\{\{not a typo\|[a-zA-Z0-9\<\>\/]*\}\}//g;
-                if ( $lc_text =~ /\d<sup>(st|rd|th|nd)<\/sup>/ ) {
+                if ( $lc_text =~ /\d<sup>\s*(st|rd|th|nd)\s*<\/sup>/ ) {
                     error_register( $error_code, substr( $text, $-[0], 40 ) );
                 }
             }
@@ -5174,8 +5187,13 @@ sub error_104_quote_marks_in_refs {
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
-            #if ( $text =~ /\<ref\sname\=\"\w+\>/gi ) {
-            if ( $text =~ /<ref\s+name="[\w\s]+\/?>/gi ) {
+            # " missing at end... <ref name="foo />
+            if ( $text =~ /<ref\s+name="[\w\s()\.]+\/?>/gi ) {
+                error_register( $error_code, substr( $text, $-[0], 40 ) );
+
+                # " missing at beginning... <ref name=foo" />
+            }
+            elsif ( $text =~ /<ref\s+name=[\w\s()\.]+"\s*\/?>/gi ) {
                 error_register( $error_code, substr( $text, $-[0], 40 ) );
             }
         }
@@ -5271,6 +5289,89 @@ sub error_108_issn_wrong_checksum {
             and $found_text ne q{} )
         {
             error_register( $error_code, $found_text );
+        }
+    }
+
+    return ();
+}
+
+###########################################################################
+## ERROR 109
+###########################################################################
+
+sub error_109_include_tag_error {
+    my $error_code = 109;
+
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
+        if ( $page_namespace == 0 or $page_namespace == 104 ) {
+
+            my $include_begin = () = $text =~ /<noinclude>/ig;
+            my $include_end   = () = $text =~ /<\/noinclude>/ig;
+
+            if ( $include_begin != $include_end ) {
+                if ( $include_begin > $include_end ) {
+                    my $snippet =
+                      get_broken_tag( '<noinclude>', '</noinclude>' );
+                    error_register( $error_code, $snippet );
+                }
+                else {
+                    my $snippet =
+                      get_broken_tag_closing( '<noinclude', '</noinclude>' );
+                    error_register( $error_code, $snippet );
+                }
+            }
+
+            $include_begin = () = $text =~ /<includeonly>/ig;
+            $include_end   = () = $text =~ /<\/includeonly>/ig;
+
+            if ( $include_begin != $include_end ) {
+                if ( $include_begin > $include_end ) {
+                    my $snippet =
+                      get_broken_tag( '<includeonly>', '</includeonly>' );
+                    error_register( $error_code, $snippet );
+                }
+                else {
+                    my $snippet = get_broken_tag_closing( '<includeonly',
+                        '</includeonly>' );
+                    error_register( $error_code, $snippet );
+                }
+            }
+
+            $include_begin = () = $text =~ /<onlyinclude>/ig;
+            $include_end   = () = $text =~ /<\/onlyinclude>/ig;
+
+            if ( $include_begin != $include_end ) {
+                if ( $include_begin > $include_end ) {
+                    my $snippet =
+                      get_broken_tag( '<onlyinclude>', '</onlyinclude>' );
+                    error_register( $error_code, $snippet );
+                }
+                else {
+                    my $snippet = get_broken_tag_closing( '<onlyinclude',
+                        '</onlyinclude>' );
+                    error_register( $error_code, $snippet );
+                }
+            }
+
+        }
+    }
+
+    return ();
+}
+
+###########################################################################
+## ERROR 110
+###########################################################################
+
+sub error_110_found_include_tag {
+    my $error_code = 110;
+
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
+        if ( $page_namespace == 0 or $page_namespace == 104 ) {
+
+            if ( $text =~ /<noinclude>|<includeonly>|<onlyinclude>/i ) {
+                error_register( $error_code, "" );
+            }
         }
     }
 
