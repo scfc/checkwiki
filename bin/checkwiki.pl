@@ -11,7 +11,7 @@
 ##
 ##        AUTHOR: Stefan Kühn, Bryan White
 ##       LICENCE: GPLv3
-##       VERSION: 2016/6/21
+##       VERSION: 2016/6/28
 ##
 ###########################################################################
 
@@ -1162,7 +1162,8 @@ sub get_tables {
     my $test_text = $text;
 
     my $tag_open_num  = () = $test_text =~ /\{\|/g;
-    my $tag_close_num = () = $test_text =~ /\|\}/g;
+    #  [^\}] is because alot of template end with |}}, so exclude these.
+    my $tag_close_num = () = $test_text =~ /\|\}[^\}]/g;
 
     my $diff = $tag_open_num - $tag_close_num;
 
@@ -2238,6 +2239,10 @@ sub error_006_defaultsort_with_special_letters {
                 $test_text =~ s/\+//g;
 
                 given ($project) {
+                    when ('bewiki') {
+                        $test_text =~
+s/[АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЬЫЪЭЮЯабвгдежзийклмнопрстуфхцчшщьыъэюя]//g;
+                    }
                     when ('cswiki') {
                         $test_text =~ s/[čďěňřšťžČĎŇŘŠŤŽ]//g;
                     }
@@ -3057,7 +3062,7 @@ sub error_034_template_programming_elements {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
            
             # RUWIKIS AND UKWIKI USE VALID {{{! in INFOBOX, ALOT
-            if ($project eq "ukwiki" or $project eq "ruwiki" ) {
+            if ($project eq "ukwiki" or $project eq "ruwiki" or $project eq "bewiki" ) {
                 if ( $text =~
 /(#if:|#ifeq:|#switch:|#ifexist:|{{fullpagename}}|{{sitename}}|{{namespace}}|{{basepagename}}|{{pagename}}|{{subpagename}}|{{subst:)/i )
                     {
@@ -3138,6 +3143,10 @@ sub error_037_title_with_special_letters_and_no_defaultsort {
                 $test_title =~ s/\+//g;
 
                 given ($project) {
+                    when ('bewiki') {
+                        $test_title =~
+s/[АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЬЫЪЭЮЯабвгдежзийклмнопрстуфхцчшщьыъэюя]//g;
+                    }
                     when ('cswiki') {
                         $test_title =~ s/[čďěňřšťžČĎŇŘŠŤŽ]//g;
                     }
@@ -4153,7 +4162,7 @@ sub error_067_reference_after_punctuation {
                 my @ack = @{ $Template_list[$error_code] };
 
                 for my $temp (@ack) {
-                    $test_text =~ s/($temp)<ref[ >]//sg;
+                    $test_text =~ s/($temp)\s*<ref[ >]//sg;
                 }
 
                 if ( $test_text =~ /[ ]{0,2}(\.|,|\?|:|!|;)[ ]{0,2}<ref[ >]/ ) {
