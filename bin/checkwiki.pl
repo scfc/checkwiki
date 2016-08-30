@@ -11,7 +11,7 @@
 ##
 ##        AUTHOR: Stefan Kühn, Bryan White
 ##       LICENCE: GPLv3
-##       VERSION: 2016/6/28
+##       VERSION: 2016/8/30
 ##
 ###########################################################################
 
@@ -51,6 +51,7 @@ our $Dump_or_Live = q{};    # Scan modus (dump, live, delay)
 our $CheckOnlyOne = 0;      # Check only one error or all errors
 
 our $ServerName  = q{};     # Address where api can be found
+our $Language    = q{};     # Code of the language being used 'de' or 'en'
 our $project     = q{};     # Name of the project 'dewiki'
 our $end_of_dump = q{};     # When last article from dump reached
 our $artcount    = 0;       # Number of articles processed
@@ -129,6 +130,9 @@ our @INTER_LIST = qw( af  als an  ar  az  bg  bs  bn
   jv  ka  kk  ko  la  lb  lt  ms  nds nl  nn  no  pl
   pt  ro  ru  sh  sk  sl  sr  sv  sw  ta  th  tr  uk
   ur  uz  vi  zh  simple  nds_nl );
+
+our @TAG_LIST_002 = qw ( abbr b big blockquote center cite
+  del div em font i p s small span strike sub sup td th tr tt u);
 
 our @FOUNDATION_PROJECTS = qw( b  c  d  n  m  q  s  v  w
   meta  mw  nost  wikt  wmf  voy
@@ -522,6 +526,8 @@ sub readMetadata {
         die( "Couldn't calculate server name for project" . $project . "\n" );
     }
 
+    ($Language) = $ServerName =~ /^([a-z]*)/;
+
     my $url = 'https://' . $ServerName . '/w/api.php';
 
     # Setup MediaWiki::API
@@ -674,13 +680,16 @@ sub scan_pages {
                 set_variables_for_article();
                 $title = $page->title;
                 if ( $title ne "" ) {
-                    update_ui() if ++$artcount % 500 == 0;
-                    $page_namespace = 0;
-                    $title          = case_fixer($title);
-                    $revision       = $page->revision;
-                    $text           = $revision->text;
+                    update_ui() if ++$artcount % 5000 == 0;
 
-                    check_article();
+                    if ( $artcount > 687834 ) {
+                        $page_namespace = 0;
+                        print "ART: " . $artcount . "  TITLE:" . $title . "\n";
+                        $title    = case_fixer($title);
+                        $revision = $page->revision;
+                        $text     = $revision->text;
+                        check_article();
+                    }
 
                     #$end_of_dump = 'yes' if ( $artcount > 10000 );
                     #$end_of_dump = 'yes' if ( $Error_counter > 40000 )
@@ -731,9 +740,9 @@ sub list_scan {
     $page_namespace = 0;
     my $bot = MediaWiki::Bot->new(
         {
-            assert   => 'bot',
             protocol => 'https',
             host     => $ServerName,
+            operator => 'bgwhite',
         }
     );
 
@@ -1114,8 +1123,23 @@ sub get_code {
 ###########################################################################
 
 sub get_syntaxhighlight {
+    my $test_text = lc($text);
 
-    $text =~ s/<syntaxhighlight(.*?)<\/syntaxhighlight>//sg;
+    if ( $test_text =~ /<syntaxhighlight/ ) {
+        my $source_begin = 0;
+        my $source_end   = 0;
+
+        $source_begin = () = $test_text =~ /<syntaxhighlight/g;
+        $source_end   = () = $test_text =~ /<\/syntaxhighlight>/g;
+
+        if ( $source_begin > $source_end ) {
+            my $snippet =
+              get_broken_tag( '<syntaxhighlight', '</syntaxhighlight>' );
+            error_014_Source_no_correct_end($snippet);
+        }
+
+        $text =~ s/<syntaxhighlight(.*?)<\/syntaxhighlight>//sg;
+    }
 
     return ();
 }
@@ -1161,9 +1185,11 @@ sub get_tables {
 
     my $test_text = $text;
 
-    my $tag_open_num  = () = $test_text =~ /\{\|/g;
-    #  [^\}] is because alot of template end with |}}, so exclude these.
-    my $tag_close_num = () = $test_text =~ /\|\}[^\}]/g;
+    my $tag_open_num = () = $test_text =~ /\{\|/g;
+
+    #  Alot of template end with |}}, so exclude these.
+    $test_text =~ s/\|\}\}//g;
+    my $tag_close_num = () = $test_text =~ /\|\}/g;
 
     my $diff = $tag_open_num - $tag_close_num;
 
@@ -1705,7 +1731,7 @@ sub get_categories {
         my $test_text          = $text;
         my $search_word        = $namespace_cat_word;
 
-        while ( $test_text =~ /\[\[([ ]+)?($search_word:)/ig ) {
+        while ( $test_text =~ /\[\[([ ]+)?$search_word\s*:/ig ) {
             $pos_start = pos($test_text) - length($search_word) - 1;
             $pos_end   = index( $test_text, ']]', $pos_start );
             $pos_start = $pos_start - 2;
@@ -1721,11 +1747,11 @@ sub get_categories {
                 $Category[$counter][2] = $Category[$counter][4];
                 $Category[$counter][3] = $Category[$counter][4];
 
-                $Category[$counter][2] =~ s/\[\[//g;        # Delete [[
+                $Category[$counter][2] =~ s/\[//g;          # Delete [[
                 $Category[$counter][2] =~ s/^([ ]+)?//g;    # Delete blank
                 $Category[$counter][2] =~ s/\]\]//g;        # Delete ]]
                 $Category[$counter][2] =~ s/^$namespace_cat_word//i;
-                $Category[$counter][2] =~ s/^://;           # Delete :
+                $Category[$counter][2] =~ s/^ ?://;         # Delete :
                 $Category[$counter][2] =~ s/\|(.)*//g;      # Delete |xy
                 $Category[$counter][2] =~ s/^ //g;          # Delete blank
                 $Category[$counter][2] =~ s/ $//g;          # Delete blank
@@ -2100,13 +2126,28 @@ sub error_002_have_br {
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
-            if ( $lc_text =~
-/(<\s*br\/[^ ]>|<\s*br[^ ]\/>|<\s*br[^ \/]>|<[^ w]br\s*>|<\s*br\s*\/[^ ]>|<\s*br\s*[^\/ ]>|<\s*br\s*clear|<small\s*\/\s*>|<\s*center\s*\/\s*>|<\s*div\s*\/\s*>|<\s*span\s*\/\s*>)/i
+            if (
+                $lc_text =~ /(                  
+                              <br\s*\/\s*[^ ]>      # <br\/t>
+                              |<br[^ ]\/>           # <brt \/>
+                              |<br[^ \/]>           # <brt>
+                              |<br\s*\/?\s*[^ >]    # <br 
+                              |<br\s*[^ >\/]        # <br 
+                              |<[^ w]br[^\/]*\s*>   # <tbr> or < br>
+                              |<br\h*[^ \v>\/]      # <br t> \v is newline 
+                             )/xi
               )
             {
                 my $test_line = substr( $text, $-[0], 40 );
                 $test_line =~ s/[\n\r]//mg;
                 error_register( $error_code, $test_line );
+            }
+
+            for my $temp (@TAG_LIST_002) {
+                if ( $text =~ /(<\s*\/?\s*$temp\s*\/\s*>)/i ) {
+                    my $test_line = substr( $text, $-[0], 40 );
+                    error_register( $error_code, $test_line );
+                }
             }
         }
     }
@@ -2150,7 +2191,7 @@ sub error_003_have_ref {
                     my @ack = @{ $Template_list[$error_code] };
 
                     for my $temp (@ack) {
-                        if ( $test_text =~ /\{\{[ ]?+($temp)/ ) {
+                        if ( $test_text =~ /\{\{[ ]?+($temp)/i ) {
                             $test = "true";
                         }
                     }
@@ -2231,46 +2272,24 @@ sub error_006_defaultsort_with_special_letters {
 
                 my $test_text2 = $test_text;
 
-                # Remove ok letters
+#                if ( $project eq 'bewiki' or 'cswiki' or 'cywiki' or 'fawiki' or 'fiwiki' or "frwiki" or 'gdwiki' or 'itwiki' or 'lvwiki' or 'nlwiki' or 'plwiki' or 'ruwiki' or 'svwiki' or 'ukwiki' ) {
+
+# Remove ok letters
+#                    $test_text =~ s/[-–:,\.\/\(\)\?' \p{XPosixAlpha}\p{XPosixAlnum}]//g;
+# Too many to figure out what is right or not
+#                    $test_text =~ s/#//g;
+#                    $test_text =~ s/\+//g;
+#                    print "hi\n";
+#                }
+#                else {
+# Remove ok letters
                 $test_text =~ s/[-–:,\.\/\(\)0-9 A-Za-z!\?']//g;
 
                 # Too many to figure out what is right or not
                 $test_text =~ s/#//g;
                 $test_text =~ s/\+//g;
 
-                given ($project) {
-                    when ('bewiki') {
-                        $test_text =~
-s/[АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЬЫЪЭЮЯабвгдежзийклмнопрстуфхцчшщьыъэюя]//g;
-                    }
-                    when ('cswiki') {
-                        $test_text =~ s/[čďěňřšťžČĎŇŘŠŤŽ]//g;
-                    }
-                    when ('dawiki') { $test_text =~ s/[ÆØÅæøå]//g; }
-                    when ('dawiki') {
-                        $test_text =~ s/[ĈĜĤĴŜŬĉĝĥĵŝŭ]//g;
-                    }
-                    when ('eowiki') {
-                        $test_text =~ s/[ĈĜĤĴŜŬĉĝĥĵŝŭ]//g;
-                    }
-                    when ('hewiki') {
-                        $test_text =~
-s/[אבגדהוזחטיכךלמםנןסעפףצץקרשת]//g
-                    }
-                    when ('fiwiki') { $test_text =~ s/[ÅÄÖåäö]//g; }
-                    when ('nowiki') { $test_text =~ s/[ÆØÅæøå]//g; }
-                    when ('nnwiki') { $test_text =~ s/[ÆØÅæøå]//g; }
-                    when ('rowiki') { $test_text =~ s/[ăîâşţ]//g; }
-                    when ('ruwiki') {
-                        $test_text =~
-s/[АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЬЫЪЭЮЯабвгдежзийклмнопрстуфхцчшщьыъэюя]//g;
-                    }
-                    when ('svwiki') { $test_text =~ s/[ÅÄÖåäö]//g; }
-                    when ('ukwiki') {
-                        $test_text =~
-s/[АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЬЫЪЭЮЯабвгдежзийклмнопрстуфхцчшщьыъэюяiїґ]//g;
-                    }
-                }
+                #                    }
 
                 if ( $test_text ne q{} ) {
                     $test_text2 = "{{" . $test_text2 . "}}";
@@ -2607,11 +2626,16 @@ sub error_017_category_double {
             foreach my $i ( 0 .. $Category_counter - 1 ) {
                 my $test = $Category[$i][2];
 
+                # Change underscore to space as one cat is ok and duplicate
+                # cat is identical except for underscores
+                $test =~ s/_/ /g;
+
                 if ( $test ne q{} ) {
                     $test = uc( substr( $test, 0, 1 ) ) . substr( $test, 1 );
 
                     foreach my $j ( $i + 1 .. $Category_counter ) {
                         my $test2 = $Category[$j][2];
+                        $test2 =~ s/_//g;
 
                         if ( $test2 ne q{} ) {
                             $test2 =
@@ -2643,9 +2667,16 @@ sub error_018_category_first_letter_small {
 
             foreach my $i ( 0 .. $Category_counter ) {
                 my $test_letter = substr( $Category[$i][2], 0, 1 );
-                if ( $test_letter =~ /([a-z]|ä|ö|ü)/ ) {
+                my $test_cat    = substr( $Category[$i][4], 0, 3 );
+
+                # \p{Ll} is a lowercase letter that has an uppercase variant.
+                if ( $test_letter =~ /([\p{Ll}a-z])/ ) {
                     error_register( $error_code, $Category[$i][2] );
                 }
+                if ( $test_cat eq "[[c" ) {
+                    error_register( $error_code, $Category[$i][4] );
+                }
+
             }
         }
     }
@@ -2735,9 +2766,18 @@ sub error_022_category_with_space {
         {
             foreach my $i ( 0 .. $Category_counter ) {
 
+                # SOME WIKIS HAVE COLONS IN THEIR CAT NAMES, REMOVE LAST ONE
+                my $total = $Category[$i][4] =~ tr/:/:/;
+                if ( $total > 1 ) {
+                    my $last_colon = rindex( $Category[$i][4], ':' );
+                    $Category[$i][4] =
+                      substr( $Category[$i][4], 0, $last_colon );
+                }
+
                 if (   $Category[$i][4] =~ /[^ \|]\s+\]\]$/
                     or $Category[$i][4] =~ /\[\[ /
-                    or $Category[$i][4] =~ /\[\[[^:]+(\s+:|:\s+)/ )
+                    or $Category[$i][4] =~ / \|/
+                    or $Category[$i][4] =~ /\[\[($Cat_regex)\s+:|:\s+/ )
                 {
                     error_register( $error_code, $Category[$i][4] );
                 }
@@ -3060,20 +3100,25 @@ sub error_034_template_programming_elements {
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
-           
+
             # RUWIKIS AND UKWIKI USE VALID {{{! in INFOBOX, ALOT
-            if ($project eq "ukwiki" or $project eq "ruwiki" or $project eq "bewiki" ) {
+            if (   $project eq "ukwiki"
+                or $project eq "ruwiki"
+                or $project eq "bewiki" )
+            {
                 if ( $text =~
-/(#if:|#ifeq:|#switch:|#ifexist:|{{fullpagename}}|{{sitename}}|{{namespace}}|{{basepagename}}|{{pagename}}|{{subpagename}}|{{subst:)/i )
-                    {
+/(#if:|#ifeq:|#switch:|#ifexist:|{{fullpagename}}|{{sitename}}|{{namespace}}|{{basepagename}}|{{pagename}}|{{subpagename}}|{{namespacenumber}}|{{talkpagename}}|{{fullpagenamee}}|__noindex__|__index__|__forcetoc__|__nonewsectionlink__|{{subst:)/i
+                  )
+                {
                     my $test_line = substr( $text, $-[0], 40 );
                     $test_line =~ s/[\n\r]//mg;
                     error_register( $error_code, $test_line );
-                    }
                 }
+            }
             else {
                 if ( $text =~
-/({{{|#if:|#ifeq:|#switch:|#ifexist:|{{fullpagename}}|{{sitename}}|{{namespace}}|{{basepagename}}|{{pagename}}|{{subpagename}}|{{subst:)/i )
+/({{{|#if:|#ifeq:|#switch:|#ifexist:|{{fullpagename}}|{{sitename}}|{{namespace}}|{{basepagename}}|{{pagename}}|{{subpagename}}|{{namespacenumber}}|{{talkpagename}}|{{fullpagenamee}}|__noindex__|__index__|__forcetoc__|__nonewsectionlink__|{{subst:)/i
+                  )
                 {
                     my $test_line = substr( $text, $-[0], 40 );
                     $test_line =~ s/[\n\r]//mg;
@@ -3675,13 +3720,12 @@ sub error_052_category_before_last_headline {
         if ( $number_of_headlines > 0 ) {
 
             $pos =
-              index( $text, $Headlines[ $number_of_headlines - 1 ] )
+              index( $text, $Headlines[ $number_of_headlines - 2 ] )
               ;    #pos of last headline
         }
         if ( $pos > -1
             and ( $page_namespace == 0 or $page_namespace == 104 ) )
         {
-
             my $found_text = q{};
             for ( my $i = 0 ; $i <= $Category_counter ; $i++ ) {
                 if ( $pos > $Category[$i][0] ) {
@@ -4831,7 +4875,11 @@ sub error_090_Internal_link_written_as_an_external_link {
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
-            if ( $text =~ /($ServerName\/(w|wiki))/i ) {
+            # CHECK FOR en.m.wikipedia or en.wikipedida
+            if ( $text =~
+                /($Language\.m\.wikipedia.org\/(w|wiki)|$ServerName\/(w|wiki))/i
+              )
+            {
 
                 # Use split to include only the url.
                 ( my $ack ) = split( /\s/, substr( $text, $-[0], 40 ), 2 );
@@ -4857,6 +4905,9 @@ sub error_091_Interwiki_link_written_as_an_external_link {
 
             # Remove current $projects as that is for #90
             $test_text =~ s/($ServerName)//ig;
+
+            # Remove current mobile $projects as that is for 90
+            $test_text =~ s/($Language)\.m//ig;
             if ( $test_text =~ /([a-z]{2,3}(\.m)?\.wikipedia\.org\/wiki)/i ) {
 
                 # Use split to include only the url.
@@ -5378,7 +5429,7 @@ sub error_110_found_include_tag {
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
-            if ( $text =~ /<noinclude>|<includeonly>|<onlyinclude>/i ) {
+            if ( $text =~ /<noinclude|<includeonly|<onlyinclude/i ) {
                 error_register( $error_code, "" );
             }
         }
