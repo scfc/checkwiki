@@ -11,7 +11,7 @@
 ##
 ##        AUTHOR: Stefan Kühn, Bryan White
 ##       LICENCE: GPLv3
-##       VERSION: 2016/8/30
+##       VERSION: 2016/9/1
 ##
 ###########################################################################
 
@@ -2131,7 +2131,7 @@ sub error_002_have_br {
                               <br\s*\/\s*[^ ]>      # <br\/t>
                               |<br[^ ]\/>           # <brt \/>
                               |<br[^ \/]>           # <brt>
-                              |<br\s*\/?\s*[^ >]    # <br 
+                              |<br\s*\/\s*[^ >]    # <br 
                               |<br\s*[^ >\/]        # <br 
                               |<[^ w]br[^\/]*\s*>   # <tbr> or < br>
                               |<br\h*[^ \v>\/]      # <br t> \v is newline 
@@ -2272,24 +2272,13 @@ sub error_006_defaultsort_with_special_letters {
 
                 my $test_text2 = $test_text;
 
-#                if ( $project eq 'bewiki' or 'cswiki' or 'cywiki' or 'fawiki' or 'fiwiki' or "frwiki" or 'gdwiki' or 'itwiki' or 'lvwiki' or 'nlwiki' or 'plwiki' or 'ruwiki' or 'svwiki' or 'ukwiki' ) {
-
-# Remove ok letters
-#                    $test_text =~ s/[-–:,\.\/\(\)\?' \p{XPosixAlpha}\p{XPosixAlnum}]//g;
-# Too many to figure out what is right or not
-#                    $test_text =~ s/#//g;
-#                    $test_text =~ s/\+//g;
-#                    print "hi\n";
-#                }
-#                else {
-# Remove ok letters
-                $test_text =~ s/[-–:,\.\/\(\)0-9 A-Za-z!\?']//g;
+                # Remove ok letters
+                $test_text =~
+                  s/[-–:,\.\/\(\)!\?' \p{XPosixAlpha}\p{XPosixAlnum}]//g;
 
                 # Too many to figure out what is right or not
                 $test_text =~ s/#//g;
                 $test_text =~ s/\+//g;
-
-                #                    }
 
                 if ( $test_text ne q{} ) {
                     $test_text2 = "{{" . $test_text2 . "}}";
@@ -3117,12 +3106,34 @@ sub error_034_template_programming_elements {
             }
             else {
                 if ( $text =~
-/({{{|#if:|#ifeq:|#switch:|#ifexist:|{{fullpagename}}|{{sitename}}|{{namespace}}|{{basepagename}}|{{pagename}}|{{subpagename}}|{{namespacenumber}}|{{talkpagename}}|{{fullpagenamee}}|__noindex__|__index__|__forcetoc__|__nonewsectionlink__|{{subst:)/i
+/({{{|#if:|#ifeq:|#switch:|#ifexist:|{{fullpagename}}|{{sitename}}|{{namespace}}|{{basepagename}}|{{pagename}}|{{subpagename}}|{{namespacenumber}}|{{talkpagename}}|{{fullpagenamee}}|__noindex__|__index__|__nonewsectionlink__|{{subst:)/i
                   )
                 {
                     my $test_line = substr( $text, $-[0], 40 );
                     $test_line =~ s/[\n\r]//mg;
                     error_register( $error_code, $test_line );
+                }
+            }
+
+            if ( $Template_list[$error_code][0] ne '-9999' ) {
+
+                my @ack = @{ $Template_list[$error_code] };
+
+                for my $temp (@ack) {
+                    if ( $temp =~ /^__/ ) {
+                        if ( $text =~ /($temp)/i ) {
+                            my $test_line = substr( $text, $-[0], 40 );
+                            $test_line =~ s/[\n\r]//mg;
+                            error_register( $error_code, $test_line );
+                        }
+                    }
+                    else {
+                        if ( $text =~ /\{\{($temp)/i ) {
+                            my $test_line = substr( $text, $-[0], 40 );
+                            $test_line =~ s/[\n\r]//mg;
+                            error_register( $error_code, $test_line );
+                        }
+                    }
                 }
             }
         }
@@ -3176,47 +3187,13 @@ sub error_037_title_with_special_letters_and_no_defaultsort {
                     $test_title = substr( $test_title, 0, 5 );
                 }
 
-                # Titles such as 'Madonna (singer)' are OK
-                $test_title =~ s/\(//g;
-                $test_title =~ s/\)//g;
-
                 # Remove ok letters
-                $test_title =~ s/[-:,\.\/0-9 A-Za-z!\?']//g;
+                $test_title =~
+                  s/[-–:,\.\/\(\)!\?' \p{XPosixAlpha}\p{XPosixAlnum}]//g;
 
                 # Too many to figure out what is right or not
                 $test_title =~ s/#//g;
                 $test_title =~ s/\+//g;
-
-                given ($project) {
-                    when ('bewiki') {
-                        $test_title =~
-s/[АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЬЫЪЭЮЯабвгдежзийклмнопрстуфхцчшщьыъэюя]//g;
-                    }
-                    when ('cswiki') {
-                        $test_title =~ s/[čďěňřšťžČĎŇŘŠŤŽ]//g;
-                    }
-                    when ('dawiki') { $test_title =~ s/[ÆØÅæøå]//g; }
-                    when ('eowiki') {
-                        $test_title =~ s/[ĈĜĤĴŜŬĉĝĥĵŝŭ]//g;
-                    }
-                    when ('hewiki') {
-                        $test_title =~
-s/[אבגדהוזחטיכךלמםנןסעפףצץקרשת]//g
-                    }
-                    when ('fiwiki') { $test_title =~ s/[ÅÄÖåäö]//g; }
-                    when ('nowiki') { $test_title =~ s/[ÆØÅæøå]//g; }
-                    when ('nnwiki') { $test_title =~ s/[ÆØÅæøå]//g; }
-                    when ('rowiki') { $test_title =~ s/[ăîâşţ]//g; }
-                    when ('ruwiki') {
-                        $test_title =~
-s/[АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЬЫЪЭЮЯабвгдежзийклмнопрстуфхцчшщьыъэюя]//g;
-                    }
-                    when ('svwiki') { $test_title =~ s/[ÅÄÖåäö]//g; }
-                    when ('ukwiki') {
-                        $test_title =~
-s/[АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЬЫЪЭЮЯабвгдежзийклмнопрстуфхцчшщьыъэюяiїґ]//g;
-                    }
-                }
 
                 if ( $test_title ne q{} ) {
                     error_register( $error_code, q{} );
