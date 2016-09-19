@@ -11,7 +11,7 @@
 ##
 ##        AUTHOR: Stefan Kühn, Bryan White
 ##       LICENCE: GPLv3
-##       VERSION: 2016/9/1
+##       VERSION: 2016/9/19
 ##
 ###########################################################################
 
@@ -680,14 +680,13 @@ sub scan_pages {
                 set_variables_for_article();
                 $title = $page->title;
                 if ( $title ne "" ) {
-                    update_ui() if ++$artcount % 5000 == 0;
+                    update_ui() if ++$artcount % 500 == 0;
 
-                    if ( $artcount > 687834 ) {
+                    if ( $artcount > 5790000 ) {
                         $page_namespace = 0;
-                        print "ART: " . $artcount . "  TITLE:" . $title . "\n";
-                        $title    = case_fixer($title);
-                        $revision = $page->revision;
-                        $text     = $revision->text;
+                        $title          = case_fixer($title);
+                        $revision       = $page->revision;
+                        $text           = $revision->text;
                         check_article();
                     }
 
@@ -971,7 +970,7 @@ sub get_comments {
             error_005_Comment_no_correct_end($snippet);
         }
 
-        $text =~ s/<!--(.*?)-->//sg;
+        $text =~ s/<!--(.*?)-->/<!--CheckWiki-->/sg;
     }
 
     return ();
@@ -982,22 +981,22 @@ sub get_comments {
 ###########################################################################
 
 sub get_nowiki {
-    my $test_text = lc($text);
 
-    if ( $test_text =~ /<nowiki>/ ) {
-        my $nowiki_begin = 0;
-        my $nowiki_end   = 0;
+    my $nowiki_begin = () = $text =~ /<nowiki>/ig;
+    my $nowiki_end   = () = $text =~ /<\/nowiki>/ig;
 
-        $nowiki_begin = () = $test_text =~ /<nowiki>/g;
-        $nowiki_end   = () = $test_text =~ /<\/nowiki>/g;
-
+    if ( $nowiki_begin != $nowiki_end ) {
         if ( $nowiki_begin > $nowiki_end ) {
             my $snippet = get_broken_tag( '<nowiki>', '</nowiki>' );
             error_023_nowiki_no_correct_end($snippet);
         }
-
-        $text =~ s/<nowiki>(.*?)<\/nowiki>//sg;
+        else {
+            my $snippet = get_broken_tag_closing( '<nowiki>', '</nowiki>' );
+            error_023_nowiki_no_correct_end($snippet);
+        }
     }
+
+    $text =~ s/<nowiki>(.*?)<\/nowiki>/<nowiki>CheckWiki<\/nowiki>/sg;
 
     return ();
 }
@@ -1007,22 +1006,22 @@ sub get_nowiki {
 ###########################################################################
 
 sub get_pre {
-    my $test_text = lc($text);
 
-    if ( $test_text =~ /<pre>/ ) {
-        my $pre_begin = 0;
-        my $pre_end   = 0;
+    my $pre_begin = () = $text =~ /<pre/ig;
+    my $pre_end   = () = $text =~ /<\/pre>/ig;
 
-        $pre_begin = () = $test_text =~ /<pre>/g;
-        $pre_end   = () = $test_text =~ /<\/pre>/g;
-
+    if ( $pre_begin != $pre_end ) {
         if ( $pre_begin > $pre_end ) {
-            my $snippet = get_broken_tag( '<pre>', '</pre>' );
+            my $snippet = get_broken_tag( '<pre', '</pre>' );
             error_024_pre_no_correct_end($snippet);
         }
-
-        $text =~ s/<pre>(.*?)<\/pre>//sg;
+        else {
+            my $snippet = get_broken_tag_closing( '<pre', '</pre>' );
+            error_024_pre_no_correct_end($snippet);
+        }
     }
+
+    $text =~ s/<pre>(.*?)<\/pre>/<pre>CheckWiki<\/pre>/sg;
 
     return ();
 }
@@ -1032,23 +1031,23 @@ sub get_pre {
 ###########################################################################
 
 sub get_math {
-    my $test_text = lc($text);
 
-    if ( $test_text =~ /<math>|<math / ) {
-        my $math_begin = 0;
-        my $math_end   = 0;
+    my $math_begin = () = $text =~ /<math/ig;
+    my $math_end   = () = $text =~ /<\/math>/ig;
 
-        $math_begin = () = $test_text =~ /<math/g;
-        $math_end   = () = $test_text =~ /<\/math>/g;
-
+    if ( $math_begin != $math_end ) {
         if ( $math_begin > $math_end ) {
             my $snippet = get_broken_tag( '<math', '</math>' );
             error_013_Math_no_correct_end($snippet);
         }
-
-        # LEAVE MATH TAG IN.  CAUSES PROBLEMS WITH #61, #65 and #67
-        $text =~ s/<math(.*?)<\/math>/<math><\/math>/sg;
+        else {
+            my $snippet = get_broken_tag_closing( '<math', '</math>' );
+            error_013_Math_no_correct_end($snippet);
+        }
     }
+
+    # LEAVE MATH TAG IN.  CAUSES PROBLEMS WITH #61, #65 and #67
+    $text =~ s/<math(.*?)<\/math>/<math>CheckWiki<\/math>/sg;
 
     return ();
 }
@@ -1058,13 +1057,13 @@ sub get_math {
 ###########################################################################
 
 sub get_ce {
-    my $test_text = $text;
 
     if ( $text =~ /<ce/i ) {
 
         # LEAVE MATH TAG IN.  CAUSES PROBLEMS WITH #61, #65 and #67
-        $text =~ s/<ce(.*?)<\/ce>/<ce><\/ce>/sgi;
+        $text =~ s/<ce(.*?)<\/ce>/<ce>CheckWiki<\/ce>/sgi;
     }
+
     return ();
 }
 
@@ -1073,22 +1072,22 @@ sub get_ce {
 ###########################################################################
 
 sub get_source {
-    my $test_text = lc($text);
 
-    if ( $test_text =~ /<source/ ) {
-        my $source_begin = 0;
-        my $source_end   = 0;
+    my $source_begin = () = $text =~ /<source/ig;
+    my $source_end   = () = $text =~ /<\/source>/ig;
 
-        $source_begin = () = $test_text =~ /<source/g;
-        $source_end   = () = $test_text =~ /<\/source>/g;
-
+    if ( $source_begin != $source_end ) {
         if ( $source_begin > $source_end ) {
             my $snippet = get_broken_tag( '<source', '</source>' );
             error_014_Source_no_correct_end($snippet);
         }
-
-        $text =~ s/<source(.*?)<\/source>//sg;
+        else {
+            my $snippet = get_broken_tag_closing( '<source', '</source>' );
+            error_014_Source_no_correct_end($snippet);
+        }
     }
+
+    $text =~ s/<source(.*?)<\/source>/<source>CheckWiki<\/source>/sg;
 
     return ();
 }
@@ -1098,22 +1097,22 @@ sub get_source {
 ###########################################################################
 
 sub get_code {
-    my $test_text = lc($text);
 
-    if ( $test_text =~ /<code>/ ) {
-        my $code_begin = 0;
-        my $code_end   = 0;
+    my $code_begin = () = $text =~ /<code/ig;
+    my $code_end   = () = $text =~ /<\/code>/ig;
 
-        $code_begin = () = $test_text =~ /<code>/g;
-        $code_end   = () = $test_text =~ /<\/code>/g;
-
+    if ( $code_begin != $code_end ) {
         if ( $code_begin > $code_end ) {
-            my $snippet = get_broken_tag( '<code>', '</code>' );
+            my $snippet = get_broken_tag( '<code', '</code>' );
             error_015_Code_no_correct_end($snippet);
         }
-
-        $text =~ s/<code>(.*?)<\/code>//sg;
+        else {
+            my $snippet = get_broken_tag_closing( '<code', '</code>' );
+            error_015_Code_no_correct_end($snippet);
+        }
     }
+
+    $text =~ s/<code>(.*?)<\/code>/<code>CheckWiki<\/code>/sg;
 
     return ();
 }
@@ -1138,7 +1137,8 @@ sub get_syntaxhighlight {
             error_014_Source_no_correct_end($snippet);
         }
 
-        $text =~ s/<syntaxhighlight(.*?)<\/syntaxhighlight>//sg;
+        $text =~ s/<syntaxhighlight(.*?)<\/syntaxhighlight>/
+                 <syntaxhighlight>CheckWiki<\/syntaxhighlight>/sgx;
     }
 
     return ();
@@ -1150,7 +1150,7 @@ sub get_syntaxhighlight {
 
 sub get_hiero {
 
-    $text =~ s/<hiero>(.*?)<\/hiero>/<hiero><\/hiero>/sg;
+    $text =~ s/<hiero>(.*?)<\/hiero>/<hiero>CheckWiki<\/hiero>/sg;
 
     return ();
 }
@@ -1161,7 +1161,7 @@ sub get_hiero {
 
 sub get_score {
 
-    $text =~ s/<score(.*?)<\/score>//sg;
+    $text =~ s/<score(.*?)<\/score>/<score>CheckWiki<\/score>/sg;
 
     return ();
 }
@@ -1172,8 +1172,8 @@ sub get_score {
 
 sub get_graph {
 
-    $text =~ s/<graph(.*?)<\/graph>//sg;
-
+    $text =~ s/<graph(.*?)<\/graph>/<graph>CheckWiki<\/graph>/sg;
+    print "\n\n" . $text . "\n\n";
     return ();
 }
 
@@ -2956,23 +2956,22 @@ sub error_029_gallery_no_correct_end {
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
-            my $test_text = $lc_text;
+            my $gallery_begin = () = $text =~ /<gallery/ig;
+            my $gallery_end   = () = $text =~ /<\/gallery>/ig;
 
-            if ( $test_text =~ /<gallery/ ) {
-                my $gallery_begin = 0;
-                my $gallery_end   = 0;
-
-                $gallery_begin = () = $test_text =~ /<gallery/g;
-                $gallery_end   = () = $test_text =~ /<\/gallery>/g;
-
+            if ( $gallery_begin != $gallery_end ) {
                 if ( $gallery_begin > $gallery_end ) {
                     my $snippet = get_broken_tag( '<gallery', '</gallery>' );
+                    error_register( $error_code, $snippet );
+                }
+                else {
+                    my $snippet =
+                      get_broken_tag_closing( '<gallery', '</gallery>' );
                     error_register( $error_code, $snippet );
                 }
             }
         }
     }
-
     return ();
 }
 
@@ -4684,6 +4683,8 @@ sub error_085_tag_without_content {
                            <ref>\s*<\/ref>|
                            <span>\s*<\/span>|
                            <div>\s*<\/div>
+                           <pre>\s*<\/pre>
+                           <code>\s*<\/code>
                            /x
               )
             {
@@ -5059,15 +5060,16 @@ sub error_098_sub_no_correct_end {
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
-            if ( $lc_text =~ /<sub>/ ) {
-                my $sub_begin = 0;
-                my $sub_end   = 0;
+            my $sub_begin = () = $text =~ /<sub/ig;
+            my $sub_end   = () = $text =~ /<\/sub>/ig;
 
-                $sub_begin = () = $lc_text =~ /<sub/g;
-                $sub_end   = () = $lc_text =~ /<\/sub>/g;
-
+            if ( $sub_begin != $sub_end ) {
                 if ( $sub_begin > $sub_end ) {
-                    my $snippet = get_broken_tag( '<sub>', '</sub>' );
+                    my $snippet = get_broken_tag( '<sub', '</sub>' );
+                    error_register( $error_code, $snippet );
+                }
+                else {
+                    my $snippet = get_broken_tag_closing( '<sub', '</sub>' );
                     error_register( $error_code, $snippet );
                 }
             }
@@ -5076,6 +5078,7 @@ sub error_098_sub_no_correct_end {
 
     return ();
 }
+
 ###########################################################################
 ## ERROR 99
 ###########################################################################
@@ -5086,15 +5089,16 @@ sub error_099_sup_no_correct_end {
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
-            if ( $lc_text =~ /<sup>/ ) {
-                my $sup_begin = 0;
-                my $sup_end   = 0;
+            my $sup_begin = () = $text =~ /<sup[> ]/ig;
+            my $sup_end   = () = $text =~ /<\/sup>/ig;
 
-                $sup_begin = () = $lc_text =~ /<sup[> ]/g;
-                $sup_end   = () = $lc_text =~ /<\/sup>/g;
-
+            if ( $sup_begin != $sup_end ) {
                 if ( $sup_begin > $sup_end ) {
-                    my $snippet = get_broken_tag( '<sup>', '</sup>' );
+                    my $snippet = get_broken_tag( '<sup', '</sup>' );
+                    error_register( $error_code, $snippet );
+                }
+                else {
+                    my $snippet = get_broken_tag_closing( '<sup', '</sup>' );
                     error_register( $error_code, $snippet );
                 }
             }
