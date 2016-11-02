@@ -11,7 +11,7 @@
 ##
 ##        AUTHOR: Stefan Kühn, Bryan White
 ##       LICENCE: GPLv3
-##       VERSION: 2016/9/19
+##       VERSION: 2016/11/02
 ##
 ###########################################################################
 
@@ -143,39 +143,39 @@ our @FOUNDATION_PROJECTS = qw( b  c  d  n  m  q  s  v  w
   wikivoyage );
 
 # See http://turner.faculty.swau.edu/webstuff/htmlsymbols.html
-our @HTML_NAMED_ENTITIES = qw( aacute Aacute acirc Acirc aelig AElig
+our @HTML_NAMED_ENTITIES = qw( aacute Aacute acute acirc Acirc aelig AElig
   agrave Agrave alpha Alpha aring Aring asymp atilde Atilde auml Auml beta Beta
   bdquo brvbar bull ccedil Ccedil cent chi Chi clubs copy crarr darr dArr deg
   delta Delta diams divide eacute Eacute ecirc Ecirc egrave Egrave
   epsilon Epsilon equiv eta Eta eth ETH euml Euml euro fnof frac12 frac14
   frac34 frasl gamma Gamma ge harr hArr hearts hellip iacute Iacute icirc Icirc
   iexcl igrave Igrave infin int iota Iota iquest iuml Iuml kappa Kappa
-  lambda Lambda laquo larr lArr ldquo le loz lsaquo lsquo micro middot
+  lambda Lambda laquo larr lArr ldquo le loz lsaquo lsquo micro middot minus
   mu Mu ne not ntilde Ntilde nu Nu oacute Oacute ocirc Ocirc oelig OElig
   ograve Ograve oline omega Omega omicron Omicron ordf ordm oslash Oslash
-  otilde Otilde ouml Ouml para part permil phi Phi pi Pi piv plusm pound prod
-  psi Psi quot radic raquo rarr rArr rdquo reg rho Rho raquo rsaquo rsquo
+  otilde Otilde ouml Ouml para part permil phi Phi pi Pi piv plusmn pound Prime prime prod
+  psi Psi quot radic raquo rarr rArr rdquo reg rho Rho raquo rsaquo rsquo sbquo
   scaron Scaron sect sigma Sigma sigmaf spades sum sup1 sup2 sup3 szlig
-  tau Tau theta Theta thetasym thorn THORN tilde trade uacute Uacute uarr uArr
+  tau Tau theta Theta thetasym thorn THORN tilde times trade uacute Uacute uarr uArr
   ucirc Ucirc ugrave Ugrave upsih upsilon Upsilon uuml Uuml xi Xi yacute Yacute
   yen yuml Yuml zeta Zeta );
 
 # FOR #011. DO NOT CONVERT GREEK LETTERS THAT LOOK LIKE LATIN LETTERS.
 # Alpha (A), Beta (B), Epsilon (E), Zeta (Z), Eta (E), Kappa (K), kappa (k), Mu (M), Nu (N), nu (v), Omicron (O), omicron (o), Rho (P), Tau (T), Upsilon (Y), upsilon (o) and Chi (X).
-our @HTML_NAMED_ENTITIES_011 = qw( aacute Aacute acirc Acirc aelig AElig
+our @HTML_NAMED_ENTITIES_011 = qw( aacute Aacute acute acirc Acirc aelig AElig
   agrave Agrave alpha aring Aring asymp atilde Atilde auml Auml beta bdquo
   brvbar bull ccedil Ccedil cent chi clubs copy crarr darr dArr deg
   delta Delta diams divide eacute Eacute ecirc Ecirc egrave Egrave
   epsilon equiv eta eth ETH euml Euml euro fnof frac12 frac14
   frac34 frasl gamma Gamma ge harr hArr hearts hellip iacute Iacute icirc Icirc
   iexcl igrave Igrave infin int iota Iota iquest iuml Iuml
-  lambda Lambda laquo larr lArr ldquo le loz lsaquo lsquo micro middot
+  lambda Lambda laquo larr lArr ldquo le loz lsaquo lsquo micro middot minus
   mu ne not ntilde Ntilde oacute Oacute ocirc Ocirc oelig OElig
   ograve Ograve oline omega Omega ordf ordm oslash Oslash
-  otilde Otilde ouml Ouml para part permil phi Phi pi Pi piv plusm pound prod
-  psi Psi quot radic raquo rarr rArr rdquo reg rho raquo rsaquo rsquo
+  otilde Otilde ouml Ouml para part permil phi Phi pi Pi piv plusmn pound Prime prime prod
+  psi Psi quot radic raquo rarr rArr rdquo reg rho raquo rsaquo rsquo sbquo
   scaron Scaron sect sigma Sigma sigmaf spades sum sup1 sup2 sup3 szlig
-  tau theta Theta thetasym thorn THORN tilde trade uacute Uacute uarr uArr
+  tau theta Theta thetasym thorn THORN tilde times trade uacute Uacute uarr uArr
   ucirc Ucirc ugrave Ugrave upsih upsilon uuml Uuml xi Xi yacute Yacute
   yen yuml Yuml zeta Zeta );
 
@@ -682,13 +682,14 @@ sub scan_pages {
                 if ( $title ne "" ) {
                     update_ui() if ++$artcount % 500 == 0;
 
-                    if ( $artcount > 5790000 ) {
-                        $page_namespace = 0;
-                        $title          = case_fixer($title);
-                        $revision       = $page->revision;
-                        $text           = $revision->text;
-                        check_article();
-                    }
+                    #if ( $artcount > 5786150 ) {
+                    $page_namespace = 0;
+                    $title          = case_fixer($title);
+                    $revision       = $page->revision;
+                    $text           = $revision->text;
+                    check_article();
+
+                    #}
 
                     #$end_of_dump = 'yes' if ( $artcount > 10000 );
                     #$end_of_dump = 'yes' if ( $Error_counter > 40000 )
@@ -970,7 +971,7 @@ sub get_comments {
             error_005_Comment_no_correct_end($snippet);
         }
 
-        $text =~ s/<!--(.*?)-->/<!--CheckWiki-->/sg;
+        $text =~ s/<!--(.*?)-->//sg;
     }
 
     return ();
@@ -1173,7 +1174,6 @@ sub get_score {
 sub get_graph {
 
     $text =~ s/<graph(.*?)<\/graph>/<graph>CheckWiki<\/graph>/sg;
-    print "\n\n" . $text . "\n\n";
     return ();
 }
 
@@ -2131,10 +2131,11 @@ sub error_002_have_br {
                               <br\s*\/\s*[^ ]>      # <br\/t>
                               |<br[^ ]\/>           # <brt \/>
                               |<br[^ \/]>           # <brt>
-                              |<br\s*\/\s*[^ >]    # <br 
+                              |<br\s*\/\s*[^ >]     # <br 
                               |<br\s*[^ >\/]        # <br 
                               |<[^ w]br[^\/]*\s*>   # <tbr> or < br>
                               |<br\h*[^ \v>\/]      # <br t> \v is newline 
+                              |<\/hr>               
                              )/xi
               )
             {
@@ -2143,6 +2144,7 @@ sub error_002_have_br {
                 error_register( $error_code, $test_line );
             }
 
+            # CHECK FOR </center/> or <center/>
             for my $temp (@TAG_LIST_002) {
                 if ( $text =~ /(<\s*\/?\s*$temp\s*\/\s*>)/i ) {
                     my $test_line = substr( $text, $-[0], 40 );
@@ -2374,7 +2376,7 @@ sub error_009_more_then_one_category_in_a_line {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
             if ( $text =~
-                /\[\[($Cat_regex):(.*?)\]\]([ ]*)\[\[($Cat_regex):(.*?)\]\]/g )
+                /\[\[($Cat_regex):(.*?)\]\]([ ]*)\[\[($Cat_regex):(.*?)\]\]/ig )
             {
 
                 my $error_text =
@@ -2570,7 +2572,7 @@ sub error_016_unicode_control_characters {
             my $search = "\x{200E}|\x{FEFF}";
             if ( $project eq 'enwiki' ) {
                 $search = $search
-                  . "|\x{007F}|\x{200B}|\x{2028}|\x{202A}|\x{202C}|\x{202D}|\x{202E}|\x{00A0}|\x{00AD}|\x{202B}|\x{200F}|\x{2004}|\x{2005}|\x{2006}|\x{2007}|\x{2008}";
+                  . "|\x{007F}|\x{200B}|\x{2028}|\x{202A}|\x{202C}|\x{202D}|\x{202E}|\x{00A0}|\x{00AD}|\x{202B}|\x{200F}|\x{2004}|\x{2005}|\x{2006}|\x{2007}|\x{2008}|\x{FFC}";
             }
 
             if ( $text =~ /($search)/ or $text =~ /(\p{Co})/ ) {
@@ -2592,6 +2594,7 @@ sub error_016_unicode_control_characters {
                 $test_text =~ s/\x{202D}/\{202D\}/;
                 $test_text =~ s/\x{202E}/\{202E\}/;
                 $test_text =~ s/\x{FEFF}/\{FEFF\}/;
+                $test_text =~ s/\x{FFFC}/\{FFFC\}/;
                 $test_text =~ s/\x{00A0}/\{00A0\}/;
 
                 error_register( $error_code, $test_text );
@@ -2624,7 +2627,7 @@ sub error_017_category_double {
 
                     foreach my $j ( $i + 1 .. $Category_counter ) {
                         my $test2 = $Category[$j][2];
-                        $test2 =~ s/_//g;
+                        $test2 =~ s/_/ /g;
 
                         if ( $test2 ne q{} ) {
                             $test2 =
@@ -3095,7 +3098,7 @@ sub error_034_template_programming_elements {
                 or $project eq "bewiki" )
             {
                 if ( $text =~
-/(#if:|#ifeq:|#switch:|#ifexist:|{{fullpagename}}|{{sitename}}|{{namespace}}|{{basepagename}}|{{pagename}}|{{subpagename}}|{{namespacenumber}}|{{talkpagename}}|{{fullpagenamee}}|__noindex__|__index__|__forcetoc__|__nonewsectionlink__|{{subst:)/i
+/(#if:|#ifeq:|#switch:|#ifexist:|{{fullpagename}}|{{sitename}}|{{namespace}}|{{basepagename}}|{{pagename}}|{{subpagename}}|{{namespacenumber}}|{{fullpagenamee}}|__noindex__|__index__|__forcetoc__|__nonewsectionlink__|{{subst:)/i
                   )
                 {
                     my $test_line = substr( $text, $-[0], 40 );
@@ -3105,7 +3108,7 @@ sub error_034_template_programming_elements {
             }
             else {
                 if ( $text =~
-/({{{|#if:|#ifeq:|#switch:|#ifexist:|{{fullpagename}}|{{sitename}}|{{namespace}}|{{basepagename}}|{{pagename}}|{{subpagename}}|{{namespacenumber}}|{{talkpagename}}|{{fullpagenamee}}|__noindex__|__index__|__nonewsectionlink__|{{subst:)/i
+/({{{|#if:|#ifeq:|#switch:|#ifexist:|{{fullpagename}}|{{sitename}}|{{namespace}}|{{basepagename}}|{{pagename}}|{{subpagename}}|{{namespacenumber}}|{{fullpagenamee}}|__noindex__|__index__|__nonewsectionlink__|{{subst:)/i
                   )
                 {
                     my $test_line = substr( $text, $-[0], 40 );
@@ -3768,7 +3771,7 @@ sub error_054_break_in_list {
             foreach (@Lines) {
 
                 if ( index( $_, q{*} ) == 0 ) {
-                    if ( $_ =~ /<br([ ]+)?(\/)?([ ]+)?>([ ]+)?$/i ) {
+                    if ( $_ =~ /<br([ ]+)?(\/)?([ ]+)?>([ \t]+)?$/i ) {
                         error_register( $error_code, substr( $_, 0, 40 ) );
                     }
                 }
@@ -4087,7 +4090,11 @@ sub error_064_link_equal_linktext {
 
                 # Account for [[Foo|''Foo'']] and [[Foo|'''Foo''']]
                 $temp_text =~
-                  s/\[\[\s*([^|:\]]*)\s*\|\s*('{2,})\s*(.)/\[\[$1\|$2\u$3/g;
+                  s/\[\[\s*([^|:\]]*)\s*\|\s*('+)\s*(.)/\[\[$1\|$2\u$3/g;
+
+                # Account for [[Foo|"Foo"]]
+                $temp_text =~
+s/\[\[\s*([^|:\]]*)\s*\|\s*("|`|«|»|„|“)\s*(.)/\[\[$1\|$2\u$3/g;
             }
 
             if ( $temp_text =~ /(\[\[\s*([^|:]*)\s*\|\2\s*[.,]?\s*\]\])/ ) {
@@ -4096,8 +4103,14 @@ sub error_064_link_equal_linktext {
             }
 
             # Account for [[Foo|''Foo'']] and [[Foo|'''Foo''']]
-            elsif (
-                $temp_text =~ /(\[\[\s*([^|:]*)\s*\|'{2,}\2\s*'{2,}\s*\]\])/ )
+            elsif ( $temp_text =~ /(\[\[\s*([^|:]*)\s*\|'+\2\s*'+\s*\]\])/ ) {
+                my $found_text = $1;
+                error_register( $error_code, $found_text );
+            }
+
+            # Account for [[Foo|"Foo"]]
+            elsif ( $temp_text =~
+                /(\[\[\s*([^|:]*)\s*\|("|`|«|„)\2\s*(“|`|»|")\s*\]\])/ )
             {
                 my $found_text = $1;
                 error_register( $error_code, $found_text );
