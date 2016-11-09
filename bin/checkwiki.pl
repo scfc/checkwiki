@@ -11,7 +11,7 @@
 ##
 ##        AUTHOR: Stefan Kühn, Bryan White
 ##       LICENCE: GPLv3
-##       VERSION: 2016/11/02
+##       VERSION: 2016/11/08
 ##
 ###########################################################################
 
@@ -682,14 +682,14 @@ sub scan_pages {
                 if ( $title ne "" ) {
                     update_ui() if ++$artcount % 500 == 0;
 
-                    #if ( $artcount > 5786150 ) {
+                    #    if ( $artcount > 1603500 ) {
                     $page_namespace = 0;
                     $title          = case_fixer($title);
                     $revision       = $page->revision;
                     $text           = $revision->text;
                     check_article();
 
-                    #}
+                    #    }
 
                     #$end_of_dump = 'yes' if ( $artcount > 10000 );
                     #$end_of_dump = 'yes' if ( $Error_counter > 40000 )
@@ -4073,7 +4073,8 @@ sub error_064_link_equal_linktext {
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
-            my $temp_text = $text;
+            my $temp_text  = $text;
+            my $characters = "\"'`‘«»„“”\(\)\.,–־—";
 
             # OK (MUST) TO HAVE IN TIMELINE
             $temp_text =~ s/<timeline>(.*?)<\/timeline>//sg;
@@ -4085,32 +4086,45 @@ sub error_064_link_equal_linktext {
             # the first character after the [ and |.  But, do only on
             # non-wiktionary projects
             if ( $project !~ /wiktionary/ ) {
+
+                # [[foo --> [[Foo
                 $temp_text =~ s/\[\[\s*([\w])/\[\[\u$1/g;
+
+                # [[Foo|foo]] --> [[Foo|Foo]]
                 $temp_text =~ s/\[\[\s*([^|:\]]*)\s*\|\s*(.)/\[\[$1\|\u$2/g;
 
-                # Account for [[Foo|''Foo'']] and [[Foo|'''Foo''']]
+                # [[Foo|"foo"]] --> [[Foo|''Foo'']]
                 $temp_text =~
-                  s/\[\[\s*([^|:\]]*)\s*\|\s*('+)\s*(.)/\[\[$1\|$2\u$3/g;
+s/\[\[\s*([^|:\]]*)\s*\|\s*([$characters]+)\s*(.)/\[\[$1\|$2\u$3/g;
 
-                # Account for [[Foo|"Foo"]]
-                $temp_text =~
-s/\[\[\s*([^|:\]]*)\s*\|\s*("|`|«|»|„|“)\s*(.)/\[\[$1\|$2\u$3/g;
             }
 
+            # Account for [[Foo|Foo]]
             if ( $temp_text =~ /(\[\[\s*([^|:]*)\s*\|\2\s*[.,]?\s*\]\])/ ) {
                 my $found_text = $1;
                 error_register( $error_code, $found_text );
             }
 
-            # Account for [[Foo|''Foo'']] and [[Foo|'''Foo''']]
-            elsif ( $temp_text =~ /(\[\[\s*([^|:]*)\s*\|'+\2\s*'+\s*\]\])/ ) {
+            # Account for [[Foo|''Foo'']]
+            elsif ( $temp_text =~
+                /(\[\[\s*([^|:]*)\s*\|[$characters]+\2\s*[$characters]+\s*\]\])/
+              )
+            {
                 my $found_text = $1;
                 error_register( $error_code, $found_text );
             }
 
-            # Account for [[Foo|"Foo"]]
+            # Account for [[Foo|Foo'']]
             elsif ( $temp_text =~
-                /(\[\[\s*([^|:]*)\s*\|("|`|«|„)\2\s*(“|`|»|")\s*\]\])/ )
+                /(\[\[\s*([^|:]*)\s*\|\2\s*[$characters]+\s*\]\])/ )
+            {
+                my $found_text = $1;
+                error_register( $error_code, $found_text );
+            }
+
+            # Account for [[Foo|''Foo]]
+            elsif (
+                $temp_text =~ /(\[\[\s*([^|:]*)\s*\|[$characters]+\2\s*\]\])/ )
             {
                 my $found_text = $1;
                 error_register( $error_code, $found_text );
@@ -4694,9 +4708,9 @@ sub error_085_tag_without_content {
                            <center>\s*<\/center>|
                            (<gallery[^>]*(?:\/>|>(?:\s|&nbsp;)*<\/gallery>))|
                            <ref>\s*<\/ref>|
-                           <span>\s*<\/span>|
-                           <div>\s*<\/div>
-                           <pre>\s*<\/pre>
+                           <span(?!\s*id=)[^>]*>\s*<\/span>|
+                           <div(?!\s*id=)[^>]*>\s*<\/div>|
+                           <pre>\s*<\/pre>|
                            <code>\s*<\/code>
                            /x
               )
@@ -4985,6 +4999,10 @@ sub error_094_ref_no_correct_match {
                     my $snippet = get_broken_tag_closing( '<ref', '</ref>' );
                     error_register( $error_code, $snippet );
                 }
+            }
+            elsif ( $lc_text =~ /(<ref name\s*=?\s*<)/ ) {
+                my $test_line = substr( $text, $-[0], 40 );
+                error_register( $error_code, $test_line );
             }
         }
     }
