@@ -28,6 +28,8 @@ use Getopt::Long
 use LWP::UserAgent;
 use POSIX qw(strftime);
 use URI::Escape;
+use Readonly;
+use Text::Balanced qw(extract_multiple extract_bracketed);
 
 use MediaWiki::DumpFile::Pages;
 use MediaWiki::API;
@@ -116,6 +118,7 @@ our $Image_regex = q{};    # Regex used in get_images()
 our $Cat_regex   = q{};    # Regex used in get_categories()
 our $User_regex  = q{};    # Regex used in error_095_user_signature();
 our $Draft_regex = q{};    # Regex used in error_095_user_signature();
+our $REGEX_095   = q{};    # Regex used in error_095_user_signature();
 
 our $Magicword_defaultsort;
 
@@ -124,26 +127,28 @@ our @ErrorPriorityValue;    # Priority value each error has
 
 our @Error_number_counter = (0) x 150;    # Error counter for individual errors
 
-our @INTER_LIST = qw( af  als an  ar  az  bg  bs  bn
-  ca  cs  cy  da  de  el  en  eo  es  et  eu  fa  fi
-  fr  fy  gv  he  hi  hr  hu  hy  id  is  it  ja
-  jv  ka  kk  ko  la  lb  lt  ms  nds nl  nn  no  pl
-  pt  ro  ru  sh  sk  sl  sr  sv  sw  ta  th  tr  uk
-  ur  uz  vi  zh  simple  nds_nl );
+##############################
+##  Wiki-special variables
+##############################
 
-our @TAG_LIST_002 = qw ( abbr b big blockquote center cite
-  del div em font i p s small span strike sub sup td th tr tt u);
-
-our @FOUNDATION_PROJECTS = qw( b  c  d  n  m  q  s  v  w
+Readonly our @FOUNDATION_PROJECTS => qw / b c d n m q s v w
   meta  mw  nost  wikt  wmf  voy
   commons     foundation   incubator   phabricator
   quality     species      testwiki    wikibooks
   wikidata    wikimedia    wikinews    wikiquote
   wikisource  wikispecies  wiktionary  wikiversity
-  wikivoyage );
+  wikivoyage /;
+
+Readonly our @INTER_LIST => qw / af  als an  ar  az  bg  bs  bn
+  ca  cs  cy  da  de  el  en  eo  es  et  eu  fa  fi
+  fr  fy  gv  he  hi  hr  hu  hy  id  is  it  ja
+  jv  ka  kk  ko  la  lb  lt  ms  nds nl  nn  no  pl
+  pt  ro  ru  sh  sk  sl  sr  sv  sw  ta  th  tr  uk
+  ur  uz  vi  zh  simple  nds_nl /;
 
 # See http://turner.faculty.swau.edu/webstuff/htmlsymbols.html
-our @HTML_NAMED_ENTITIES = qw( aacute Aacute acute acirc Acirc aelig AElig
+Readonly our @HTML_NAMED_ENTITIES =>
+  qw / aacute Aacute acute acirc Acirc aelig AElig
   agrave Agrave alpha Alpha aring Aring asymp atilde Atilde auml Auml beta Beta
   bdquo brvbar bull ccedil Ccedil cent chi Chi clubs copy crarr darr dArr deg
   delta Delta diams divide eacute Eacute ecirc Ecirc egrave Egrave
@@ -153,31 +158,79 @@ our @HTML_NAMED_ENTITIES = qw( aacute Aacute acute acirc Acirc aelig AElig
   lambda Lambda laquo larr lArr ldquo le loz lsaquo lsquo micro middot minus
   mu Mu ne not ntilde Ntilde nu Nu oacute Oacute ocirc Ocirc oelig OElig
   ograve Ograve oline omega Omega omicron Omicron ordf ordm oslash Oslash
-  otilde Otilde ouml Ouml para part permil phi Phi pi Pi piv plusmn pound Prime prime prod
-  psi Psi quot radic raquo rarr rArr rdquo reg rho Rho raquo rsaquo rsquo sbquo
-  scaron Scaron sect sigma Sigma sigmaf spades sum sup1 sup2 sup3 szlig
-  tau Tau theta Theta thetasym thorn THORN tilde times trade uacute Uacute uarr uArr
-  ucirc Ucirc ugrave Ugrave upsih upsilon Upsilon uuml Uuml xi Xi yacute Yacute
-  yen yuml Yuml zeta Zeta );
+  otilde Otilde ouml Ouml para part permil phi Phi pi Pi piv plusmn
+  pound Prime prime prod psi Psi quot radic raquo rarr rArr rdquo reg rho Rho
+  raquo rsaquo rsquo sbquo scaron Scaron sect sigma Sigma sigmaf spades
+  sum sup1 sup2 sup3 szlig tau Tau theta Theta thetasym thorn THORN
+  tilde times trade uacute Uacute uarr uArr ucirc Ucirc ugrave Ugrave upsih
+  upsilon Upsilon uuml Uuml xi Xi yacute Yacute yen yuml Yuml zeta Zeta /;
 
 # FOR #011. DO NOT CONVERT GREEK LETTERS THAT LOOK LIKE LATIN LETTERS.
 # Alpha (A), Beta (B), Epsilon (E), Zeta (Z), Eta (E), Kappa (K), kappa (k), Mu (M), Nu (N), nu (v), Omicron (O), omicron (o), Rho (P), Tau (T), Upsilon (Y), upsilon (o) and Chi (X).
-our @HTML_NAMED_ENTITIES_011 = qw( aacute Aacute acute acirc Acirc aelig AElig
+Readonly our @HTML_NAMED_ENTITIES_011 =>
+  qw / aacute Aacute acute acirc Acirc aelig AElig
   agrave Agrave alpha aring Aring asymp atilde Atilde auml Auml beta bdquo
   brvbar bull ccedil Ccedil cent chi clubs copy crarr darr dArr deg
   delta Delta diams divide eacute Eacute ecirc Ecirc egrave Egrave
   epsilon equiv eta eth ETH euml Euml euro fnof frac12 frac14
-  frac34 frasl gamma Gamma ge harr hArr hearts hellip iacute Iacute icirc Icirc
-  iexcl igrave Igrave infin int iota Iota iquest iuml Iuml
+  frac34 frasl gamma Gamma ge harr hArr hearts hellip iacute Iacute icirc
+  Icirc iexcl igrave Igrave infin int iota Iota iquest iuml Iuml
   lambda Lambda laquo larr lArr ldquo le loz lsaquo lsquo micro middot minus
   mu ne not ntilde Ntilde oacute Oacute ocirc Ocirc oelig OElig
-  ograve Ograve oline omega Omega ordf ordm oslash Oslash
-  otilde Otilde ouml Ouml para part permil phi Phi pi Pi piv plusmn pound Prime prime prod
+  ograve Ograve oline omega Omega ordf ordm oslash Oslash otilde Otilde ouml
+  Ouml para part permil phi Phi pi Pi piv plusmn pound Prime prime prod
   psi Psi quot radic raquo rarr rArr rdquo reg rho raquo rsaquo rsquo sbquo
   scaron Scaron sect sigma Sigma sigmaf spades sum sup1 sup2 sup3 szlig
   tau theta Theta thetasym thorn THORN tilde times trade uacute Uacute uarr uArr
   ucirc Ucirc ugrave Ugrave upsih upsilon uuml Uuml xi Xi yacute Yacute
-  yen yuml Yuml zeta Zeta );
+  yen yuml Yuml zeta Zeta /;
+
+Readonly our @TAG_LIST_002 => qw / abbr b big blockquote center cite
+  del div em font i p s small span strike sub sup td th tr tt u /;
+
+our @REGEX_002;
+foreach my $item (@TAG_LIST_002) {
+    push @REGEX_002, qr/(<\s*\/?\s*$item\s*\/\s*>)/;
+}
+
+our @REGEX_BR_002;
+push @REGEX_BR_002, qr/<br\s*\/\s*[^ ]>/;      # <br\/t>
+push @REGEX_BR_002, qr/<br[^ ]\/>/;            # <brt \/>
+push @REGEX_BR_002, qr/<br[^ \/]>/;            # <brt>
+push @REGEX_BR_002, qr/<br\s*\/\s*[^ >]/;      # <br
+push @REGEX_BR_002, qr/<br\s*[^ >\/]/;         # <br
+push @REGEX_BR_002, qr/<br\h*[^ \v>\/]/;       # <br t> \v is newline
+push @REGEX_BR_002, qr/<[^ w]br[^\/]*\s*>/;    # <tbr> or < br>
+push @REGEX_BR_002, qr/<\/hr>/;
+
+our @REGEX_085;
+push @REGEX_085, qr/<noinclude>\s*<\/noinclude>/;
+push @REGEX_085, qr/<onlyinclude>\s*<\/onlyinclude/;
+push @REGEX_085, qr/<includeonly>\s*<\/includeonly>/;
+push @REGEX_085, qr/<center>\s*<\/center>/;
+push @REGEX_085, qr/(<gallery[^>]*(?:\/>|>(?:\s|&nbsp;)*<\/gallery>))/;
+push @REGEX_085, qr/<ref>\s*<\/ref>/;
+push @REGEX_085, qr/<span(?!\s*id=)[^>]*>\s*<\/span>/;
+push @REGEX_085, qr/#<div(?!\s*id=)[^>]*>\s*<\/div>/;
+push @REGEX_085, qr/<div(?!(\s*id=|\s*style="clear))[^>]*>\s*<\/div>/;
+push @REGEX_085, qr/<pre>\s*<\/pre>/;
+push @REGEX_085, qr/<code>\s*<\/code>/;
+
+Readonly our @ELEMENTS_034 =>
+  qw / #if: #ifeq: #switch: #ifexist: {{fullpagename}}
+  {{sitename}} {{namespace}} {{basepagename}} {{pagename}} {{subpagename}}
+  {{namespacenumber}} {{fullpagenamee}} __noindex__ __index__ __forcetoc__
+  __nonewsectionlink__ {{subst: /;
+
+our @REGEX_034;
+foreach my $item (@ELEMENTS_034) {
+    push @REGEX_034, qr/$item/;
+}
+if ( $project ne 'ukwiki' or $project ne 'ruwiki' or $project ne 'bewiki' ) {
+    push @REGEX_034, qr/{{{/;
+}
+
+Readonly our $CHARACTERS_064 => "\"'`‘«»„“”\(\)\.,–־—";
 
 ###############################
 ## Variables for one article
@@ -236,7 +289,7 @@ sub open_db {
     $dbh = DBI->connect(
         'DBI:mysql:'
           . $DbName
-          . ( defined($DbServer) ? ':host=' . $DbServer : '' ),
+          . ( defined($DbServer) ? ':host=' . $DbServer : q{} ),
         $DbUsername,
         $DbPassword,
         {
@@ -245,7 +298,7 @@ sub open_db {
             mysql_enable_utf8    => 1,
             mysql_auto_reconnect => 1,
         }
-    ) or die( "Could not connect to database: " . DBI::errstr() . "\n" );
+    ) or die( 'Could not connect to database: ' . DBI::errstr() . "\n" );
 
     #$dbh->do("SET SESSION wait_timeout=36000");
 
@@ -286,7 +339,7 @@ sub updateDumpDate {
         "UPDATE cw_overview SET Last_Dump = '"
       . $date
       . "' WHERE Project = '"
-      . $project . "';";
+      . $project . q{';};
 
     my $sth = $dbh->prepare($sql_text);
     $sth->execute;
@@ -363,7 +416,7 @@ sub case_fixer {
 
         #check for namespace
         if ( $my_title =~ /^(.+?):(.+)/ ) {
-            $my_title = $1 . ':' . ucfirst($2);
+            $my_title = $1 . q{:} . ucfirst($2);
         }
         else {
             $my_title = ucfirst($title);
@@ -556,50 +609,53 @@ sub readMetadata {
     }
 
     foreach my $id ( keys %{ $res->{query}->{namespaces} } ) {
-        my $name      = $res->{query}->{namespaces}->{$id}->{'*'};
+        my $name      = $res->{query}->{namespaces}->{$id}->{q{*}};
         my $canonical = $res->{query}->{namespaces}->{$id}->{'canonical'};
         push( @Namespace, [ $id, $name, $canonical ] );
 
         # Store special namespaces in convenient variables.
         if ( $id == 2 or $id == 3 ) {
-            $User_regex = $User_regex . '\[\[' . $name . ':|';
+            $name       = lc($name);
+            $User_regex = $User_regex . '\[\[' . $name . q{:|};
         }
-        elsif ( $id == 118 or $id == 119 ) {
-            $Draft_regex = $Draft_regex . '\[\[' . $name . ':|';
+        if ( $id == 118 or $id == 119 ) {
+            $name       = lc($name);
+            $User_regex = $User_regex . '\[\[' . $name . q{:|};
         }
-        elsif ( $id == 6 ) {
+        if ( $id == 6 ) {
             @Namespace_image = ( $name, $canonical );
             $Image_regex = $name;
         }
-        elsif ( $id == 10 ) {
+        if ( $id == 10 ) {
             @Namespace_templates = ($name);
             push( @Namespace_templates, $canonical ) if ( $name ne $canonical );
         }
-        elsif ( $id == 14 ) {
+        if ( $id == 14 ) {
             @Namespace_cat = ($name);
             $Cat_regex     = $name;
             if ( $name ne $canonical ) {
                 push( @Namespace_cat, $canonical );
-                $Cat_regex = $name . "|" . $canonical;
+                $Cat_regex = $name . q{|} . $canonical;
             }
         }
     }
 
     foreach my $entry ( @{ $res->{query}->{namespacealiases} } ) {
-        my $name = $entry->{'*'};
+        my $name = $entry->{q{*}};
         if ( $entry->{id} == 2 or $entry->{id} == 3 ) {
-            $User_regex = $User_regex . '\[\[' . $name . ':|';
+            $name       = lc($name);
+            $User_regex = $User_regex . '\[\[' . $name . q{:|};
         }
-        elsif ( $entry->{id} == 6 ) {
+        if ( $entry->{id} == 6 ) {
             push( @Namespace_image, $name );
-            $Image_regex = $Image_regex . "|" . $name;
+            $Image_regex = $Image_regex . q{|} . $name;
         }
-        elsif ( $entry->{id} == 10 ) {
+        if ( $entry->{id} == 10 ) {
             push( @Namespace_templates, $name );
         }
-        elsif ( $entry->{id} == 14 ) {
+        if ( $entry->{id} == 14 ) {
             push( @Namespace_cat, $name );
-            $Cat_regex = $Cat_regex . "|" . $name;
+            $Cat_regex = $Cat_regex . q{|} . $name;
         }
 
         # Store all aliases.
@@ -612,8 +668,9 @@ sub readMetadata {
         $Magicword_defaultsort = $aliases if ( $name eq 'defaultsort' );
     }
 
-    chop($User_regex);     # Drop off final '|'
     chop($Draft_regex);    # Drop off final '|'
+    if ( $Draft_regex eq q{} ) { chop($User_regex); }
+    $REGEX_095 = qr/$User_regex$Draft_regex/;
 
     return ();
 }
@@ -640,11 +697,11 @@ sub readTemplates {
             if ( defined($template_sql) ) {
                 if ( $Template_list[$i][0] eq '-9999' ) {
                     shift( @{ $Template_list[$i] } );
-                    $Template_regex[$i] = '\{\{' . lc($template_sql) . '|';
+                    $Template_regex[$i] = '\{\{' . lc($template_sql) . q{|};
                 }
                 else {
                     $Template_regex[$i] =
-                      $Template_regex[$i] . '\{\{' . lc($template_sql) . '|';
+                      $Template_regex[$i] . '\{\{' . lc($template_sql) . q{|};
                 }
                 push( @{ $Template_list[$i] }, lc($template_sql) );
             }
@@ -671,7 +728,7 @@ sub scan_pages {
             $pages = MediaWiki::DumpFile::Pages->new($DumpFilename);
 
             # CHECK FILE_SIZE IF ONLY UNCOMPRESSED
-            if ( $DumpFilename !~ /(.*?)\.xml\.bz2$/ ) {
+            if ( $DumpFilename !~ /(?:.*?)\.xml\.bz2$/ ) {
                 $file_size = ( stat($DumpFilename) )[7];
             }
 
@@ -679,7 +736,7 @@ sub scan_pages {
                 next if ( $page->namespace != 0 );    #NS=0 IS ARTICLE NAMESPACE
                 set_variables_for_article();
                 $title = $page->title;
-                if ( $title ne "" ) {
+                if ( $title ne q{} ) {
                     update_ui() if ++$artcount % 500 == 0;
 
                     #    if ( $artcount > 1603500 ) {
@@ -691,7 +748,8 @@ sub scan_pages {
 
                     #    }
 
-                    #$end_of_dump = 'yes' if ( $artcount > 10000 );
+                    #$end_of_dump = 'yes' if ( $artcount > 1000 );
+
                     #$end_of_dump = 'yes' if ( $Error_counter > 40000 )
                 }
             }
@@ -837,7 +895,7 @@ sub delay_scan {
     foreach (@title_array) {
         set_variables_for_article();
         $title = $_;
-        if ( $title ne "" ) {
+        if ( $title ne q{} ) {
             $text = $bot->get_text($title);
             printf( "  %7d articles done\n", $artcount )
               if ++$artcount % 500 == 0;
@@ -983,8 +1041,10 @@ sub get_comments {
 
 sub get_nowiki {
 
-    my $nowiki_begin = () = $text =~ /<nowiki>/ig;
-    my $nowiki_end   = () = $text =~ /<\/nowiki>/ig;
+    # Convert to lower case is alot faster then the regex /i option
+    my $test_text    = lc($text);
+    my $nowiki_begin = () = $test_text =~ /<nowiki>/g;
+    my $nowiki_end   = () = $test_text =~ /<\/nowiki>/g;
 
     if ( $nowiki_begin != $nowiki_end ) {
         if ( $nowiki_begin > $nowiki_end ) {
@@ -1008,8 +1068,9 @@ sub get_nowiki {
 
 sub get_pre {
 
-    my $pre_begin = () = $text =~ /<pre/ig;
-    my $pre_end   = () = $text =~ /<\/pre>/ig;
+    my $test_text = lc($text);
+    my $pre_begin = () = $test_text =~ /<pre/g;
+    my $pre_end   = () = $test_text =~ /<\/pre>/g;
 
     if ( $pre_begin != $pre_end ) {
         if ( $pre_begin > $pre_end ) {
@@ -1033,8 +1094,9 @@ sub get_pre {
 
 sub get_math {
 
-    my $math_begin = () = $text =~ /<math/ig;
-    my $math_end   = () = $text =~ /<\/math>/ig;
+    my $test_text  = lc($text);
+    my $math_begin = () = $test_text =~ /<math/g;
+    my $math_end   = () = $test_text =~ /<\/math>/g;
 
     if ( $math_begin != $math_end ) {
         if ( $math_begin > $math_end ) {
@@ -1047,7 +1109,6 @@ sub get_math {
         }
     }
 
-    # LEAVE MATH TAG IN.  CAUSES PROBLEMS WITH #61, #65 and #67
     $text =~ s/<math(.*?)<\/math>/<math>CheckWiki<\/math>/sg;
 
     return ();
@@ -1059,11 +1120,7 @@ sub get_math {
 
 sub get_ce {
 
-    if ( $text =~ /<ce/i ) {
-
-        # LEAVE MATH TAG IN.  CAUSES PROBLEMS WITH #61, #65 and #67
-        $text =~ s/<ce(.*?)<\/ce>/<ce>CheckWiki<\/ce>/sgi;
-    }
+    $text =~ s/<ce(.*?)<\/ce>/<ce>CheckWiki<\/ce>/sgi;
 
     return ();
 }
@@ -1074,8 +1131,9 @@ sub get_ce {
 
 sub get_source {
 
-    my $source_begin = () = $text =~ /<source/ig;
-    my $source_end   = () = $text =~ /<\/source>/ig;
+    my $test_text    = lc($text);
+    my $source_begin = () = $test_text =~ /<source/g;
+    my $source_end   = () = $test_text =~ /<\/source>/g;
 
     if ( $source_begin != $source_end ) {
         if ( $source_begin > $source_end ) {
@@ -1099,8 +1157,9 @@ sub get_source {
 
 sub get_code {
 
-    my $code_begin = () = $text =~ /<code/ig;
-    my $code_end   = () = $text =~ /<\/code>/ig;
+    my $test_text  = lc($text);
+    my $code_begin = () = $test_text =~ /<code/g;
+    my $code_end   = () = $test_text =~ /<\/code>/g;
 
     if ( $code_begin != $code_end ) {
         if ( $code_begin > $code_end ) {
@@ -1259,12 +1318,14 @@ sub get_isbn {
 
             # INFOBOX CAN HAVE "| ISBN10 = ".
             # ALSO DON'T CHECK ISBN (10|13)XXXXXXXXXX
-            if (    ( $output !~ /\|\s*ISBN(10|13)\s*=/ig )
-                and ( $output !~ /ISBN\s*([-]|[:]|[#]|[;]){0,1}\s*(10|13)\d/g )
-              )
-            {
-                error_069_isbn_wrong_syntax($output);
-            }
+            #if (    ( $output !~ /\|\s*ISBN(?:10|13)\s*=/g )
+            #    and
+            #    ( $output !~ /ISBN\s*(?:[-]|[:]|[#]|[;]){0,1}\s*(?:10|13)\d/g )
+            #  )
+            #{
+            error_069_isbn_wrong_syntax($output);
+
+            #}
         }
         elsif ( $test_text =~ / \[\[ISBN\]\]\s*([:]|[-]|[#]|[;])+\s*\d/g ) {
             my $output = substr( $text, $-[0] - 1, 40 );
@@ -1296,10 +1357,10 @@ sub get_isbn {
 
                 my $digits = length($isbn_strip);
 
-                if (    index( $isbn_strip, 'X' ) != 9
-                    and index( $isbn_strip, 'X' ) > -1 )
-                {
-                    error_071_isbn_wrong_pos_X($isbn);
+                if ( index( $isbn_strip, 'X' ) > -1 ) {
+                    if ( index( $isbn_strip, 'X' ) != 9 ) {
+                        error_071_isbn_wrong_pos_X($isbn);
+                    }
                 }
                 elsif ( $digits == 10 ) {
                     if ( valid_isbn_checksum($isbn_strip) != 1 ) {
@@ -1355,37 +1416,39 @@ sub get_issn {
         # ISSN 1234 5678
         error_106_issn_wrong_syntax( substr( $text, $-[0] + 1, 15 ) );
     }
-    foreach (@Lines) {
-        while ( $_ =~ m/ (ISSN\s+[\dXx]+-[\dXx]+)/g ) {
-            my $output = $1;
-            my $issn   = uc($1);
-            $issn =~ s/[^0-9X]//g;
-            my $length = length($issn);
-            if ( $length < 8 or $length > 8 ) {
-                error_107_issn_wrong_length($output);
-            }
-            elsif ( $issn !~ /\d{7}[0-9X]/ ) {
 
-                # X is in wrong spot
+    #    foreach (@Lines) {
+    while ( $text =~ /(ISSN\s+[\dXx]+-[\dXx]+)/g ) {
+        my $output = $1;
+        my $issn   = uc($1);
+        $issn =~ s/[^0-9X]//g;
+        my $length = length($issn);
+        if ( $length < 8 or $length > 8 ) {
+            error_107_issn_wrong_length($output);
+        }
+        elsif ( $issn !~ /\d{7}[0-9X]/ ) {
+
+            # X is in wrong spot
+            error_108_issn_wrong_checksum($output);
+        }
+        elsif ( $output !~ /ISSN\s+\d\d\d\d-\d\d\d[0-9X]/ ) {
+            error_106_issn_wrong_syntax($output);
+        }
+        else {
+            my @digits = split //, $issn;
+            my $sum = 0;
+            foreach ( reverse 2 .. 8 ) {
+                $sum += $_ * ( shift @digits );
+            }
+            my $checksum = ( 11 - ( $sum % 11 ) ) % 11;
+            $checksum = 'X' if $checksum == 10;
+            if ( substr( $issn, -1, 1 ) ne $checksum ) {
                 error_108_issn_wrong_checksum($output);
-            }
-            elsif ( $output !~ /ISSN\s+(\d{4}-\d{3}[0-9X])/ ) {
-                error_106_issn_wrong_syntax($output);
-            }
-            else {
-                my @digits = split //, $issn;
-                my $sum = 0;
-                foreach ( reverse 2 .. 8 ) {
-                    $sum += $_ * ( shift @digits );
-                }
-                my $checksum = ( 11 - ( $sum % 11 ) ) % 11;
-                $checksum = 'X' if $checksum == 10;
-                if ( substr( $issn, -1, 1 ) ne $checksum ) {
-                    error_108_issn_wrong_checksum($output);
-                }
             }
         }
     }
+
+    #}
 
     return ();
 }
@@ -1430,6 +1493,7 @@ sub get_templates_all {
     my $pos_start   = 0;
     my $pos_end     = 0;
     my $test_text   = $text;
+    my $found_error = 0;
 
     # Delete all breaks --> only one line
     # Delete all tabs --> better for output
@@ -1469,9 +1533,10 @@ sub get_templates_all {
             $temp_text_2 = substr( $temp_text_2, 1, length($temp_text_2) - 2 );
             push( @Templates_all, $temp_text_2 );
         }
-        else {
+        elsif ( $found_error == 0 ) {
             my $begin_string = substr( $temp_text, 0, 40 );
-            if ( $project ne "ruwiki" and $project ne "ukwiki" ) {
+            $found_error++;
+            if ( $project ne 'ruwiki' and $project ne 'ukwiki' ) {
                 error_043_template_no_correct_end($begin_string);
             }
 
@@ -1513,14 +1578,14 @@ sub get_template {
 
         my @template_split = split( /\|/, $current_template );
 
-        if ( index( $current_template, '|' ) == -1 ) {
+        if ( index( $current_template, q{|} ) == -1 ) {
 
             # If no pipe; for example {{test}}
             $template_name = $current_template;
             next;
         }
 
-        if ( index( $current_template, '|' ) > -1 ) {
+        if ( index( $current_template, q{|} ) > -1 ) {
 
             # Templates with pipe {{test|attribute=value}}
 
@@ -1528,10 +1593,10 @@ sub get_template {
             $template_split[0] =~ s/^ //g;
             $template_name = $template_split[0];
 
-            if ( index( $template_name, '_' ) > -1 ) {
+            if ( index( $template_name, q{_} ) > -1 ) {
                 $template_name =~ s/_/ /g;
             }
-            if ( index( $template_name, '  ' ) > -1 ) {
+            if ( index( $template_name, q{  } ) > -1 ) {
                 $template_name =~ s/  / /g;
             }
 
@@ -1546,12 +1611,12 @@ sub get_template {
                 $template_part = $template_part . $_;
 
                 # Check for []
-                my $beginn_brackets = ( $template_part =~ tr/[[/[[/ );
-                my $end_brackets    = ( $template_part =~ tr/]]/]]/ );
+                my $beginn_brackets = ( $template_part =~ tr/[/[/ );
+                my $end_brackets    = ( $template_part =~ tr/]/]/ );
 
                 # Check for {}
-                my $beginn_curly_brackets = ( $template_part =~ tr/{{/{{/ );
-                my $end_curly_brackets    = ( $template_part =~ tr/}}/}}/ );
+                my $beginn_curly_brackets = ( $template_part =~ tr/{/{/ );
+                my $end_curly_brackets    = ( $template_part =~ tr/}/}/ );
 
                 # Template part complete ?
                 if (    $beginn_brackets eq $end_brackets
@@ -1562,7 +1627,7 @@ sub get_template {
                     $template_part = q{};
                 }
                 else {
-                    $template_part = $template_part . '|';
+                    $template_part = $template_part . q{|};
                 }
 
             }
@@ -1577,7 +1642,7 @@ sub get_template {
                 $template_part_number++;
                 $template_part_counter++;
 
-                $template_name =~ s/^[ ]+|[ ]+$//g;
+                $template_name =~ s/^\s+|\s+$//g;
 
                 $Template[$template_part_counter][0] = $number_of_templates;
                 $Template[$template_part_counter][1] = $template_name;
@@ -1585,14 +1650,14 @@ sub get_template {
 
                 my $attribut = q{};
                 my $value    = q{};
-                if ( index( $template_part, '=' ) > -1 ) {
+                if ( index( $template_part, q{=} ) > -1 ) {
 
                     #template part with "="   {{test|attribut=value}}
-                    my $pos_equal     = index( $template_part, '=' );
-                    my $pos_lower     = index( $template_part, '<' );
+                    my $pos_equal     = index( $template_part, q{=} );
+                    my $pos_lower     = index( $template_part, q{<} );
                     my $pos_next_temp = index( $template_part, '{{' );
                     my $pos_table     = index( $template_part, '{|' );
-                    my $pos_bracket   = index( $template_part, '[' );
+                    my $pos_bracket   = index( $template_part, q{[} );
 
                     my $equal_ok = 'true';
                     $equal_ok = 'false'
@@ -1610,10 +1675,10 @@ sub get_template {
                         # Template part with "="   {{test|attribut=value}}
                         $attribut =
                           substr( $template_part, 0,
-                            index( $template_part, '=' ) );
+                            index( $template_part, q{=} ) );
                         $value =
                           substr( $template_part,
-                            index( $template_part, '=' ) + 1 );
+                            index( $template_part, q{=} ) + 1 );
                     }
                     else {
                      # Problem:  {{test|value<ref name="sdfsdf"> sdfhsdf</ref>}}
@@ -1632,8 +1697,8 @@ sub get_template {
                     $value    = $template_part;
                 }
 
-                $attribut =~ s/^[ ]+|[ ]+$//g;
-                $value =~ s/^[ ]+|[ ]+$//g;
+                $attribut =~ s/^\s*|\s*$//g;
+                $value =~ s/^\s*|\s*$//g;
 
                 $Template[$template_part_counter][3] = $attribut;
                 $Template[$template_part_counter][4] = $value;
@@ -1669,25 +1734,24 @@ sub get_links {
     my $link_text_2 = q{};
     my $brackets_begin;
     my $brackets_end;
-
-    $test_text =~ s/\n//g;
+    my $found_error = 0;
 
     while ( $test_text =~ /\[\[/g ) {
 
         my $link_text = substr( $test_text, pos($test_text) - 2 );
         while ( $link_text =~ /\]\]/g ) {
 
-            $link_text_2 =
-              q{ } . substr( $link_text, 0, pos($link_text) ) . q{ };
-            $brackets_begin = ( $link_text_2 =~ tr/[[/[[/ );
-            $brackets_end   = ( $link_text_2 =~ tr/]]/]]/ );
+            $link_text_2    = substr( $link_text, 0, pos($link_text) );
+            $brackets_begin = ( $link_text_2 =~ tr/[/[/ );
+            $brackets_end   = ( $link_text_2 =~ tr/]/]/ );
 
             last if ( $brackets_begin == $brackets_end );
+
         }
 
         if ( $brackets_begin == $brackets_end ) {
 
-            $link_text_2 = substr( $link_text_2, 1, length($link_text_2) - 2 );
+            $link_text_2 = substr( $link_text_2, 0, length($link_text_2) );
             push( @Links_all, $link_text_2 );
 
             if ( $link_text_2 =~ /^\[\[\s*(?:$Image_regex):/i ) {
@@ -1695,11 +1759,12 @@ sub get_links {
             }
 
         }
-        else {
+        elsif ( $found_error == 0 ) {
             error_010_count_square_breaks( substr( $link_text, 0, 40 ) );
-
+            $found_error++;
         }
     }
+
     return ();
 }
 
@@ -1758,7 +1823,7 @@ sub get_categories {
 
                 # Filter linkname
                 $Category[$counter][3] = q{}
-                  if ( index( $Category[$counter][3], '|' ) == -1 );
+                  if ( index( $Category[$counter][3], q{|} ) == -1 );
                 $Category[$counter][3] =~ s/^(.)*\|//gi; # Delete [[category:xy|
                 $Category[$counter][3] =~ s/\]\]//g;     # Delete ]]
                 $Category[$counter][3] =~ s/^ //g;       # Delete blank
@@ -1777,7 +1842,7 @@ sub get_categories {
 
 sub get_interwikis {
 
-    if ( $text =~ /\[\[([a-z][a-z]|als|nds|nds_nl|simple):/i ) {
+    if ( $lc_text =~ /\[\[([a-z][a-z]|als|nds|nds_nl|simple):/ ) {
 
         foreach (@INTER_LIST) {
 
@@ -1811,7 +1876,7 @@ sub get_interwikis {
                     $Interwiki[$counter][2] =~ s/^ //g;         # Delete blank
                     $Interwiki[$counter][2] =~ s/ $//g;         # Delete blank;
 
-                    if ( index( $Interwiki[$counter][3], '|' ) == -1 ) {
+                    if ( index( $Interwiki[$counter][3], q{|} ) == -1 ) {
                         $Interwiki[$counter][3] = q{};
                     }
 
@@ -1844,10 +1909,9 @@ sub create_line_array {
 sub get_headlines {
 
     my $first = 0;
-    foreach (@Lines) {
-
-        if ( substr( $_, 0, 1 ) eq '=' ) {
-            push( @Headlines, $_ );
+    foreach my $line (@Lines) {
+        if ( substr( $line, 0, 1 ) eq q{=} ) {
+            push( @Headlines, $line );
         }
     }
 
@@ -2089,6 +2153,7 @@ sub error_check {
         error_105_headline_start_begin();
         error_109_include_tag_error();
         error_110_found_include_tag();
+        error_111_ref_after_ref_list();
     }
 
     return ();
@@ -2104,8 +2169,8 @@ sub error_001_template_with_word_template {
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
-            foreach (@Namespace_templates) {
-                my $template = lc($_);
+            foreach my $namespace (@Namespace_templates) {
+                my $template = lc($namespace);
                 if ( $lc_text =~ /(\{\{\s*$template:)/ ) {
                     error_register( $error_code, substr( $text, $-[0], 40 ) );
                 }
@@ -2126,27 +2191,17 @@ sub error_002_have_br {
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
-            if (
-                $lc_text =~ /(                  
-                              <br\s*\/\s*[^ ]>      # <br\/t>
-                              |<br[^ ]\/>           # <brt \/>
-                              |<br[^ \/]>           # <brt>
-                              |<br\s*\/\s*[^ >]     # <br 
-                              |<br\s*[^ >\/]        # <br 
-                              |<[^ w]br[^\/]*\s*>   # <tbr> or < br>
-                              |<br\h*[^ \v>\/]      # <br t> \v is newline 
-                              |<\/hr>               
-                             )/xi
-              )
-            {
-                my $test_line = substr( $text, $-[0], 40 );
-                $test_line =~ s/[\n\r]//mg;
-                error_register( $error_code, $test_line );
+            # CHECK FOR <br> and <hr> issues
+            foreach my $regex (@REGEX_BR_002) {
+                if ( $lc_text =~ /$regex/ ) {
+                    my $test_line = substr( $text, $-[0], 40 );
+                    error_register( $error_code, $test_line );
+                }
             }
 
             # CHECK FOR </center/> or <center/>
-            for my $temp (@TAG_LIST_002) {
-                if ( $text =~ /(<\s*\/?\s*$temp\s*\/\s*>)/i ) {
+            foreach my $regex (@REGEX_002) {
+                if ( $lc_text =~ /$regex/ ) {
                     my $test_line = substr( $text, $-[0], 40 );
                     error_register( $error_code, $test_line );
                 }
@@ -2167,26 +2222,26 @@ sub error_003_have_ref {
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
-            if (   index( $text, '<ref>' ) > -1
-                or index( $text, '<ref name' ) > -1 )
+            if (   index( $lc_text, '<ref>' ) > -1
+                or index( $lc_text, '<ref name' ) > -1 )
             {
 
-                my $test      = "false";
+                my $test      = 'false';
                 my $test_text = $lc_text;
 
-                $test = "true"
+                $test = 'true'
                   if (  $test_text =~ /<[ ]?+references>/
                     and $test_text =~ /<[ ]?+\/references>/ );
-                $test = "true" if ( $test_text =~ /<[ ]?+references[ ]?+\/>/ );
-                $test = "true" if ( $test_text =~ /<[ ]?+references group/ );
-                $test = "true" if ( $test_text =~ /\{\{[ ]?+refbegin/ );
-                $test = "true" if ( $test_text =~ /\{\{[ ]?+refend/ );
-                $test = "true" if ( $test_text =~ /\{\{[ ]?+reflist/ );
+                $test = 'true' if ( $test_text =~ /<[ ]?+references[ ]?+\/>/ );
+                $test = 'true' if ( $test_text =~ /<[ ]?+references group/ );
+                $test = 'true' if ( $test_text =~ /\{\{[ ]?+refbegin/ );
+                $test = 'true' if ( $test_text =~ /\{\{[ ]?+refend/ );
+                $test = 'true' if ( $test_text =~ /\{\{[ ]?+reflist/ );
 
                 # hrwiki doesn't have a translation file
-                $test = "true"
+                $test = 'true'
                   if (  $test_text =~ /\{\{[ ]?+izvori/
-                    and $project eq "hrwiki" );
+                    and $project eq 'hrwiki' );
 
                 if ( $Template_list[$error_code][0] ne '-9999' ) {
 
@@ -2194,11 +2249,11 @@ sub error_003_have_ref {
 
                     for my $temp (@ack) {
                         if ( $test_text =~ /\{\{[ ]?+($temp)/i ) {
-                            $test = "true";
+                            $test = 'true';
                         }
                     }
                 }
-                if ( $test eq "false" ) {
+                if ( $test eq 'false' ) {
                     error_register( $error_code, q{} );
                 }
             }
@@ -2218,10 +2273,14 @@ sub error_004_html_text_style_elements_a {
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
-            my $pos = index( $lc_text, '<a ' );
+            my $begin = index( $lc_text, '<a ' );
+            my $end   = index( $lc_text, '</a>' );
 
-            if ( $pos > -1 ) {
-                error_register( $error_code, substr( $text, $pos, 40 ) );
+            if ( $begin > -1 ) {
+                error_register( $error_code, substr( $text, $begin, 40 ) );
+            }
+            elsif ( $end > -1 ) {
+                error_register( $error_code, substr( $text, $end, 40 ) );
             }
         }
     }
@@ -2283,7 +2342,7 @@ sub error_006_defaultsort_with_special_letters {
                 $test_text =~ s/\+//g;
 
                 if ( $test_text ne q{} ) {
-                    $test_text2 = "{{" . $test_text2 . "}}";
+                    $test_text2 = '{{' . $test_text2 . '}}';
                     error_register( $error_code, $test_text2 );
                 }
             }
@@ -2308,8 +2367,8 @@ sub error_007_headline_only_three {
             if ( $Headlines[0] =~ /===/ ) {
 
                 my $found_level_two = 'no';
-                foreach (@Headlines) {
-                    if ( $_ =~ /^==[^=]/ ) {
+                foreach my $headline (@Headlines) {
+                    if ( $headline =~ /^==[^=]/ ) {
                         $found_level_two = 'yes';    #found level two (error 83)
                     }
                 }
@@ -2331,32 +2390,26 @@ sub error_008_headline_start_end {
     my $error_code = 8;
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
-        foreach (@Headlines) {
-            my $current_line  = $_;
-            my $current_line1 = $current_line;
-            my $current_line2 = $current_line;
+        if ( $page_namespace == 0 or $page_namespace == 104 ) {
+            foreach (@Headlines) {
+                my $line = $_;
 
-            $current_line2 =~ s/\t//gi;
-            $current_line2 =~ s/[ ]+/ /gi;
-            $current_line2 =~ s/ $//gi;
-
-            if (    $current_line1 =~ /^==/
-                and not( $current_line2 =~ /==$/ )
-                and ( $page_namespace == 0 or $page_namespace == 104 ) )
-            {
-                # Check for cases where a ref is after ==.  Many times a
-                # ref is in the heading with a new line in the ref... This
-                # is two entries in @Headlines and causes a false positive.
-                # Make sure the refs is after the last ==.
-                if ( index( $current_line, '<ref' ) > 0 ) {
-                    if ( $current_line =~ /=\s*<ref/ ) {
-                        error_register( $error_code,
-                            substr( $current_line, 0, 40 ) );
+                if ( $line =~ /^==/
+                    and not( $line =~ /==\s*$/ ) )
+                {
+                    # Check for cases where a ref is after ==.  Many times a
+                    # ref is in the heading with a new line in the ref... This
+                    # is two entries in @Headlines and causes a false positive.
+                    # Make sure the refs is after the last ==.
+                    if ( index( $line, '<ref' ) > 0 ) {
+                        if ( $line =~ /=\s*<ref/ ) {
+                            error_register( $error_code,
+                                substr( $line, 0, 40 ) );
+                        }
                     }
-                }
-                else {
-                    error_register( $error_code,
-                        substr( $current_line, 0, 40 ) );
+                    else {
+                        error_register( $error_code, substr( $line, 0, 40 ) );
+                    }
                 }
             }
         }
@@ -2381,10 +2434,10 @@ sub error_009_more_then_one_category_in_a_line {
 
                 my $error_text =
                     '[['
-                  . $1 . ':'
+                  . $1 . q{:}
                   . $2 . ']]'
                   . $3 . '[['
-                  . $4 . ':'
+                  . $4 . q{:}
                   . $5 . "]]\n";
                 error_register( $error_code, substr( $error_text, 0, 40 ) );
             }
@@ -2615,6 +2668,7 @@ sub error_017_category_double {
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
+            my $found_error = 0;
             foreach my $i ( 0 .. $Category_counter - 1 ) {
                 my $test = $Category[$i][2];
 
@@ -2636,7 +2690,10 @@ sub error_017_category_double {
                         }
 
                         if ( $test eq $test2 ) {
-                            error_register( $error_code, $Category[$i][2] );
+                            if ( $found_error == 0 ) {
+                                $found_error++;
+                                error_register( $error_code, $Category[$i][2] );
+                            }
                         }
                     }
                 }
@@ -2665,7 +2722,7 @@ sub error_018_category_first_letter_small {
                 if ( $test_letter =~ /([\p{Ll}a-z])/ ) {
                     error_register( $error_code, $Category[$i][2] );
                 }
-                if ( $test_cat eq "[[c" ) {
+                if ( $test_cat eq '[[c' ) {
                     error_register( $error_code, $Category[$i][4] );
                 }
 
@@ -2686,9 +2743,9 @@ sub error_019_headline_only_one {
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
-            foreach (@Headlines) {
-                if ( $_ =~ /^=[^=]/ ) {
-                    error_register( $error_code, substr( $_, 0, 40 ) );
+            foreach my $headline (@Headlines) {
+                if ( $headline =~ /^=[^=]/ ) {
+                    error_register( $error_code, substr( $headline, 0, 40 ) );
                 }
             }
         }
@@ -2761,7 +2818,7 @@ sub error_022_category_with_space {
                 # SOME WIKIS HAVE COLONS IN THEIR CAT NAMES, REMOVE LAST ONE
                 my $total = $Category[$i][4] =~ tr/:/:/;
                 if ( $total > 1 ) {
-                    my $last_colon = rindex( $Category[$i][4], ':' );
+                    my $last_colon = rindex( $Category[$i][4], q{:} );
                     $Category[$i][4] =
                       substr( $Category[$i][4], 0, $last_colon );
                 }
@@ -2928,19 +2985,19 @@ sub error_028_table_no_correct_end {
             and ( $page_namespace == 0 or $page_namespace == 104 ) )
         {
 
-            my $test = "false";
+            my $test = 'false';
 
             if ( $Template_list[$error_code][0] ne '-9999' ) {
 
                 my @ack = @{ $Template_list[$error_code] };
 
-                for my $temp (@ack) {
+                foreach my $temp (@ack) {
                     if ( index( $lc_text, $temp ) > -1 ) {
-                        $test = "true";
+                        $test = 'true';
                     }
                 }
             }
-            if ( $test eq "false" ) {
+            if ( $test eq 'false' ) {
                 error_register( $error_code, $comment );
             }
         }
@@ -2959,8 +3016,8 @@ sub error_029_gallery_no_correct_end {
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
-            my $gallery_begin = () = $text =~ /<gallery/ig;
-            my $gallery_end   = () = $text =~ /<\/gallery>/ig;
+            my $gallery_begin = () = $lc_text =~ /<gallery/g;
+            my $gallery_end   = () = $lc_text =~ /<\/gallery>/g;
 
             if ( $gallery_begin != $gallery_end ) {
                 if ( $gallery_begin > $gallery_end ) {
@@ -3041,11 +3098,11 @@ sub error_032_double_pipe_in_link {
             or $page_namespace == 6
             or $page_namespace == 104 )
         {
-            foreach (@Lines) {
-                if ( $_ =~ /\[\[[^\]:\{]+\|([^\]\{]+\||\|)/g ) {
-                    my $pos              = pos($_);
-                    my $first_part       = substr( $_, 0, $pos );
-                    my $second_part      = substr( $_, $pos );
+            foreach my $line (@Lines) {
+                if ( $line =~ /\[\[[^\]:\{]+\|([^\]\{]+\||\|)/g ) {
+                    my $pos              = pos($line);
+                    my $first_part       = substr( $line, 0, $pos );
+                    my $second_part      = substr( $line, $pos );
                     my @first_part_split = split( /\[\[/, $first_part );
                     foreach (@first_part_split) {
                         $first_part = '[[' . $_;  # Find last link in first_part
@@ -3092,28 +3149,10 @@ sub error_034_template_programming_elements {
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
-            # RUWIKIS AND UKWIKI USE VALID {{{! in INFOBOX, ALOT
-            if (   $project eq "ukwiki"
-                or $project eq "ruwiki"
-                or $project eq "bewiki" )
-            {
-                if ( $text =~
-/(#if:|#ifeq:|#switch:|#ifexist:|{{fullpagename}}|{{sitename}}|{{namespace}}|{{basepagename}}|{{pagename}}|{{subpagename}}|{{namespacenumber}}|{{fullpagenamee}}|__noindex__|__index__|__forcetoc__|__nonewsectionlink__|{{subst:)/i
-                  )
-                {
-                    my $test_line = substr( $text, $-[0], 40 );
-                    $test_line =~ s/[\n\r]//mg;
-                    error_register( $error_code, $test_line );
-                }
-            }
-            else {
-                if ( $text =~
-/({{{|#if:|#ifeq:|#switch:|#ifexist:|{{fullpagename}}|{{sitename}}|{{namespace}}|{{basepagename}}|{{pagename}}|{{subpagename}}|{{namespacenumber}}|{{fullpagenamee}}|__noindex__|__index__|__nonewsectionlink__|{{subst:)/i
-                  )
-                {
-                    my $test_line = substr( $text, $-[0], 40 );
-                    $test_line =~ s/[\n\r]//mg;
-                    error_register( $error_code, $test_line );
+            foreach my $regex (@REGEX_034) {
+                if ( $lc_text =~ /$regex/ ) {
+                    error_register( $error_code, substr( $text, $-[0], 40 ) );
+                    last;
                 }
             }
 
@@ -3121,19 +3160,21 @@ sub error_034_template_programming_elements {
 
                 my @ack = @{ $Template_list[$error_code] };
 
-                for my $temp (@ack) {
+                foreach my $temp (@ack) {
                     if ( $temp =~ /^__/ ) {
-                        if ( $text =~ /($temp)/i ) {
+                        if ( $lc_text =~ /($temp)/ ) {
                             my $test_line = substr( $text, $-[0], 40 );
                             $test_line =~ s/[\n\r]//mg;
                             error_register( $error_code, $test_line );
+                            last;
                         }
                     }
                     else {
-                        if ( $text =~ /\{\{($temp)/i ) {
+                        if ( $lc_text =~ /\{\{($temp)/ ) {
                             my $test_line = substr( $text, $-[0], 40 );
                             $test_line =~ s/[\n\r]//mg;
                             error_register( $error_code, $test_line );
+                            last;
                         }
                     }
                 }
@@ -3364,7 +3405,7 @@ sub error_044_headline_with_bold {
                     and not $headline =~ /[^']''[^']/ )
                 {
 
-                    if ( index( $headline, "<ref" ) < 0 ) {
+                    if ( index( $headline, '<ref' ) < 0 ) {
                         error_register( $error_code,
                             substr( $headline, 0, 40 ) );
                     }
@@ -3446,7 +3487,7 @@ sub error_046_count_square_breaks_begin {
                         # Find currect end - number of [[==]]
                         my $pos_start = pos($link_text);
                         $link_text_2 = substr( $link_text, $pos_start );
-                        $link_text_2 = ' ' . $link_text_2 . ' ';
+                        $link_text_2 = q{ } . $link_text_2 . q{ };
 
                         # Test the number of [[and  ]]
                         my $link_text_2_a = $link_text_2;
@@ -3499,8 +3540,8 @@ sub error_047_template_no_correct_begin {
             or $page_namespace == 104 )
         {
 
-            my $tag_open         = "{{";
-            my $tag_close        = "}}";
+            my $tag_open         = '{{';
+            my $tag_close        = '}}';
             my $look_ahead_open  = 0;
             my $look_ahead_close = 0;
             my $look_ahead       = 0;
@@ -3574,7 +3615,7 @@ sub error_048_title_in_text {
             my $pos = index( $test_text, '[[' . $title . ']]' );
 
             if ( $pos == -1 ) {
-                $pos = index( $test_text, '[[' . $title . '|' );
+                $pos = index( $test_text, '[[' . $title . q{|} );
             }
 
             if ( $pos != -1 ) {
@@ -3768,11 +3809,11 @@ sub error_054_break_in_list {
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
-            foreach (@Lines) {
+            foreach my $line (@Lines) {
 
-                if ( index( $_, q{*} ) == 0 ) {
-                    if ( $_ =~ /<br([ ]+)?(\/)?([ ]+)?>([ \t]+)?$/i ) {
-                        error_register( $error_code, substr( $_, 0, 40 ) );
+                if ( index( $line, q{*} ) == 0 ) {
+                    if ( $line =~ /<br([ ]+)?(\/)?([ ]+)?>([ \t]+)?$/i ) {
+                        error_register( $error_code, substr( $line, 0, 40 ) );
                     }
                 }
             }
@@ -3844,9 +3885,9 @@ sub error_057_headline_end_with_colon {
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
-            foreach (@Headlines) {
-                if ( $_ =~ /:[ ]?[ ]?[ ]?[=]+([ ]+)?$/ ) {
-                    error_register( $error_code, substr( $_, 0, 40 ) );
+            foreach my $headline (@Headlines) {
+                if ( $headline =~ /:[ ]?[ ]?[ ]?[=]+([ ]+)?$/ ) {
+                    error_register( $error_code, substr( $headline, 0, 40 ) );
                 }
             }
         }
@@ -3865,32 +3906,32 @@ sub error_058_headline_with_capitalization {
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
-            foreach (@Headlines) {
-                my $current_line_normal = $_;
+            foreach my $headline (@Headlines) {
 
-                $current_line_normal =~ s/[^\p{Uppercase}\p{Lowercase},&]//g
-                  ;    # Only english characters and comma
+                my $headline_normal = ( $headline =~ tr/ // );
 
-                my $current_line_uc = uc($current_line_normal);
-                if ( length($current_line_normal) > 10 ) {
+                if ( length($headline_normal) > 10 ) {
 
-                    if ( $current_line_normal eq $current_line_uc ) {
+                    my $headline_uc = uc($headline_normal);
+
+                    if ( $headline_normal eq $headline_uc ) {
 
                         # Found ALL CAPS HEADLINE(S)
                         my $check_ok = 'yes';
 
                         # Check comma
-                        if ( index( $current_line_normal, q{,} ) > -1 ) {
+                        if ( index( $headline_normal, q{,} ) > -1 ) {
                             my @comma_split =
-                              split( ',', $current_line_normal );
-                            foreach (@comma_split) {
-                                if ( length($_) < 10 ) {
+                              split( q{,}, $headline_normal );
+                            foreach my $comma (@comma_split) {
+                                if ( length($comma) < 10 ) {
                                     $check_ok = 'no';
                                 }
                             }
                         }
                         if ( $check_ok eq 'yes' and $_ ne q{} ) {
-                            error_register( $error_code, substr( $_, 0, 40 ) );
+                            error_register( $error_code,
+                                substr( $headline, 0, 40 ) );
                         }
                     }
                 }
@@ -3914,9 +3955,7 @@ sub error_059_template_value_end_with_br {
             my $found_text = q{};
             foreach my $i ( 0 .. $Number_of_template_parts ) {
 
-                if (
-                    $Template[$i][4] =~ /<br([ ]+)?(\/)?([ ]+)?>([ ])?([ ])?$/ )
-                {
+                if ( $Template[$i][4] =~ /<br\s*\/?>\s*$/ ) {
                     if (    $found_text eq q{}
                         and $Template[$i][1] !~ /marriage/i
                         and $Template[$i][1] !~ /nihongo/i )
@@ -3972,11 +4011,11 @@ sub error_061_reference_with_punctuation {
 
             # Not sure about elipse (...).  "{1,2}[^\.]" to not check for them
             # Space after !, otherwise will catch false-poistive from tables
-            if ( $text =~ /<\/ref>[ ]{0,2}(\.{1,2}[^\.]|,|\?|:|;|! )/i ) {
+            if ( $lc_text =~ /<\/ref>[ ]{0,2}(\.{1,2}[^\.]|,|\?|:|;|! )/ ) {
                 error_register( $error_code, substr( $text, $-[0], 40 ) );
             }
-            elsif ( $text =~
-                /(<ref name[^\/]*\/>[ ]{0,2}(\.{1,2}[^\.]|,|\?|:|;|! ))/i )
+            elsif ( $lc_text =~
+                /(<ref name[^\/]*\/>[ ]{0,2}(\.{1,2}[^\.]|,|\?|:|;|! ))/ )
             {
                 error_register( $error_code, substr( $text, $-[0], 40 ) );
             }
@@ -3985,9 +4024,9 @@ sub error_061_reference_with_punctuation {
                 my $pos = -1;
                 my @ack = @{ $Template_list[$error_code] };
 
-                for my $temp (@ack) {
+                foreach my $temp (@ack) {
                     if ( $text =~
-                        /\{\{[ ]?+$temp[^\}]*\}{2,4}[ ]{0,2}([\.,\?:;]|! )/
+                        /\{\{[ ]?+$temp[^\}]*\}{2,4}[ ]{0,2}([\.,\?:;!] )/
                         and $pos == -1 )
                     {
                         $pos = $-[0];
@@ -4082,49 +4121,46 @@ sub error_064_link_equal_linktext {
             # Account for [[foo_foo|foo foo]] by removing all _.
             $temp_text =~ tr/_/ /;
 
+            #while ( $temp_text =~ /\[\[([^\|]*)/g ) {
+            #    my $temp
+            #}
             # Account for [[Foo|foo]] and [[foo|Foo]] by capitalizing the
             # the first character after the [ and |.  But, do only on
             # non-wiktionary projects
             if ( $project !~ /wiktionary/ ) {
 
                 # [[foo --> [[Foo
-                $temp_text =~ s/\[\[\s*([\w])/\[\[\u$1/g;
+                $temp_text =~ s/\[\[\s*(\p{Lowercase_Letter})/\[\[\u$1/g;
 
                 # [[Foo|foo]] --> [[Foo|Foo]]
-                $temp_text =~ s/\[\[\s*([^|:\]]*)\s*\|\s*(.)/\[\[$1\|\u$2/g;
+                $temp_text =~
+                  s/\[\[([^\|\]]*)\s*\|\s*(\p{Lowercase_Letter})/\[\[$1\|\u$2/g;
 
                 # [[Foo|"foo"]] --> [[Foo|''Foo'']]
                 $temp_text =~
-s/\[\[\s*([^|:\]]*)\s*\|\s*([$characters]+)\s*(.)/\[\[$1\|$2\u$3/g;
-
+s/\[\[([^\|\]]*)\|([$CHARACTERS_064]+)\s*(\p{Lowercase_Letter})/\[\[$1\|$2\u$3/og;
             }
 
             # Account for [[Foo|Foo]]
-            if ( $temp_text =~ /(\[\[\s*([^|:]*)\s*\|\2\s*[.,]?\s*\]\])/ ) {
-                my $found_text = $1;
-                error_register( $error_code, $found_text );
-            }
-
-            # Account for [[Foo|''Foo'']]
-            elsif ( $temp_text =~
-                /(\[\[\s*([^|:]*)\s*\|[$characters]+\2\s*[$characters]+\s*\]\])/
-              )
-            {
+            if ( $temp_text =~ /(\[\[([^\|]*)\|\2\s*\]\])/ ) {
                 my $found_text = $1;
                 error_register( $error_code, $found_text );
             }
 
             # Account for [[Foo|Foo'']]
-            elsif ( $temp_text =~
-                /(\[\[\s*([^|:]*)\s*\|\2\s*[$characters]+\s*\]\])/ )
-            {
-                my $found_text = $1;
-                error_register( $error_code, $found_text );
+            elsif ( $temp_text =~ /[$CHARACTERS_064]+\s*\]\]/o ) {
+                if ( $temp_text =~
+/(\[\[([^\|]*)\|[$CHARACTERS_064]+?\2\s*[$CHARACTERS_064]+\s*\]\])/o
+                  )
+                {
+                    my $found_text = $1;
+                    error_register( $error_code, $found_text );
+                }
             }
 
             # Account for [[Foo|''Foo]]
             elsif (
-                $temp_text =~ /(\[\[\s*([^|:]*)\s*\|[$characters]+\2\s*\]\])/ )
+                $temp_text =~ /(\[\[([^\|]*)\|[$CHARACTERS_064]+\2\s*\]\])/o )
             {
                 my $found_text = $1;
                 error_register( $error_code, $found_text );
@@ -4146,11 +4182,11 @@ sub error_065_image_description_with_break {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
             my $found_text = q{};
-            foreach (@Images_all) {
+            foreach my $image (@Images_all) {
 
-                if ( $_ =~ /<br([ ]+)?(\/)?([ ]+)?>([ ])?(\||\])/i ) {
+                if ( $image =~ /<br([ ]+)?(\/)?([ ]+)?>([ ])?(\||\])/i ) {
                     if ( $found_text eq q{} ) {
-                        $found_text = $_;
+                        $found_text = $image;
                     }
                 }
             }
@@ -4174,13 +4210,13 @@ sub error_066_image_description_with_full_small {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
             my $found_text = q{};
-            foreach (@Images_all) {
+            foreach my $image (@Images_all) {
 
-                if (    $_ =~ /<small([ ]+)?(\/)?([ ]+)?>([ ])?(\||\])/i
-                    and $_ =~ /\|([ ]+)?<small/i )
+                if (    $image =~ /<small([ ]+)?(\/)?([ ]+)?>([ ])?(\||\])/i
+                    and $image =~ /\|([ ]+)?<small/i )
                 {
                     if ( $found_text eq q{} ) {
-                        $found_text = $_;
+                        $found_text = $image;
                     }
                 }
             }
@@ -4208,11 +4244,11 @@ sub error_067_reference_after_punctuation {
 
                 my @ack = @{ $Template_list[$error_code] };
 
-                for my $temp (@ack) {
+                foreach my $temp (@ack) {
                     $test_text =~ s/($temp)\s*<ref[ >]//sg;
                 }
 
-                if ( $test_text =~ /[ ]{0,2}(\.|,|\?|:|!|;)[ ]{0,2}<ref[ >]/ ) {
+                if ( $test_text =~ /[ ]{0,2}([\.,\?:!;])[ ]{0,2}<ref[ >]/ ) {
                     error_register( $error_code,
                         substr( $test_text, $-[0], 40 ) );
                 }
@@ -4233,12 +4269,11 @@ sub error_068_link_to_other_language {
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
-            foreach (@Links_all) {
+            foreach my $link (@Links_all) {
 
-                my $current_link = $_;
                 foreach (@INTER_LIST) {
-                    if ( $current_link =~ /^\[\[([ ]+)?:([ ]+)?$_:/i ) {
-                        error_register( $error_code, $current_link );
+                    if ( $link =~ /^\[\[([ ]+)?:([ ]+)?$_:/i ) {
+                        error_register( $error_code, $link );
                     }
                 }
             }
@@ -4354,11 +4389,10 @@ sub error_074_link_with_no_target {
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
-            foreach (@Links_all) {
-
-                if ( index( $_, '[[|' ) > -1 ) {
-                    my $pos = index( $_, '[[|' );
-                    error_register( $error_code, substr( $_, $pos, 40 ) );
+            foreach my $link (@Links_all) {
+                if ( index( $link, '[[|' ) > -1 ) {
+                    my $pos = index( $link, '[[|' );
+                    error_register( $error_code, substr( $link, $pos, 40 ) );
                 }
             }
         }
@@ -4380,21 +4414,24 @@ sub error_075_indented_list {
         {
             my $list = 0;
 
-            foreach (@Lines) {
+            foreach my $line (@Lines) {
 
-                if ( index( $_, q{*} ) == 0 or index( $_, q{#} ) == 0 ) {
+                if ( index( $line, q{*} ) == 0 or index( $line, q{#} ) == 0 ) {
                     $list = 1;
                 }
                 elsif ( $list == 1
-                    and ( $_ ne q{} and index( $_, q{:} ) != 0 ) )
+                    and ( $line ne q{} and index( $line, q{:} ) != 0 ) )
                 {
                     $list = 0;
                 }
 
-                if ( $list == 1
-                    and ( index( $_, ':*' ) == 0 or index( $_, ':#' ) == 0 ) )
+                if (
+                    $list == 1
+                    and
+                    ( index( $line, q{:*} ) == 0 or index( $line, q{:#} ) == 0 )
+                  )
                 {
-                    error_register( $error_code, substr( $_, 0, 40 ) );
+                    error_register( $error_code, substr( $line, 0, 40 ) );
                 }
             }
         }
@@ -4413,10 +4450,10 @@ sub error_076_link_with_no_space {
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
-            foreach (@Links_all) {
+            foreach my $link (@Links_all) {
 
-                if ( $_ =~ /^\[\[([^\|]+)%20([^\|]+)/i ) {
-                    error_register( $error_code, $_ );
+                if ( $link =~ /^\[\[([^\|]+)%20([^\|]+)/i ) {
+                    error_register( $error_code, $link );
                 }
             }
         }
@@ -4435,12 +4472,12 @@ sub error_077_image_description_with_partial_small {
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
-            foreach (@Images_all) {
+            foreach my $image (@Images_all) {
 
-                if ( $_ =~ /<small([ ]+)?(\/|\\)?([ ]+)?>([ ])?/i
-                    and not $_ =~ /\|([ ]+)?<([ ]+)?small/ )
+                if ( $image =~ /<small([ ]+)?(\/|\\)?([ ]+)?>([ ])?/i
+                    and not $image =~ /\|([ ]+)?<([ ]+)?small/ )
                 {
-                    error_register( $error_code, $_ );
+                    error_register( $error_code, $image );
                 }
             }
         }
@@ -4460,11 +4497,11 @@ sub error_078_reference_double {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
             my $number_of_refs = 0;
-            $number_of_refs = () = $text =~ /<references[ ]?\/?>/gi;
+            $number_of_refs = () = $lc_text =~ /<references[ ]?\/?>/g;
 
             if ( $Template_list[$error_code][0] ne '-9999' ) {
                 my @ack = @{ $Template_list[$error_code] };
-                for my $temp (@ack) {
+                foreach my $temp (@ack) {
                     $number_of_refs += () = $text =~ /\{\{$temp/gi;
                 }
 
@@ -4592,8 +4629,8 @@ sub error_083_headline_only_three_and_later_level_two {
             if ( $Headlines[0] =~ /===/ ) {
 
                 my $found_level_two = 'no';
-                foreach (@Headlines) {
-                    if ( $_ =~ /^==[^=]/ ) {
+                foreach my $headline (@Headlines) {
+                    if ( $headline =~ /^==[^=]/ ) {
                         $found_level_two = 'yes';    #found level two (error 83)
                     }
                 }
@@ -4627,7 +4664,7 @@ sub error_084_section_without_text {
             foreach (@my_lines) {
                 my $current_line = $_;
 
-                if (    ( substr( $current_line, 0, 1 ) eq '=' )
+                if (    ( substr( $current_line, 0, 1 ) eq q{=} )
                     and ( $text =~ /\Q$current_line\E/ ) )
                 {
                     push( @my_section, $section_text );
@@ -4701,23 +4738,10 @@ sub error_085_tag_without_content {
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
-            if (
-                $lc_text =~ /<noinclude>\s*<\/noinclude>|
-                           <onlyinclude>\s*<\/onlyinclude|
-                           <includeonly>\s*<\/includeonly>|
-                           <center>\s*<\/center>|
-                           (<gallery[^>]*(?:\/>|>(?:\s|&nbsp;)*<\/gallery>))|
-                           <ref>\s*<\/ref>|
-                           <span(?!\s*id=)[^>]*>\s*<\/span>|
-                           <div(?!\s*id=)[^>]*>\s*<\/div>|
-                           <pre>\s*<\/pre>|
-                           <code>\s*<\/code>
-                           /x
-              )
-            {
-                my $found_text = substr( $text, $-[0], 40 );
-                $found_text =~ s/\n//g;
-                error_register( $error_code, $found_text );
+            foreach (@REGEX_085) {
+                if ( $lc_text =~ /$_/ ) {
+                    error_register( $error_code, substr( $text, $-[0], 40 ) );
+                }
             }
         }
     }
@@ -4735,8 +4759,7 @@ sub error_086_link_with_two_brackets_to_external_source {
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
-            my $test_text = $text;
-            if ( $test_text =~ /(\[\[\s*https?:\/\/[^\]:]*)/i ) {
+            if ( $lc_text =~ /(\[\[\s*https?:\/\/[^\]:]*)/ ) {
                 error_register( $error_code, substr( $1, 0, 40 ) );
             }
         }
@@ -4858,8 +4881,7 @@ sub error_089_defaultsort_with_no_space_after_comma {
                 my $test_text = substr( $text, $isDefaultsort, $pos2 );
 
                 if ( $test_text =~
-/DEFAULTSORT:([A-Za-z'-.]+),([A-Za-z'-.]+)(\s*)([A-Za-z0-9-.]*)/
-                  )
+                    /DEFAULTSORT:[\p{Cased_Letter}'-.]+,\p{Cased_Letter}/ )
                 {
                     error_register( $error_code, $test_text );
                 }
@@ -4881,8 +4903,8 @@ sub error_090_Internal_link_written_as_an_external_link {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
             # CHECK FOR en.m.wikipedia or en.wikipedida
-            if ( $text =~
-                /($Language\.m\.wikipedia.org\/(w|wiki)|$ServerName\/(w|wiki))/i
+            if ( $lc_text =~
+                /($Language\.m\.wikipedia.org\/(w|wiki)|$ServerName\/(w|wiki))/o
               )
             {
 
@@ -4909,18 +4931,19 @@ sub error_091_Interwiki_link_written_as_an_external_link {
             my $test_text = $text;
 
             # Remove current $projects as that is for #90
-            $test_text =~ s/($ServerName)//ig;
+            $test_text =~ s/($ServerName)//go;
 
             # Remove current mobile $projects as that is for 90
-            $test_text =~ s/($Language)\.m//ig;
-            if ( $test_text =~ /([a-z]{2,3}(\.m)?\.wikipedia\.org\/wiki)/i ) {
+            $test_text =~ s/($Language)\.m//go;
+
+            if ( $test_text =~ /([a-z]{2,3}(\.m)?\.wikipedia\.org\/wiki)/ ) {
 
                 # Use split to include only the url.
                 ( my $string ) =
                   split( /\s/, substr( $test_text, $-[0], 40 ), 2 );
 
                 # Links to images on other wikis are ok.  plwiki has alot.
-                if ( $string !~ /\.wikipedia\.org\/wiki\/(Image|File):/i ) {
+                if ( $string !~ /\.wikipedia\.org\/wiki\/(?:Image|File):/i ) {
                     error_register( $error_code, $string );
                 }
             }
@@ -5020,21 +5043,15 @@ sub error_095_user_signature {
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
-            if ( $Draft_regex ne q{} ) {
-                if ( $lc_text =~ /($User_regex|$Draft_regex)/i ) {
-                    error_register( $error_code, substr( $text, $-[0], 40 ) );
-                }
-            }
-            else {
-                if ( $lc_text =~ /($User_regex)/i ) {
-                    error_register( $error_code, substr( $text, $-[0], 40 ) );
-                }
+            if ( $lc_text =~ /$REGEX_095/o ) {
+                error_register( $error_code, substr( $text, $-[0], 40 ) );
             }
         }
     }
 
     return ();
 }
+
 ###########################################################################
 ## ERROR 96
 ###########################################################################
@@ -5048,6 +5065,7 @@ sub error_096_toc_after_first_headline {
             if ( $lc_text =~ /$Template_regex[96]__toc__/ ) {
                 my $toc_pos = $-[0];
                 my $headline_pos = index( $text, $Headlines[0] );
+
                 if ( $toc_pos > $headline_pos ) {
                     error_register( $error_code, substr( $text, $-[0], 40 ) );
                 }
@@ -5091,8 +5109,8 @@ sub error_098_sub_no_correct_end {
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
-            my $sub_begin = () = $text =~ /<sub/ig;
-            my $sub_end   = () = $text =~ /<\/sub>/ig;
+            my $sub_begin = () = $lc_text =~ /<sub/g;
+            my $sub_end   = () = $lc_text =~ /<\/sub>/g;
 
             if ( $sub_begin != $sub_end ) {
                 if ( $sub_begin > $sub_end ) {
@@ -5120,8 +5138,8 @@ sub error_099_sup_no_correct_end {
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
-            my $sup_begin = () = $text =~ /<sup[> ]/ig;
-            my $sup_end   = () = $text =~ /<\/sup>/ig;
+            my $sup_begin = () = $lc_text =~ /<sup[> ]/g;
+            my $sup_end   = () = $lc_text =~ /<\/sup>/g;
 
             if ( $sup_begin != $sup_end ) {
                 if ( $sup_begin > $sup_end ) {
@@ -5260,12 +5278,12 @@ sub error_104_quote_marks_in_refs {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
             # " missing at end... <ref name="foo />
-            if ( $text =~ /<ref\s+name="[\w\s()\.]+\/?>/gi ) {
+            if ( $lc_text =~ /<ref\s+name="[\w\s()\.]+\/?>/g ) {
                 error_register( $error_code, substr( $text, $-[0], 40 ) );
 
                 # " missing at beginning... <ref name=foo" />
             }
-            elsif ( $text =~ /<ref\s+name=[\w\s()\.]+"\s*\/?>/gi ) {
+            elsif ( $lc_text =~ /<ref\s+name=[\w\s()\.]+"\s*\/?>/g ) {
                 error_register( $error_code, substr( $text, $-[0], 40 ) );
             }
         }
@@ -5283,20 +5301,19 @@ sub error_105_headline_start_begin {
     my $error_code = 105;
 
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
-        foreach (@Lines) {
-            my $current_line  = $_;
-            my $current_line1 = $current_line;
+        if ( $page_namespace == 0 or $page_namespace == 104 ) {
+            foreach my $line (@Lines) {
 
-            $current_line1 =~ s/\t//gi;
-            $current_line1 =~ s/[ ]+/ /gi;
-            $current_line1 =~ s/ $//gi;
-
-            if (    $current_line =~ /==$/
-                and not( $current_line1 =~ /^==/ )
-                and index( $current_line, '</ref' ) == -1
-                and ( $page_namespace == 0 or $page_namespace == 104 ) )
-            {
-                error_register( $error_code, substr( $current_line, 0, 40 ) );
+                # Check if ref is part of the heading.
+                # Refs can go over multiple lines.
+                if ( $line =~ /==\s*$/ ) {
+                    if ( $line !~ /^==/ ) {
+                        if ( index( $line, '</ref' ) == -1 ) {
+                            error_register( $error_code,
+                                substr( $line, 0, 40 ) );
+                        }
+                    }
+                }
             }
         }
     }
@@ -5377,8 +5394,8 @@ sub error_109_include_tag_error {
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
-            my $include_begin = () = $text =~ /<noinclude>/ig;
-            my $include_end   = () = $text =~ /<\/noinclude>/ig;
+            my $include_begin = () = $lc_text =~ /<noinclude>/g;
+            my $include_end   = () = $lc_text =~ /<\/noinclude>/g;
 
             if ( $include_begin != $include_end ) {
                 if ( $include_begin > $include_end ) {
@@ -5393,8 +5410,8 @@ sub error_109_include_tag_error {
                 }
             }
 
-            $include_begin = () = $text =~ /<includeonly>/ig;
-            $include_end   = () = $text =~ /<\/includeonly>/ig;
+            $include_begin = () = $lc_text =~ /<includeonly>/g;
+            $include_end   = () = $lc_text =~ /<\/includeonly>/g;
 
             if ( $include_begin != $include_end ) {
                 if ( $include_begin > $include_end ) {
@@ -5409,8 +5426,8 @@ sub error_109_include_tag_error {
                 }
             }
 
-            $include_begin = () = $text =~ /<onlyinclude>/ig;
-            $include_end   = () = $text =~ /<\/onlyinclude>/ig;
+            $include_begin = () = $lc_text =~ /<onlyinclude>/g;
+            $include_end   = () = $lc_text =~ /<\/onlyinclude>/g;
 
             if ( $include_begin != $include_end ) {
                 if ( $include_begin > $include_end ) {
@@ -5442,7 +5459,51 @@ sub error_110_found_include_tag {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
             if ( $text =~ /<noinclude|<includeonly|<onlyinclude/i ) {
-                error_register( $error_code, "" );
+                error_register( $error_code, q{} );
+            }
+        }
+    }
+
+    return ();
+}
+
+###########################################################################
+## ERROR 111
+###########################################################################
+
+sub error_111_ref_after_ref_list {
+    my $error_code = 111;
+
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
+        if ( $page_namespace == 0 or $page_namespace == 104 ) {
+
+            my $lastref = rindex( $text, '<ref>' );
+            if ( $lastref > -1 ) {
+
+                my $references = rindex( $text, '<references' );
+
+                if ( $references < $lastref and $references > 0 ) {
+                    error_register( $error_code,
+                        substr( $text, $lastref, 40 ) );
+                }
+                elsif ( $Template_list[3][0] ne '-9999' ) {
+                    my @ack         = @{ $Template_list[3] };
+                    my $reftemplate = -1;
+
+                    foreach my $template (@ack) {
+                        my $string = '{{' . $template;
+                        my $temp = rindex( $lc_text, $string );
+                        if ( $temp > $reftemplate ) {
+                            $reftemplate = $temp;
+                        }
+                    }
+                    if ( $reftemplate < $lastref and $reftemplate > 0 ) {
+                        if ( $references < $reftemplate ) {
+                            error_register( $error_code,
+                                substr( $text, $lastref, 40 ) );
+                        }
+                    }
+                }
             }
         }
     }
@@ -5475,7 +5536,7 @@ sub error_register {
         insert_into_db( $error_code, $notice );
     }
     else {
-        print $title . " is in whitelist with error: " . $error_code . "\n";
+        print $title . ' is in whitelist with error: ' . $error_code . "\n";
     }
 
     return ();
@@ -5511,7 +5572,7 @@ sub insert_into_db {
     }
 
     my $sql_text =
-        "INSERT IGNORE INTO "
+        'INSERT IGNORE INTO '
       . $table_name
       . " VALUES ( '"
       . $project . "', '"
@@ -5555,7 +5616,7 @@ sub print_line {
 
     # Print a line for better structure of output
     if ( $Dump_or_Live ne 'list' ) {
-        print '-' x 80;
+        print q{-} x 80;
         print "\n";
     }
 
@@ -5669,22 +5730,22 @@ if ( $Template_Tiger == 1 ) {
     }
     $TTFile = File::Temp->new(
         DIR      => $TTDIRECTORY,
-        TEMPLATE => $project . '-' . $dump_date_for_output . '-XXXX',
+        TEMPLATE => $project . q{-} . $dump_date_for_output . '-XXXX',
         SUFFIX   => '.txt',
         UNLINK   => 0
     );
     $TTFilename =
-      $TTDIRECTORY . '/' . $project . '-' . $dump_date_for_output . '.txt';
-    binmode( $TTFile, ":encoding(UTF-8)" );
+      $TTDIRECTORY . q{/} . $project . q{-} . $dump_date_for_output . '.txt';
+    binmode( $TTFile, ':encoding(UTF-8)' );
 }
 
 if ( $Dump_or_Live ne 'article' ) {
     print_line();
     two_column_display( 'Start time:',
-        ( strftime "%a %b %e %H:%M:%S %Y", localtime ) );
+        ( strftime '%a %b %e %H:%M:%S %Y', localtime ) );
     $time_found = strftime( '%F %T', gmtime() );
     two_column_display( 'Project:',   $project );
-    two_column_display( 'Scan type:', $Dump_or_Live . " scan" );
+    two_column_display( 'Scan type:', $Dump_or_Live . ' scan' );
 }
 
 open_db();
@@ -5728,6 +5789,6 @@ if ( $Dump_or_Live ne 'article' ) {
     $time_end = sprintf "%d hours, %d minutes and %d seconds",
       ( gmtime $time_end )[ 2, 1, 0 ];
     two_column_display( 'Program run time:', $time_end );
-    two_column_display( 'PROGRAM FINISHED',  '' );
+    two_column_display( 'PROGRAM FINISHED',  q{} );
     print_line();
 }
