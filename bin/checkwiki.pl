@@ -11,7 +11,7 @@
 ##
 ##        AUTHOR: Stefan Kühn, Bryan White
 ##       LICENCE: GPLv3
-##       VERSION: 2016/11/08
+##       VERSION: 2016/11/30
 ##
 ###########################################################################
 
@@ -226,11 +226,17 @@ our @REGEX_034;
 foreach my $item (@ELEMENTS_034) {
     push @REGEX_034, qr/$item/;
 }
-if ( $project ne 'ukwiki' or $project ne 'ruwiki' or $project ne 'bewiki' ) {
-    push @REGEX_034, qr/{{{/;
-}
+
+our @REGEX_034_BRACKET = @REGEX_034;
+push @REGEX_034_BRACKET, qr/{{{/;
 
 Readonly our $CHARACTERS_064 => "\"'`‘«»„“”\(\)\.,–־—";
+
+our @REGEX_112;
+#push @REGEX_112, qr/-moz-/;
+#push @REGEX_112, qr/-webkit-/;
+#push @REGEX_112, qr/data-cx-weight/;
+#push @REGEX_112, qr/contenteditable\s=/;
 
 ###############################
 ## Variables for one article
@@ -1057,7 +1063,8 @@ sub get_nowiki {
         }
     }
 
-    $text =~ s/<nowiki>(.*?)<\/nowiki>/<nowiki>CheckWiki<\/nowiki>/sg;
+    #Don't remove ISBN inside <nowiki> for #69 check
+    $text =~ s/<nowiki>(?!ISBN)(.)*?<\/nowiki>/<nowiki>CheckWiki<\/nowiki>/sg;
 
     return ();
 }
@@ -1246,7 +1253,7 @@ sub get_tables {
 
     my $tag_open_num = () = $test_text =~ /\{\|/g;
 
-    #  Alot of template end with |}}, so exclude these.
+    #  Alot of templates end with |}}, so exclude these.
     $test_text =~ s/\|\}\}//g;
     my $tag_close_num = () = $test_text =~ /\|\}/g;
 
@@ -1312,20 +1319,19 @@ sub get_isbn {
 
       )
     {
-        my $test_text = uc($text);
+        my $test_text = $text;
         if ( $test_text =~ / ISBN\s*([-]|[:]|[#]|[;]|10|13)\s*/g ) {
             my $output = substr( $text, $-[0] - 1, 40 );
 
-            # INFOBOX CAN HAVE "| ISBN10 = ".
+            # INFOBOXES AND TEMPLATES CAN HAVE "| ISBN10 = ".
             # ALSO DON'T CHECK ISBN (10|13)XXXXXXXXXX
-            #if (    ( $output !~ /\|\s*ISBN(?:10|13)\s*=/g )
-            #    and
-            #    ( $output !~ /ISBN\s*(?:[-]|[:]|[#]|[;]){0,1}\s*(?:10|13)\d/g )
-            #  )
-            #{
-            error_069_isbn_wrong_syntax($output);
-
-            #}
+            if (    ( $output !~ /\|\s*ISBN(10|13)\s*=/g )
+                and
+                ( $output !~ /ISBN\s*([-]|[:]|[#]|[;]){0,1}\s*(10|13)\d/g )
+              )
+            {
+                error_069_isbn_wrong_syntax($output);
+            }
         }
         elsif ( $test_text =~ / \[\[ISBN\]\]\s*([:]|[-]|[#]|[;])+\s*\d/g ) {
             my $output = substr( $text, $-[0] - 1, 40 );
@@ -1342,6 +1348,18 @@ sub get_isbn {
             my $output = substr( $text, $-[0] - 1, 40 );
             error_069_isbn_wrong_syntax($output);
         }
+        elsif ( $test_text =~ /<nowiki>\s*ISBN\s*[ 0-9-xX]*<\/nowiki>/ ) {
+            my $output = substr( $text, $-[0] - 1, 40 );
+            error_069_isbn_wrong_syntax($output);
+        }
+        elsif ( $test_text =~ /\[\[\s*ISBN\s*[ 0-9-xX]*\]\]/ ) {
+            my $output = substr( $text, $-[0] - 1, 40 );
+            error_069_isbn_wrong_syntax($output);
+        }
+        #elsif ( $test_text =~ / *isbn\s*[ 0-9-xX]*/ ) {
+        #    my $output = substr( $text, $-[0] - 1, 40 );
+        #    error_069_isbn_wrong_syntax($output);
+        #}
 
         while ( $test_text =~ /ISBN([ ]|[-]|[=]|[:])/g ) {
             my $pos_start = pos($test_text) - 5;
@@ -1417,8 +1435,7 @@ sub get_issn {
         error_106_issn_wrong_syntax( substr( $text, $-[0] + 1, 15 ) );
     }
 
-    #    foreach (@Lines) {
-    while ( $text =~ /(ISSN\s+[\dXx]+-[\dXx]+)/g ) {
+    while ( $text =~ /(ISSN\s+[\dXx-]+)/g ) {
         my $output = $1;
         my $issn   = uc($1);
         $issn =~ s/[^0-9X]//g;
@@ -1447,8 +1464,6 @@ sub get_issn {
             }
         }
     }
-
-    #}
 
     return ();
 }
@@ -2206,6 +2221,11 @@ sub error_002_have_br {
                     error_register( $error_code, $test_line );
                 }
             }
+            # CHECK FOR <ref><cite> due to bug in CX
+            if ( $lc_text =~ /<ref><cite>/ ) {
+                my $test_line = substr( $text, $-[0], 40 );
+                error_register( $error_code, $test_line );
+            }
         }
     }
 
@@ -2632,7 +2652,7 @@ sub error_016_unicode_control_characters {
                 my $test_text = $text;
                 my $pos = index( $test_text, $1 );
                 $test_text = substr( $test_text, $pos, 40 );
-                $test_text =~ s/\p{Co}/\{PUA\}/;
+                $test_text =~ s/[\p{Co}]/\{PUA\}/;
                 $test_text =~ s/\x{007F}/\{007F\}/;
                 $test_text =~ s/\x{2004}/\{2004\}/;
                 $test_text =~ s/\x{2005}/\{2005\}/;
@@ -3149,10 +3169,23 @@ sub error_034_template_programming_elements {
     if ( $ErrorPriorityValue[$error_code] > 0 ) {
         if ( $page_namespace == 0 or $page_namespace == 104 ) {
 
-            foreach my $regex (@REGEX_034) {
-                if ( $lc_text =~ /$regex/ ) {
-                    error_register( $error_code, substr( $text, $-[0], 40 ) );
-                    last;
+            if (    $project ne "ukwiki"
+                and $project ne "ruwiki"
+                and $project ne "bewiki" )
+            {
+                foreach my $regex (@REGEX_034) {
+                    if ( $lc_text =~ /$regex/ ) {
+                        error_register( $error_code, substr( $text, $-[0], 40 ) );
+                        last;
+                    }
+                }
+            }
+            else {
+                foreach my $regex (@REGEX_034_BRACKET) {
+                    if ( $lc_text =~ /$regex/ ) {
+                        error_register( $error_code, substr( $text, $-[0], 40 ) );
+                        last;
+                    }
                 }
             }
 
@@ -3612,16 +3645,14 @@ sub error_048_title_in_text {
             $test_text =~ s/<includeonly>(.*?)<\/includeonly>//sg;
             $test_text =~ s/<timeline>(.*?)<\/timeline>//sg;
 
-            my $pos = index( $test_text, '[[' . $title . ']]' );
+            $test_text =~ tr/_/ /;
+            # [[foo --> [[Foo
+            $test_text =~ s/\[\[\s*(\p{Lowercase_Letter})/\[\[\u$1/g;
 
-            if ( $pos == -1 ) {
-                $pos = index( $test_text, '[[' . $title . q{|} );
-            }
-
-            if ( $pos != -1 ) {
-                $test_text = substr( $test_text, $pos, 40 );
-                $test_text =~ s/\n//g;
-                error_register( $error_code, $test_text );
+            # \Q \E makes any meta charachter in title safe (|.*+)
+            if ( $test_text =~ /\[\[\s*\Q$title\E\s*(\]\]|\|)/ ) {
+                my $test_line = substr( $test_text, $-[0], 40 );
+                error_register( $error_code, $test_line );
             }
         }
     }
@@ -4121,9 +4152,6 @@ sub error_064_link_equal_linktext {
             # Account for [[foo_foo|foo foo]] by removing all _.
             $temp_text =~ tr/_/ /;
 
-            #while ( $temp_text =~ /\[\[([^\|]*)/g ) {
-            #    my $temp
-            #}
             # Account for [[Foo|foo]] and [[foo|Foo]] by capitalizing the
             # the first character after the [ and |.  But, do only on
             # non-wiktionary projects
@@ -4147,23 +4175,18 @@ s/\[\[([^\|\]]*)\|([$CHARACTERS_064]+)\s*(\p{Lowercase_Letter})/\[\[$1\|$2\u$3/o
                 error_register( $error_code, $found_text );
             }
 
-            # Account for [[Foo|Foo'']]
-            elsif ( $temp_text =~ /[$CHARACTERS_064]+\s*\]\]/o ) {
-                if ( $temp_text =~
-/(\[\[([^\|]*)\|[$CHARACTERS_064]+?\2\s*[$CHARACTERS_064]+\s*\]\])/o
-                  )
-                {
-                    my $found_text = $1;
-                    error_register( $error_code, $found_text );
-                }
-            }
-
             # Account for [[Foo|''Foo]]
-            elsif (
-                $temp_text =~ /(\[\[([^\|]*)\|[$CHARACTERS_064]+\2\s*\]\])/o )
-            {
+            elsif ( $temp_text =~ /(\[\[([^\|]*)\|[$CHARACTERS_064]+\2\s*\]\])/o ) { 
                 my $found_text = $1;
                 error_register( $error_code, $found_text );
+            }
+
+            # Account for [[Foo|''Foo'']] & [[Foo|Foo'']]
+            elsif ( $temp_text =~ /(\[\[([^\|]*)\|([$CHARACTERS_064]+)?\2\s*[$CHARACTERS_064]+\s*\]\])/o ) {
+                my $found_text = $1;
+                if ( $found_text  !~ /(\[\[([^\|]*)\|\2\s*'+\s*\]\])/o ) {
+                    error_register( $error_code, $found_text );
+                }
             }
         }
     }
@@ -4740,7 +4763,14 @@ sub error_085_tag_without_content {
 
             foreach (@REGEX_085) {
                 if ( $lc_text =~ /$_/ ) {
-                    error_register( $error_code, substr( $text, $-[0], 40 ) );
+                    my $tag = substr( $text, $-[0], 60 );
+                    if ( $tag !~ /<div/ ) { 
+                        error_register( $error_code, substr( $tag, 0, 40 ) );
+                    }
+                    # <div> tags with background are mostly ok
+                    elsif ( $tag !~ /background/ ) {
+                        error_register( $error_code, substr( $tag, 0, 40 ) );
+                    }
                 }
             }
         }
@@ -5308,9 +5338,21 @@ sub error_105_headline_start_begin {
                 # Refs can go over multiple lines.
                 if ( $line =~ /==\s*$/ ) {
                     if ( $line !~ /^==/ ) {
-                        if ( index( $line, '</ref' ) == -1 ) {
+                        if ( $line !~ /<\/ref>\s*=*$/ ) {
                             error_register( $error_code,
                                 substr( $line, 0, 40 ) );
+                            last;
+                        }
+                    }
+                    else {
+                        my ($temp)  = $line =~ /^([=]+)/;
+                        my $front   = length ( $temp );
+                        ($temp)     = $line =~ /([=]+)\s*$/;
+                        my $end     = length ( $temp );
+                        if ($front < $end ) {
+                            error_register( $error_code,
+                                substr( $line, 0, 40 ) );
+                            last;
                         }
                     }
                 }
@@ -5486,7 +5528,7 @@ sub error_111_ref_after_ref_list {
                     error_register( $error_code,
                         substr( $text, $lastref, 40 ) );
                 }
-                elsif ( $Template_list[3][0] ne '-9999' ) {
+                elsif ( $Template_list[$error_code][0] ne '-9999' ) {
                     my @ack         = @{ $Template_list[3] };
                     my $reftemplate = -1;
 
@@ -5503,6 +5545,28 @@ sub error_111_ref_after_ref_list {
                                 substr( $text, $lastref, 40 ) );
                         }
                     }
+                }
+            }
+        }
+    }
+
+    return ();
+}
+
+###########################################################################
+## ERROR 112
+###########################################################################
+
+sub error_112_ref_after_ref_list {
+    my $error_code = 111;
+
+    if ( $ErrorPriorityValue[$error_code] > 0 ) {
+        if ( $page_namespace == 0 or $page_namespace == 104 ) {
+
+            foreach (@REGEX_112) {
+                if ( $lc_text =~ /$_/ ) {
+                    error_register( $error_code, substr( $text, $-[0], 40 ) );
+                    last;
                 }
             }
         }
