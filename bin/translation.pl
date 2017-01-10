@@ -71,6 +71,7 @@ our %TranslationLocation = (
     'enwiki'      => 'Wikipedia:WikiProject Check Wikipedia/Translation',
     'eowiki'      => 'Projekto:Kontrolu Vikipedion/Tradukado',
     'eswiki'      => 'Wikiproyecto:Check Wikipedia/Translation',
+    'fawiki'      => 'ویکی‌پدیا:ویکی‌پروژه تصحیح ویکی‌پدیا/ترجمه',
     'fiwiki'      => 'Wikipedia:Wikiprojekti Check Wikipedia/Translation',
     'frwiki'      => 'Projet:Correction syntaxique/Traduction',
     'fywiki'      =>
