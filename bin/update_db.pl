@@ -15,7 +15,7 @@
 #               cw_overview contains data for main index.html page.
 #
 # AUTHOR:  Stefan Kühn, Bryan White
-# VERSION: 2013-11-26
+# VERSION: 2017-01-06
 # LICENSE: GPLv3
 #
 ##########################################################################
@@ -24,35 +24,47 @@ use strict;
 use warnings;
 
 use DBI;
+use DBD::mysql;
 use Getopt::Long
   qw(GetOptionsFromString :config bundling no_auto_abbrev no_ignore_case);
 
-our $dbh;
-our @projects;
+my $dbh;
+my @projects;
 
-our $time_start_script = time();
-our $time_start;
+my $time_start_script = time();
+my $time_start;
 
-my ( $DbName, $DbServer, $DbUsername, $DbPassword );
+########################################################
+## GET OPTIONS
+########################################################
 
-my @Options = (
+my ( $DbName, $DbServer, $DbUsername, $DbPassword, $config_name );
+
+GetOptions(
     'database|d=s' => \$DbName,
     'host|h=s'     => \$DbServer,
     'password=s'   => \$DbPassword,
-    'user|u=s'     => \$DbUsername
+    'user|u=s'     => \$DbUsername,
+    'config|c=s'   => \$config_name
 );
 
-GetOptions(
-    'c=s' => sub {
-        my $f = IO::File->new( $_[1], '<:encoding(UTF-8)' )
-          or die( "Can't open " . $_[1] . "\n" );
-        local ($/);
-        my $s = <$f>;
-        $f->close();
-        my ( $Success, $RemainingArgs ) = GetOptionsFromString( $s, @Options );
-        die unless ( $Success && !@$RemainingArgs );
+if ( defined $config_name ) {
+    open( my $file, '<:encoding(UTF-8)', $config_name )
+      or die 'Could not open file ' . $config_name . "\n";
+    while ( my $line = <$file> ) {
+        chomp($line);
+        my @words = ( split / /, $line );
+        $DbName     = $words[1] if ( $words[0] =~ /--database/ );
+        $DbUsername = $words[1] if ( $words[0] =~ /--user/ );
+        $DbPassword = $words[1] if ( $words[0] =~ /--password/ );
+        $DbServer   = $words[1] if ( $words[0] =~ /--host/ );
     }
-);
+    close($file)
+      or die 'Could not close file ' . $config_name . "\n";
+}
+else {
+    die("No config file entered, for example: -c checkwiki.cfg\n");
+}
 
 ##########################################################################
 ## MAIN PROGRAM
@@ -80,15 +92,13 @@ sub open_db {
     $dbh = DBI->connect(
         'DBI:mysql:'
           . $DbName
-          . ( defined($DbServer) ? ':host=' . $DbServer : '' ),
+          . ( defined($DbServer) ? ':host=' . $DbServer : q{} ),
         $DbUsername,
         $DbPassword,
         {
-            RaiseError        => 1,
-            AutoCommit        => 1,
             mysql_enable_utf8 => 1
         }
-    ) or die( "Could not connect to database: " . DBI::errstr() . "\n" );
+    ) or die("Could not connect to database:  DBI::errstr() \n");
 
     return ();
 }
@@ -108,26 +118,23 @@ sub close_db {
 ###########################################################################
 
 sub get_projects {
+    my $project_counter = 0;
+    my $result          = q();
 
     print "Load projects from db\n";
-    my $result = q();
+
     my $sth = $dbh->prepare('SELECT project FROM cw_overview ORDER BY project;')
-      || die "Can not prepare statement: $DBI::errstr\n";
-    $sth->execute or die "Cannot execute: " . $sth->errstr . "\n";
+      or die "Can not prepare statement: $DBI::errstr\n";
+    $sth->execute
+      or die "Cannot execute: $sth->errstr\n";
 
-    my $project_counter = 0;
-    while ( my $arrayref = $sth->fetchrow_arrayref() ) {
+    my $project_sql;
+    $sth->bind_col( 1, \$project_sql );
 
-        foreach (@$arrayref) {
-            $result = $_;
-        }
-
-        #print $result . "\n";
-        push( @projects, $result );
+    while ( $sth->fetchrow_arrayref ) {
+        push( @projects, $project_sql );
         $project_counter++;
     }
-
-    #print $project_counter . "projects\n";
 
     return ();
 }
@@ -138,31 +145,30 @@ sub get_projects {
 
 sub cw_overview_errors_update_done {
     $time_start = time();
+
     print "Group and count the done in cw_error -> update cw_overview_error\n";
 
-    foreach (@projects) {
-        my $project = $_;
+    foreach my $project (@projects) {
 
-        #print "\t\t" . $project . "\n";
-        my $sql_text = "UPDATE cw_overview_errors, (
-        SELECT a.project, a.id , b.done FROM cw_overview_errors a
-        LEFT OUTER JOIN (
-        SELECT COUNT(*) done , error id , project
-        FROM cw_error WHERE ok = 1 AND project =  '" . $project . "' 
-        GROUP BY project, error
-        ) b
-        ON a.project = b.project AND a.project =  '" . $project . "'
-        AND a.id = b.id
-        ) basis
-        SET cw_overview_errors.done = basis.done
-        WHERE cw_overview_errors.project = basis.project
-        AND cw_overview_errors.project =  '" . $project . "'
-        AND cw_overview_errors.id = basis.id;";
-
-        #print $sql_text . "\n\n\n";
-        my $sth = $dbh->prepare($sql_text)
-          || die "Can not prepare statement: $DBI::errstr\n";
-        $sth->execute or die "Cannot execute: " . $sth->errstr . "\n";
+        my $sth = $dbh->prepare(
+            q{UPDATE cw_overview_errors, (
+            SELECT a.project, a.id , b.done FROM cw_overview_errors a
+            LEFT OUTER JOIN (
+            SELECT COUNT(*) done , error id , project
+            FROM cw_error WHERE ok = 1 AND project = ? 
+            GROUP BY project, error
+            ) b
+            ON a.project = b.project AND a.project = ? 
+            AND a.id = b.id
+            ) basis
+            SET cw_overview_errors.done = basis.done
+            WHERE cw_overview_errors.project = basis.project
+            AND cw_overview_errors.project = ? 
+            AND cw_overview_errors.id = basis.id
+          ;}
+        ) or die "Can not prepare statement: $DBI::errstr\n";
+        $sth->execute( $project, $project, $project )
+          or die "Cannot execute: $sth->errstr\n";
     }
 
     output_duration();
@@ -176,36 +182,34 @@ sub cw_overview_errors_update_done {
 
 sub cw_overview_errors_update_error_number {
     $time_start = time();
+
     print "Group and count the error in cw_error -> update cw_overview_error\n";
 
-    foreach (@projects) {
-        my $project = $_;
+    foreach my $project (@projects) {
 
-        #print "\t\t" . $project . "\n";
-
-        my $sql_text = "UPDATE cw_overview_errors, (
-        SELECT a.project, a.id, b.errors errors  
-        FROM cw_overview_errors a
-        LEFT OUTER JOIN (
-        SELECT COUNT( *) errors, error id , project
-        FROM cw_error 
-        WHERE ok = 0
-        AND project =  '" . $project . "'
-        GROUP BY project, error
-        ) b
-        ON a.project = b.project
-        AND a.project =  '" . $project . "'
-        AND a.id = b.id
-        ) basis
-        SET cw_overview_errors.errors = basis.errors
-        WHERE cw_overview_errors.project = basis.project
-        AND cw_overview_errors.project =  '" . $project . "'
-        AND cw_overview_errors.id = basis.id;";
-
-        #print $sql_text . "\n\n\n";
-        my $sth = $dbh->prepare($sql_text)
-          || die "Can not prepare statement: $DBI::errstr\n";
-        $sth->execute or die "Cannot execute: " . $sth->errstr . "\n";
+        my $sth = $dbh->prepare(
+            q{UPDATE cw_overview_errors, (
+            SELECT a.project, a.id, b.errors errors  
+            FROM cw_overview_errors a
+            LEFT OUTER JOIN (
+            SELECT COUNT( *) errors, error id , project
+            FROM cw_error 
+            WHERE ok = 0
+            AND project = ? 
+            GROUP BY project, error
+            ) b
+            ON a.project = b.project
+            AND a.project = ? 
+            AND a.id = b.id
+            ) basis
+            SET cw_overview_errors.errors = basis.errors
+            WHERE cw_overview_errors.project = basis.project
+            AND cw_overview_errors.project = ? 
+            AND cw_overview_errors.id = basis.id
+          ;}
+        ) or die "Can not prepare statement: $DBI::errstr\n";
+        $sth->execute( $project, $project, $project )
+          or die "Cannot execute: $sth->errstr\n";
     }
 
     output_duration();
@@ -219,18 +223,20 @@ sub cw_overview_errors_update_error_number {
 
 sub cw_overview_update_done {
     $time_start = time();
+
     print "Sum done article in cw_overview_errors --> update cw_overview\n";
 
-    my $sql_text = "UPDATE cw_overview, (
-    SELECT IFNULL(sum(done),0) done, project FROM cw_overview_errors GROUP BY project
-    ) basis
-    SET cw_overview.done = basis.done
-    WHERE cw_overview.project = basis.project;";
-
-    #print $sql_text . "\n\n\n";
-    my $sth = $dbh->prepare($sql_text)
-      || die "Can not prepare statement: $DBI::errstr\n";
-    $sth->execute or die "Cannot execute: " . $sth->errstr . "\n";
+    my $sth = $dbh->prepare(
+        q{UPDATE cw_overview, (
+        SELECT IFNULL(sum(done),0) done, project
+        FROM cw_overview_errors GROUP BY project
+        ) basis
+        SET cw_overview.done = basis.done
+         WHERE cw_overview.project = basis.project
+      ;}
+    ) or die "Can not prepare statement: $DBI::errstr\n";
+    $sth->execute
+      or die "Cannot execute: $sth->errstr\n";
 
     output_duration();
 
@@ -243,18 +249,20 @@ sub cw_overview_update_done {
 
 sub cw_overview_update_error_number {
     $time_start = time();
+
     print "Sum errors in cw_overview_errors --> update cw_overview\n";
 
-    my $sql_text = "update cw_overview, (
-    SELECT IFNULL(sum(errors),0) errors, project FROM cw_overview_errors GROUP BY project
-    ) basis
-    SET cw_overview.errors = basis.errors
-    WHERE cw_overview.project = basis.project;";
-
-    #print $sql_text . "\n\n\n";
-    my $sth = $dbh->prepare($sql_text)
-      || die "Can not prepare statement: $DBI::errstr\n";
-    $sth->execute or die "Cannot execute: " . $sth->errstr . "\n";
+    my $sth = $dbh->prepare(
+        q{ update cw_overview, (
+        SELECT IFNULL(sum(errors),0) errors, project
+        FROM cw_overview_errors GROUP BY project
+        ) basis
+        SET cw_overview.errors = basis.errors
+        WHERE cw_overview.project = basis.project
+      ;}
+    ) or die "Can not prepare statement: $DBI::errstr\n";
+    $sth->execute
+      or die "Cannot execute: $sth->errstr\n";
 
     output_duration();
 
@@ -267,24 +275,22 @@ sub cw_overview_update_error_number {
 
 sub cw_overview_update_last_update {
     $time_start = time();
+
     print "Update last_update\n";
-    foreach (@projects) {
-        my $project = $_;
 
-        #print "\t\t" . $project . "\n";
-        my $sql_text = "-- update last_update
-        UPDATE cw_overview, (
-        SELECT max(found) found, project 
-        FROM cw_error 
-        WHERE project =  '" . $project . "'
-        ) basis
-        SET cw_overview.last_update = basis.found
-        WHERE cw_overview.project = basis.project";
+    foreach my $project (@projects) {
 
-        #print $sql_text . "\n\n\n";
-        my $sth = $dbh->prepare($sql_text)
-          || die "Can not prepare statement: $DBI::errstr\n";
-        $sth->execute or die "Cannot execute: " . $sth->errstr . "\n";
+        my $sth = $dbh->prepare(
+            q{-- update last_update
+            UPDATE cw_overview, (SELECT max(found) found, project
+            FROM cw_error WHERE project = ?
+            ) basis
+            SET cw_overview.last_update = basis.found
+            WHERE cw_overview.project = basis.project
+          ;}
+        ) or die "Can not prepare statement: $DBI::errstr\n";
+        $sth->execute($project)
+          or die "Cannot execute: $sth->errstr\n";
     }
 
     output_duration();
@@ -297,44 +303,44 @@ sub cw_overview_update_last_update {
 ###########################################################################
 
 sub cw_overview_update_last_change {
+
     print "Update change\n";
+
     $time_start = time();
 
-    foreach (@projects) {
-        my $project = $_;
+    foreach my $project (@projects) {
 
-        #print "\t\t" . $project . "\n";
-        my $sql_text = "-- UPATE last_dump
-        UPDATE cw_overview, (
-        SELECT a.project project, c.errors last, b.errors one, a.errors, a.errors-b.errors diff1, a.errors-c.errors diff7
-        FROM (
-        SELECT project, IFNULL(errors,0) errors FROM cw_statistic_all 
-        WHERE DATEDIFF(now(),daytime) = 0
-        AND project =  '" . $project . "'
-        ) a JOIN 
-        (
-        SELECT project, IFNULL(errors,0) errors 
-        FROM cw_statistic_all 
-        WHERE DATEDIFF(now(),daytime) = 1
-        AND project =  '" . $project . "'
-        ) b
-        ON (a.project = b.project)
-        JOIN 
-        (SELECT project, ifnull(errors,0) errors FROM cw_statistic_all 
-        WHERE DATEDIFF(now(),daytime) = 7
-        AND project =  '" . $project . "'
-        ) c
-        ON (a.project = c.project)
-        ) basis
-        SET cw_overview.diff_1 = basis.diff1, 
-        cw_overview.diff_7 = basis.diff7
-        WHERE cw_overview.project = basis.project
-        AND cw_overview.project =  '" . $project . "';";
-
-        #print $sql_text . "\n\n\n";
-        my $sth = $dbh->prepare($sql_text)
-          || die "Can not prepare statement: $DBI::errstr\n";
-        $sth->execute or die "Cannot execute: " . $sth->errstr . "\n";
+        my $sth = $dbh->prepare(
+            q{-- UPATE last_dump
+            UPDATE cw_overview, (
+            SELECT a.project project, c.errors last, b.errors one, a.errors, a.errors-b.errors diff1, a.errors-c.errors diff7
+            FROM (
+            SELECT project, IFNULL(errors,0) errors FROM cw_statistic_all 
+            WHERE DATEDIFF(now(),daytime) = 0
+            AND project = ? 
+            ) a JOIN 
+            (
+            SELECT project, IFNULL(errors,0) errors 
+            FROM cw_statistic_all 
+            WHERE DATEDIFF(now(),daytime) = 1
+            AND project = ? 
+            ) b
+            ON (a.project = b.project)
+            JOIN 
+            (SELECT project, ifnull(errors,0) errors FROM cw_statistic_all 
+            WHERE DATEDIFF(now(),daytime) = 7
+            AND project = ? 
+            ) c
+            ON (a.project = c.project)
+            ) basis
+            SET cw_overview.diff_1 = basis.diff1, 
+            cw_overview.diff_7 = basis.diff7
+            WHERE cw_overview.project = basis.project
+            AND cw_overview.project = ?
+          ;}
+        ) or die "Can not prepare statement: $DBI::errstr\n";
+        $sth->execute
+          or die "Cannot execute: $sth->errstr\n";
     }
 
     output_duration();
@@ -353,11 +359,12 @@ sub output_duration {
     my $duration_secounds =
       int( ( ( int( 100 * ( $duration / 60 ) ) / 100 ) - $duration_minutes ) *
           60 );
+
     print "Duration:\t"
       . $duration_minutes
       . ' minutes '
       . $duration_secounds
-      . ' secounds' . "\n\n";
+      . " secounds\n\n";
 
     return ();
 }
@@ -369,11 +376,12 @@ sub output_duration_script {
     my $duration_secounds =
       int( ( ( int( 100 * ( $duration / 60 ) ) / 100 ) - $duration_minutes ) *
           60 );
+
     print "Duration of script:\t"
       . $duration_minutes
       . ' minutes '
       . $duration_secounds
-      . ' secounds' . "\n";
+      . " secounds\n";
 
     return ();
 }
