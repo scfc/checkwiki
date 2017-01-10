@@ -4873,8 +4873,8 @@ sub error_088_defaultsort_with_first_blank {
                 my $test_text = substr( $text, $isDefaultsort, $pos2 );
 
                 my $sortkey = $test_text;
-                $sortkey =~ s/^([ ]+)?$current_magicword//;
-                $sortkey =~ s/^([ ]+)?://;
+                $sortkey =~ s/^{{([ ]+)?$current_magicword//;
+                $sortkey =~ s/^{{([ ]+)?://;
 
                 if ( index( $sortkey, q{ } ) == 0 ) {
                     error_register( $error_code, $test_text );
